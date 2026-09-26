@@ -1,0 +1,50 @@
+# Acceptance baseline
+
+Phase 0 is complete when a clean Python 3.12 environment can run `uv sync --frozen`,
+`hai doctor`, Ruff, compilation and provider-free tests. Docker integration and official
+VGB track fixtures are separate acceptance gates in later phases.
+
+Phase 1 configuration acceptance additionally requires `hai materialize` to map an
+explicit resource profile to `n_concurrent_trials`, `override_cpus`,
+`override_memory_mb`, CPU/memory policies, retry count and attempt count, while rejecting
+unknown fields, unresolved placeholders, tag-only images and unsupported resource modes.
+
+Phase 4 VGB acceptance uses a separate wheel-installed runtime:
+
+```bash
+uv run python scripts/provision_vgb_runtime.py \
+  --lock runtime-lock.json \
+  --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
+  --runtime-dir .vgb-runtime
+VGB_PYTHON=.vgb-runtime/bin/python uv run pytest tests/test_vgb_integration.py
+```
+
+The VGB tests must pass without adding the legacy workspace to `PYTHONPATH` and must
+preserve the official evaluation object before producing the domain projection.
+
+The final local image gate is:
+
+```bash
+uv run hai image inspect \
+  --reference hai-fake-agent:acceptance@sha256:<digest> \
+  --platform linux/arm64
+uv run python scripts/verify_acceptance.py
+```
+
+`verify_acceptance.py` returns a machine-readable report. It does not mark the release
+complete when the real OpenClaw image digest, Registry or provider prerequisites are
+missing.
+
+The provider-free Harbor lifecycle gate is:
+
+```bash
+uv run pytest -m integration \
+  tests/test_harbor_lifecycle_integration.py \
+  tests/test_fake_smoke_integration.py
+```
+
+This gate exercises non-zero exit, agent timeout, Docker memory pressure, cancellation
+cleanup, retry Trial context isolation and concurrent trials. It does not replace the
+real OpenClaw/provider gate: that gate still requires a digest-pinned OpenClaw 9.5
+image, Node `>=24.16.0,<25`, provider credentials and one real task in each allowlisted
+VGB track.
