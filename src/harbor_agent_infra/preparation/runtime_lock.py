@@ -53,8 +53,10 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError("OpenClaw package_integrity must be an npm sha512 integrity")
     if not isinstance(node_engine, str) or not node_engine:
         raise ValueError("OpenClaw node_engine is required")
-    if strategy != "harbor-native-nvm22":
-        raise ValueError("OpenClaw runtime_strategy must be harbor-native-nvm22")
+    if strategy != "harbor-native-nvm22-openclaw-setup-workspace":
+        raise ValueError(
+            "OpenClaw runtime_strategy must be harbor-native-nvm22-openclaw-setup-workspace"
+        )
     reference = image.get("reference")
     digest = image.get("digest")
     platform = image.get("platform")

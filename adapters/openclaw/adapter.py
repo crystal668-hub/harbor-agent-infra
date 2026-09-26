@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shlex
 from typing import Any, override
 
@@ -19,6 +20,31 @@ from adapters.openclaw.session import (
 
 class OpenClawAgent(HarborOpenClaw):
     """Thin Harbor OpenClaw wrapper with Infra-owned identity and evidence."""
+
+    # Harbor v0.23.0 uses the pre-2026.6 setup flags. OpenClaw 2026.6.9
+    # accepts the workspace through --workspace; installation, provider
+    # forwarding and agent execution remain owned by Harbor's installed-agent
+    # implementation.
+    _SETUP_CLI = "openclaw setup --workspace ."
+
+    @override
+    def _parse_stdout(self) -> dict[str, Any] | None:
+        """Parse OpenClaw's JSON envelope when tee appends diagnostic lines."""
+        output_path = self.logs_dir / "openclaw.txt"
+        if not output_path.exists():
+            return None
+        text = output_path.read_text(encoding="utf-8")
+        decoder = json.JSONDecoder()
+        for index in range(len(text) - 1, -1, -1):
+            if text[index] != "{":
+                continue
+            try:
+                value, _ = decoder.raw_decode(text[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict) and isinstance(value.get("meta"), dict):
+                return value
+        return None
 
     def session_identity(self) -> SessionIdentity:
         if not self.session_id:
@@ -76,6 +102,27 @@ class OpenClawAgent(HarborOpenClaw):
                 self.logs_dir / "openclaw-evidence.json"
             )
             raise
+
+    @override
+    async def _copy_openclaw_session_file_to_agent_logs(
+        self, environment: BaseEnvironment, env: dict[str, str]
+    ) -> None:
+        """Copy the OpenClaw session transcript using Node in the slim image."""
+        command = (
+            "node -e "
+            "'const fs=require(\"fs\");"
+            "const raw=fs.readFileSync(\"/logs/agent/openclaw.txt\",\"utf8\");"
+            "const match=raw.match(/\"sessionFile\"\\s*:\\s*\"([^\"]+)\"/);"
+            "const source=match?.[1];"
+            "if(source&&fs.existsSync(source))fs.copyFileSync(source,\"/logs/agent/openclaw.session.jsonl\");'"
+        )
+        try:
+            await self.exec_as_agent(environment, command=command, env=env)
+        except Exception:
+            self.logger.debug(
+                "Could not copy OpenClaw session file to /logs/agent/openclaw.session.jsonl",
+                exc_info=True,
+            )
 
     @override
     def populate_context_post_run(self, context: AgentContext) -> None:

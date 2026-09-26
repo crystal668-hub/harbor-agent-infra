@@ -56,9 +56,12 @@ def test_openclaw_adapter_projects_context_id_into_identity(tmp_path: Path) -> N
 
 def test_openclaw_config_and_command_project_identity(tmp_path: Path) -> None:
     agent = _agent(tmp_path)
+    assert agent._SETUP_CLI == "openclaw setup --workspace ."
     config = agent._build_full_openclaw_config()
-    entry = config["agents"]["entries"]["openclaw"]
-    assert config["agents"]["ownership"] == "explicit"
+    entries = config["agents"]["list"]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["id"] == "openclaw"
     assert entry["workspace"] == "/workspace"
     assert entry["agentDir"].endswith("/agents/openclaw")
     assert "--agent openclaw" in agent.build_cli_flags()

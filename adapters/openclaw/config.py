@@ -13,12 +13,12 @@ def project_agents_entries(
     model: str | None,
     workspace: str = "/workspace",
 ) -> dict[str, Any]:
-    """Project one explicit Harbor-owned OpenClaw agent into keyed entries."""
+    """Project one explicit Harbor-owned agent into OpenClaw's list schema."""
     projected = deepcopy(config)
     agents = projected.setdefault("agents", {})
     if not isinstance(agents, dict):
         raise ValueError("OpenClaw config agents must be an object")
-    raw_entries = agents.get("entries", agents.get("list", {}))
+    raw_entries = agents.get("list", agents.get("entries", {}))
     if isinstance(raw_entries, list):
         entries = {
             str(item["id"]): dict(item)
@@ -45,7 +45,7 @@ def project_agents_entries(
     )
     if model:
         entry["model"] = model
-    agents["entries"] = entries
-    agents.pop("list", None)
-    agents["ownership"] = "explicit"
+    agents["list"] = list(entries.values())
+    agents.pop("entries", None)
+    agents.pop("ownership", None)
     return projected
