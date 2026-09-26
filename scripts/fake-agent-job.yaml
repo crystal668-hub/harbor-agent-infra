@@ -1,0 +1,20 @@
+job_name: fake-agent-smoke
+jobs_dir: run-artifacts/fake-agent-smoke
+n_attempts: 1
+n_concurrent_trials: 1
+quiet: true
+retry:
+  max_retries: 0
+environment:
+  type: docker
+  cpu_enforcement_policy: limit
+  memory_enforcement_policy: limit
+  override_cpus: 1
+  override_memory_mb: 512
+  delete: true
+agents:
+  - name: fake-agent
+    import_path: adapters.fake_agent:FakeAgent
+    model_name: fixture-model
+tasks:
+  - path: tests/fixtures/fake-agent/task
