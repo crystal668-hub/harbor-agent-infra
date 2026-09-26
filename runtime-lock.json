@@ -1,0 +1,44 @@
+{
+  "schema_version": "infra-runtime-lock.v1",
+  "python": {
+    "version": "3.12.13",
+    "requires": ">=3.12,<3.14"
+  },
+  "harbor": {
+    "version": "0.23.0",
+    "commit": "1e5c5c6db929a10a140d05e606882c671ae20729",
+    "source": "git+https://github.com/harbor-framework/harbor.git"
+  },
+  "vgb": {
+    "package": "verifier-grounded-benchmark",
+    "version": "0.10.0",
+    "source_tag": "v0.10.0",
+    "source_commit": "5e4d345e47ff5e0cac16297972ce7a70e6577075",
+    "wheel": "verifier_grounded_benchmark-0.10.0-py3-none-any.whl",
+    "wheel_sha256": "019b7c90031355b804d8d6873cdc81b52153496b06681962775f54367c19140a",
+    "release_manifest_sha256": "7d0b97bec75c30792dd737d89840f29dd5cefbad3604a7b4019aafebb08ef67f",
+    "task_inventory_sha256": "52cc8eadd09cc1e64897841f25fd8f6cbca740484f060ab9654c968609781245",
+    "tracks": [
+      "open_generation_rdkit",
+      "open_generation_xtb",
+      "property_calculation_advanced",
+      "property_calculation_basic"
+    ]
+  },
+  "openclaw": {
+    "adapter": "openclaw",
+    "adapter_version": "0.1.0",
+    "adapter_source_hashes": {
+      "adapters/openclaw/__init__.py": "sha256:ebb3560cf19b28d1ecde28ea0ff38c187d7126bf441af947ccee1ec9084ca386",
+      "adapters/openclaw/adapter.py": "sha256:e657db8f45db1b63266834c2747988ef69e9dbe8180134126c3416c2a9d42494",
+      "adapters/openclaw/config.py": "sha256:dde2fc35c006af9905c830755006609fdd2f9b57c1b093c005517fea3c89e65d",
+      "adapters/openclaw/evidence.py": "sha256:0dc0cf086165375fe41ed99ed6bbe21e4f69bd5298871632a46e8671693f9cc7",
+      "adapters/openclaw/failure.py": "sha256:e3792988212daf31ce06b285f4a530f973f366d58d081133a9a681b89b37c33e",
+      "adapters/openclaw/session.py": "sha256:aa8598269934d4b06e666161d98452d5d93f14bbbf4febdf20b001b58995d482"
+    },
+    "version": "9.5",
+    "node_engine": ">=24.16.0,<25",
+    "image": null,
+    "digest": null
+  }
+}
