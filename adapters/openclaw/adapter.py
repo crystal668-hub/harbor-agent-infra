@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import shlex
 from typing import Any, override
 
+from harbor.agents.installed.base import NonZeroAgentExitCodeError
 from harbor.agents.installed.openclaw import OpenClaw as HarborOpenClaw
 from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext
@@ -26,6 +28,37 @@ class OpenClawAgent(HarborOpenClaw):
     # forwarding and agent execution remain owned by Harbor's installed-agent
     # implementation.
     _SETUP_CLI = "openclaw setup --workspace ."
+
+    @override
+    async def ensure_system_dependencies(
+        self, environment: BaseEnvironment, dependencies: tuple[str, ...]
+    ) -> None:
+        for attempt in range(3):
+            try:
+                await super().ensure_system_dependencies(environment, dependencies)
+                return
+            except NonZeroAgentExitCodeError as exc:
+                detail = str(exc)
+                transient = "Failed to fetch http://deb.debian.org/" in detail and any(
+                    f" {status} " in detail for status in (500, 502, 503, 504)
+                )
+                if not transient or attempt == 2:
+                    raise
+                await asyncio.sleep(2**attempt)
+
+    @override
+    async def install(self, environment: BaseEnvironment) -> None:
+        for attempt in range(3):
+            try:
+                await super().install(environment)
+                return
+            except NonZeroAgentExitCodeError as exc:
+                detail = str(exc)
+                if "npm error" not in detail or not any(
+                    marker in detail for marker in ("ECONNRESET", "ETIMEDOUT")
+                ) or attempt == 2:
+                    raise
+                await asyncio.sleep(2**attempt)
 
     @override
     def _parse_stdout(self) -> dict[str, Any] | None:

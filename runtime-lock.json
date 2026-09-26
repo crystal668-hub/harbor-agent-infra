@@ -35,7 +35,7 @@
     "runtime_strategy": "harbor-native-nvm22-openclaw-setup-workspace",
     "adapter_source_hashes": {
       "adapters/openclaw/__init__.py": "sha256:ebb3560cf19b28d1ecde28ea0ff38c187d7126bf441af947ccee1ec9084ca386",
-      "adapters/openclaw/adapter.py": "sha256:ab708b55e36d4529bf80132fab02e5824e99f791245f92d43afdf56039a59082",
+      "adapters/openclaw/adapter.py": "sha256:2c94e2ca2b355381bc9da560edd0f204500dc39b14d77e8455ecc5958542f212",
       "adapters/openclaw/config.py": "sha256:8a7fea0ca724248b087da73363775173bd2e5e87cf5f5e4134c7eb8a976fd4a9",
       "adapters/openclaw/evidence.py": "sha256:0dc0cf086165375fe41ed99ed6bbe21e4f69bd5298871632a46e8671693f9cc7",
       "adapters/openclaw/failure.py": "sha256:e3792988212daf31ce06b285f4a530f973f366d58d081133a9a681b89b37c33e",

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from harbor.agents.factory import AgentFactory
+from harbor.agents.installed.base import NonZeroAgentExitCodeError
+from harbor.agents.installed.openclaw import OpenClaw as HarborOpenClaw
 from harbor.models.trial.config import AgentConfig
 
 from adapters.openclaw.adapter import OpenClawAgent
@@ -84,6 +88,48 @@ def test_openclaw_adapter_is_discoverable_through_harbor_factory() -> None:
     )
     assert agent_class.__name__ == "OpenClawAgent"
     assert agent_class.capabilities.atif is True
+
+
+def test_openclaw_retries_transient_debian_5xx(tmp_path: Path, monkeypatch) -> None:
+    install = AsyncMock(
+        side_effect=[
+            NonZeroAgentExitCodeError("Failed to fetch http://deb.debian.org/a  502 Bad Gateway"),
+            NonZeroAgentExitCodeError(
+                "Failed to fetch http://deb.debian.org/b  500 unexpected EOF"
+            ),
+            None,
+        ]
+    )
+    sleep = AsyncMock()
+    monkeypatch.setattr(HarborOpenClaw, "ensure_system_dependencies", install)
+    monkeypatch.setattr("adapters.openclaw.adapter.asyncio.sleep", sleep)
+    asyncio.run(_agent(tmp_path).ensure_system_dependencies(None, ("curl",)))
+    assert install.await_count == 3
+    assert [call.args for call in sleep.await_args_list] == [(1,), (2,)]
+
+
+def test_openclaw_does_not_retry_other_install_errors(tmp_path: Path, monkeypatch) -> None:
+    install = AsyncMock(side_effect=NonZeroAgentExitCodeError("package not found"))
+    monkeypatch.setattr(HarborOpenClaw, "ensure_system_dependencies", install)
+    try:
+        asyncio.run(_agent(tmp_path).ensure_system_dependencies(None, ("curl",)))
+    except NonZeroAgentExitCodeError:
+        pass
+    else:
+        raise AssertionError("expected package installation failure")
+    install.assert_awaited_once()
+
+
+def test_openclaw_retries_npm_connection_reset(tmp_path: Path, monkeypatch) -> None:
+    install = AsyncMock(
+        side_effect=[NonZeroAgentExitCodeError("npm error code ECONNRESET"), None]
+    )
+    sleep = AsyncMock()
+    monkeypatch.setattr(HarborOpenClaw, "install", install)
+    monkeypatch.setattr("adapters.openclaw.adapter.asyncio.sleep", sleep)
+    asyncio.run(_agent(tmp_path).install(None))
+    assert install.await_count == 2
+    sleep.assert_awaited_once_with(1)
 
 
 def test_evidence_manifest_hashes_files_without_copying_content(tmp_path: Path) -> None:
