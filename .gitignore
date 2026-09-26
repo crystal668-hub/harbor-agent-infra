@@ -10,3 +10,4 @@ run-artifacts/
 dist/
 build/
 *.egg-info/
+AGENTS.md
