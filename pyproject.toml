@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "harbor-agent-infra"
+version = "0.1.0"
+description = "Thin experiment control plane for Harbor Agent trials"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "harbor @ git+https://github.com/harbor-framework/harbor.git@1e5c5c6db929a10a140d05e606882c671ae20729",
+  "packaging>=25.0",
+  "pydantic>=2.11.7",
+  "PyYAML>=6.0.2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4,<10",
+  "pytest-asyncio>=1.2,<2",
+  "pytest-cov>=7,<8",
+  "ruff>=0.15,<0.17",
+]
+
+[project.scripts]
+hai = "harbor_agent_infra.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/harbor_agent_infra", "adapters", "integrations"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "integration: requires Docker or another external service",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
