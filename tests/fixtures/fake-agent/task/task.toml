@@ -1,0 +1,14 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Deterministic Harbor Agent Infra acceptance task"
+
+[verifier]
+timeout_sec = 30.0
+
+[agent]
+timeout_sec = 30.0
+
+[environment]
+docker_image = "hai-fake-agent@sha256:197902e2ec6c47c8ac10fa0656fec7d548e0e9b69a9d7926fdb9b1986434eab1"
+build_timeout_sec = 120.0
