@@ -8,6 +8,9 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from harbor_agent_infra.preparation.image_manager import ImageManagerError, inspect_image
+from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -80,11 +83,45 @@ def main() -> int:
         blocker=True,
     )
     check(
-        "openclaw-image-lock",
-        bool(json.loads((ROOT / "runtime-lock.json").read_text())["openclaw"].get("digest")),
-        "OpenClaw image digest is locked",
+        "runtime-lock-schema",
+        True,
+        "runtime lock has Harbor-native OpenClaw and base image fields",
         blocker=True,
     )
+    try:
+        lock = load_runtime_lock(ROOT / "runtime-lock.json")
+    except (OSError, ValueError, TypeError) as exc:
+        check("openclaw-npm-lock", False, str(exc), blocker=True)
+        check("agent-base-image-lock", False, str(exc), blocker=True)
+    else:
+        check(
+            "openclaw-npm-lock",
+            lock.openclaw.version == "2026.6.9"
+            and lock.openclaw.runtime_strategy == "harbor-native-nvm22",
+            f"OpenClaw npm {lock.openclaw.version} via {lock.openclaw.runtime_strategy}",
+            blocker=True,
+        )
+        check(
+            "agent-base-image-lock",
+            bool(lock.agent_base_image.digest),
+            f"base image {lock.agent_base_image.immutable_reference}",
+            blocker=True,
+        )
+        try:
+            inspect_image(
+                lock.agent_base_image.reference,
+                digest=lock.agent_base_image.digest,
+                platform=lock.agent_base_image.platform,
+            )
+        except ImageManagerError as exc:
+            check("agent-base-image-local", False, str(exc), blocker=True)
+        else:
+            check(
+                "agent-base-image-local",
+                True,
+                "base image digest/platform verified",
+                blocker=True,
+            )
     check(
         "registry-configured",
         bool(os.environ.get("HARBOR_REGISTRY_REFERENCE")),

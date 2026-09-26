@@ -17,8 +17,8 @@ agent:
   adapter: openclaw
   model: ${TEST_MODEL}
 image:
-  reference: example/openclaw:smoke
-  digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  reference: node:24-bookworm-slim
+  digest: sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
   platform: linux/arm64
   pull_policy: if_missing
 resources:

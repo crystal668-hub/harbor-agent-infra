@@ -28,6 +28,11 @@
   "openclaw": {
     "adapter": "openclaw",
     "adapter_version": "0.1.0",
+    "package_manager": "npm",
+    "package_registry": "https://registry.npmjs.org",
+    "package_tarball": "https://registry.npmjs.org/openclaw/-/openclaw-2026.6.9.tgz",
+    "package_integrity": "sha512-y0PGUdE87S8QtQXABPDL0CjNKhH3q/R1h9/WiRQkhVCGSBVhs63/M1iZn2DYVyJCAbDyMz3KNyAE0WzSQIWCRg==",
+    "runtime_strategy": "harbor-native-nvm22",
     "adapter_source_hashes": {
       "adapters/openclaw/__init__.py": "sha256:ebb3560cf19b28d1ecde28ea0ff38c187d7126bf441af947ccee1ec9084ca386",
       "adapters/openclaw/adapter.py": "sha256:e657db8f45db1b63266834c2747988ef69e9dbe8180134126c3416c2a9d42494",
@@ -36,9 +41,12 @@
       "adapters/openclaw/failure.py": "sha256:e3792988212daf31ce06b285f4a530f973f366d58d081133a9a681b89b37c33e",
       "adapters/openclaw/session.py": "sha256:aa8598269934d4b06e666161d98452d5d93f14bbbf4febdf20b001b58995d482"
     },
-    "version": "9.5",
-    "node_engine": ">=24.16.0,<25",
-    "image": null,
-    "digest": null
+    "version": "2026.6.9",
+    "node_engine": ">=22.19.0"
+  },
+  "agent_base_image": {
+    "reference": "node:24-bookworm-slim",
+    "digest": "sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
+    "platform": "linux/arm64"
   }
 }

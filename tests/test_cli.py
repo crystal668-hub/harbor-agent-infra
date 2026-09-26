@@ -7,8 +7,11 @@ from harbor_agent_infra.cli import main
 
 def test_materialize_command_writes_job_snapshot(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("OPENCLAW_MODEL", "fixture-model")
-    monkeypatch.setenv("OPENCLAW_IMAGE_REFERENCE", "example/openclaw:smoke")
-    monkeypatch.setenv("OPENCLAW_IMAGE_DIGEST", "sha256:" + "a" * 64)
+    monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "node:24-bookworm-slim")
+    monkeypatch.setenv(
+        "HARBOR_AGENT_BASE_IMAGE_DIGEST",
+        "sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
+    )
     monkeypatch.setenv("RESOURCE_PROFILE", "local-smoke")
     monkeypatch.setenv("RESOURCE_PROFILE_FILE", "local.yaml")
     experiment = tmp_path / "experiment.yaml"
@@ -21,8 +24,8 @@ agent:
   adapter: openclaw
   model: ${OPENCLAW_MODEL}
 image:
-  reference: ${OPENCLAW_IMAGE_REFERENCE}
-  digest: ${OPENCLAW_IMAGE_DIGEST}
+  reference: ${HARBOR_AGENT_BASE_IMAGE_REFERENCE}
+  digest: ${HARBOR_AGENT_BASE_IMAGE_DIGEST}
   platform: linux/arm64
   pull_policy: if_missing
 resources:
@@ -66,3 +69,7 @@ profiles:
     assert payload["schema_version"] == "harbor-job-materialization.v1"
     assert payload["job_config"]["n_concurrent_trials"] == 1
     assert payload["job_config"]["environment"]["override_memory_mb"] == 512
+    assert payload["job_config"]["agents"][0]["kwargs"]["version"] == "2026.6.9"
+    assert payload["agent_base_image"].endswith(
+        "@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e"
+    )

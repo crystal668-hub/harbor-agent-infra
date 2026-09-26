@@ -4,8 +4,10 @@ This repository is the experiment control plane for Harbor Agent trials. It mate
 experiments, resource profiles and immutable image identities, then delegates Job/Trial
 lifecycle and Docker cleanup to Harbor Framework.
 
-The first implementation phase establishes the reproducible runtime baseline. OpenClaw,
-the VGB integration and real provider runs are subsequent phases.
+The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Each Trial
+uses an immutable base image; Harbor installs Node 22 through nvm and pins
+`openclaw@2026.6.9` inside the agent container. The VGB integration and real provider
+runs are separate acceptance gates.
 
 ## Phase 0 setup
 
@@ -21,8 +23,8 @@ uv run pytest -m 'not integration'
 ```
 
 `hai doctor` intentionally requires Python 3.12 and reports missing Harbor/Docker tools.
-The project does not install OpenClaw on the host. Later phases will add an isolated VGB
-runtime and a digest-pinned agent image.
+The project does not install OpenClaw on the host. The isolated VGB runtime is host-side;
+OpenClaw is installed only inside Harbor Trial containers.
 
 ## Scope boundaries
 
@@ -47,8 +49,8 @@ trial result, the mounted `agent-output.v1` file, verifier reward and container 
 
 The provider-free adapter checks cover explicit `agentId/sessionKey/sessionId`, keyed
 `agents.entries`, isolated `OPENCLAW_STATE_DIR`, evidence manifest hashes and typed
-failure mapping. A real OpenClaw image and provider are intentionally separate from
-these checks:
+failure mapping. The native Harbor installation and provider checks are separate from
+these adapter contract checks:
 
 ```bash
 uv run pytest -m 'not integration' tests/test_openclaw_adapter.py
@@ -81,4 +83,4 @@ uv run python scripts/verify_acceptance.py
 ```
 
 The acceptance report distinguishes completed provider-free/Docker gates from missing
-OpenClaw image, Registry and real-provider prerequisites.
+provider and optional Registry prerequisites.

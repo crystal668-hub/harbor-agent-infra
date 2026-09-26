@@ -45,6 +45,8 @@ def main(argv: list[str] | None = None) -> int:
             "experiment_sha256": materialized.experiment_sha256,
             "resource_config_sha256": materialized.resource_config_sha256,
             "profile_name": materialized.profile_name,
+            "openclaw_version": materialized.openclaw_version,
+            "agent_base_image": materialized.agent_base_image,
             "preflight": asdict(materialized.preflight),
             "job_config": materialized.job_config.model_dump(mode="json"),
         }

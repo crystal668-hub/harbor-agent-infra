@@ -31,9 +31,9 @@ uv run hai image inspect \
 uv run python scripts/verify_acceptance.py
 ```
 
-`verify_acceptance.py` returns a machine-readable report. It does not mark the release
-complete when the real OpenClaw image digest, Registry or provider prerequisites are
-missing.
+`verify_acceptance.py` returns a machine-readable report. It checks the immutable agent
+base image and the Harbor-native OpenClaw npm lock separately. Registry and provider
+prerequisites remain external gates.
 
 The provider-free Harbor lifecycle gate is:
 
@@ -45,6 +45,16 @@ uv run pytest -m integration \
 
 This gate exercises non-zero exit, agent timeout, Docker memory pressure, cancellation
 cleanup, retry Trial context isolation and concurrent trials. It does not replace the
-real OpenClaw/provider gate: that gate still requires a digest-pinned OpenClaw 9.5
-image, Node `>=24.16.0,<25`, provider credentials and one real task in each allowlisted
-VGB track.
+real OpenClaw/provider gate: that gate still requires the Harbor native nvm22 install of
+`openclaw@2026.6.9`, provider credentials and one real task in each allowlisted VGB
+track.
+
+The native install gate is networked and explicit:
+
+```bash
+RUN_OPENCLAW_NATIVE_INSTALL=1 uv run pytest -m integration \
+  tests/test_openclaw_native_install_integration.py
+```
+
+It uses the locked base image and `install_only` so it verifies Harbor's nvm22/npm
+installation without making a provider request.

@@ -12,10 +12,11 @@ uv run hai materialize \
   --output run-artifacts/materialized-job.json
 ```
 
-The command fails before any trial is allocated when a placeholder, profile, image digest,
-or Docker resource capability is invalid. The output records the experiment and resource
-configuration hashes plus Harbor's native JobConfig snapshot.
+The command fails before any trial is allocated when a placeholder, profile, base image
+digest, runtime lock or Docker resource capability is invalid. The output records the
+experiment and resource configuration hashes plus Harbor's native JobConfig snapshot.
 
-Image references used for execution must include an immutable digest. The image manager
-checks the local RepoDigest and OS/architecture before a Harbor job is created; registry
+Agent base image references used for execution must include an immutable digest. The image
+manager checks the local RepoDigest and OS/architecture before a Harbor job is created;
+Harbor then installs the locked OpenClaw npm package in the Trial container. Registry
 credentials are consumed by Docker's credential helper and are never written to evidence.

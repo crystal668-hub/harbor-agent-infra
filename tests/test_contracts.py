@@ -113,8 +113,8 @@ def test_job_materializer_projects_native_harbor_fields() -> None:
             "tracks": ["open_generation_rdkit"],
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
-                "reference": "example/openclaw:smoke",
-                "digest": "sha256:" + "a" * 64,
+                "reference": "node:24-bookworm-slim",
+                "digest": "sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",
             },

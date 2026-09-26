@@ -17,7 +17,7 @@ def _agent(tmp_path: Path) -> OpenClawAgent:
     agent = OpenClawAgent(
         logs_dir=tmp_path / "logs",
         model_name="openai/fixture-model",
-        version="9.5",
+        version="2026.6.9",
     )
     agent.session_id = "task__attempt-1__agent"
     return agent

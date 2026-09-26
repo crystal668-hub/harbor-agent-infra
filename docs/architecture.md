@@ -9,12 +9,14 @@ experiment config -> infra materializer -> Harbor Job/Trial -> agent adapter
 host-side VGB integration -> prompt/evaluation -> domain result projection
 ```
 
-The Phase 1 materializer validates the external resource profile and immutable image
-digest, runs Harbor Docker capability preflight, and emits a native `JobConfig` snapshot.
+The Phase 1 materializer validates the external resource profile and immutable agent base
+image digest, locks Harbor's native OpenClaw npm version, runs Docker capability
+preflight, and emits a native `JobConfig` snapshot.
 Infra records identities and relationships. Harbor remains the lifecycle owner, and VGB
 evaluation stays outside the agent container.
 
-The Phase 3 OpenClaw adapter extends Harbor's installed adapter. Its additional contract
+The Phase 3 OpenClaw adapter extends Harbor's installed adapter without replacing its
+Node 22/npm installation path. Its additional contract
 is limited to explicit session identity, per-trial state directory, keyed `agents.entries`
 configuration, evidence hashes and stable failure codes. Harbor still owns installation,
 exec, logs, trajectory download and cleanup.
