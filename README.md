@@ -47,8 +47,8 @@ trial result, the mounted `agent-output.v1` file, verifier reward and container 
 
 ## Phase 3 OpenClaw contract checks
 
-The provider-free adapter checks cover explicit `agentId/sessionKey/sessionId`, keyed
-`agents.entries`, isolated `OPENCLAW_STATE_DIR`, evidence manifest hashes and typed
+The provider-free adapter checks cover explicit `agentId/sessionKey/sessionId`, `agents.list`
+projection for OpenClaw 2026.6.9, isolated `OPENCLAW_STATE_DIR`, evidence manifest hashes and typed
 failure mapping. The native Harbor installation and provider checks are separate from
 these adapter contract checks:
 
@@ -70,6 +70,20 @@ VGB_PYTHON=.vgb-runtime/bin/python uv run pytest tests/test_vgb_integration.py
 
 The Infra process does not import the VGB package directly. The runtime process is
 selected explicitly and has `PYTHONPATH` removed before each call.
+
+The real provider-backed OpenClaw E2E runs one Harbor Trial for each allowlisted track:
+
+```bash
+set -a; source .env; set +a
+export OPENCLAW_MODEL=openai/gpt-5.6-sol
+export VGB_PYTHON=.vgb-runtime/bin/python
+uv run python scripts/run_openclaw_vgb_e2e.py \
+  --model openai/gpt-5.6-sol \
+  --output-dir run-artifacts/openclaw-vgb-e2e-final
+```
+
+Success requires four Trial records, OpenClaw logs/evidence/trajectory/session exports,
+official `evaluate_one()` results, schema-v5 projection and `report.json`.
 
 ## Phase 5 image and acceptance checks
 

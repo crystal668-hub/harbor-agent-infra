@@ -46,8 +46,8 @@ uv run pytest -m integration \
 This gate exercises non-zero exit, agent timeout, Docker memory pressure, cancellation
 cleanup, retry Trial context isolation and concurrent trials. It does not replace the
 real OpenClaw/provider gate: that gate still requires the Harbor native nvm22 install of
-`openclaw@2026.6.9`, provider credentials and one real task in each allowlisted VGB
-track.
+`openclaw@2026.6.9` with its `--workspace` setup compatibility shim, provider credentials
+and one real task in each allowlisted VGB track.
 
 The native install gate is networked and explicit:
 
@@ -58,3 +58,18 @@ RUN_OPENCLAW_NATIVE_INSTALL=1 uv run pytest -m integration \
 
 It uses the locked base image and `install_only` so it verifies Harbor's nvm22/npm
 installation without making a provider request.
+
+The real provider-backed four-track E2E is complete when the command below exits with
+four records and `report.json` contains the schema-v5 envelope:
+
+```bash
+set -a; source .env; set +a
+export OPENCLAW_MODEL=openai/gpt-5.6-sol
+export VGB_PYTHON=.vgb-runtime/bin/python
+uv run python scripts/run_openclaw_vgb_e2e.py \
+  --model openai/gpt-5.6-sol \
+  --output-dir run-artifacts/openclaw-vgb-e2e-final
+```
+
+Verified locally: all four allowlisted tracks completed with reward `1.0`; each Trial
+produced `openclaw.txt`, `trajectory.json`, `openclaw-evidence.json` and a session export.
