@@ -18,7 +18,7 @@ from integrations.vgb.runtime import VgbRuntime
 TRACK_TASKS = {
     "open_generation_rdkit": "rdkit_001_qed_max",
     "open_generation_xtb": "xtb_001_gap_window",
-    "property_calculation_advanced": "property_calculation_advanced_001_free_energy",
+    "property_calculation_advanced": "property_calculation_advanced_005_crystal_density",
     "property_calculation_basic": (
         "property_calculation_basic_001_toluene_aqueous_solvation_free_energy"
     ),
