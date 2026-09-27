@@ -29,6 +29,13 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     assert payload["group_id"] == "skills_on"
     assert payload["status"] == "completed"
     assert payload["trial_result_path"].endswith("task__abc/results.json")
+    records = list((tmp_path / "per-record" / "skills_on").glob("*.json"))
+    assert len(records) == 1
+    record = json.loads(records[0].read_text())
+    assert record["trial_name"] == "task__abc"
+    assert record["schema_version"] == 5
+    assert record["skills_enabled"] is True
+    assert record["raw"]["harbor_trial_result"] == {}
 
 
 def test_run_event_sink_persists_cancelled_trial_event(tmp_path: Path) -> None:
