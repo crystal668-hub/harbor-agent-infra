@@ -36,6 +36,9 @@ def project_schema_v5(
     record_id: str,
     prompt: str = "",
     answer_text: str = "",
+    skills_enabled: bool = False,
+    elapsed_seconds: float | None = None,
+    observability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create an explicit legacy-compatible per-record payload.
 
@@ -52,7 +55,7 @@ def project_schema_v5(
         "group_label": group_id,
         "runner": "harbor_openclaw",
         "websearch": False,
-        "skills_enabled": False,
+        "skills_enabled": skills_enabled,
         "record_id": record_id,
         "track": domain_result.get("track"),
         "source_file": "",
@@ -66,7 +69,7 @@ def project_schema_v5(
             "domain_result_schema": "vgb-domain-result.v1",
         },
         "raw": {"vgb_domain_result": domain_result},
-        "elapsed_seconds": 0.0,
+        "elapsed_seconds": elapsed_seconds,
         "run_lifecycle_status": "completed" if scored else "failed",
         "protocol_completion_status": "completed" if scored else "failed",
         "protocol_acceptance_status": None,
@@ -80,7 +83,7 @@ def project_schema_v5(
         "error": domain_result.get("message") if not scored else None,
         "short_answer_text": answer_text,
         "full_response_text": answer_text,
-        "observability": {
+        "observability": observability or {
             "schema_version": 1,
             "coverage": {
                 "timing": "unavailable",

@@ -16,6 +16,8 @@ from harbor_agent_infra.harbor.job_config import (
     MaterializedPairedJobs,
     materialize_paired_job_configs,
 )
+from integrations.vgb.evaluator import project_agent_output
+from integrations.vgb.result_projection import project_schema_v5
 from integrations.vgb.runtime import VgbRuntime
 
 
@@ -28,6 +30,115 @@ class GroupRunResult:
     n_trials: int
     n_errors: int
     n_cancelled: int
+
+
+def _last_json_object(text: str) -> dict[str, Any]:
+    decoder = json.JSONDecoder()
+    for index in range(len(text) - 1, -1, -1):
+        if text[index] != "{":
+            continue
+        try:
+            value, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict) and isinstance(value.get("meta"), dict):
+            return value
+    raise ValueError("OpenClaw output did not contain a complete JSON envelope")
+
+
+def _response_from_openclaw_log(path: Path) -> str:
+    envelope = _last_json_object(path.read_text(encoding="utf-8"))
+    meta = envelope.get("meta")
+    if isinstance(meta, dict) and isinstance(meta.get("finalAssistantVisibleText"), str):
+        return meta["finalAssistantVisibleText"]
+    payloads = envelope.get("payloads")
+    if isinstance(payloads, list):
+        texts = [
+            item["text"]
+            for item in payloads
+            if isinstance(item, dict) and isinstance(item.get("text"), str)
+        ]
+        if texts:
+            return "\n\n".join(texts)
+    raise ValueError("OpenClaw output did not contain assistant text")
+
+
+def _task_identity(record: dict[str, Any]) -> tuple[str, str]:
+    task_name = str(record.get("task_name") or "")
+    if "__" not in task_name:
+        raise ValueError(f"Harbor task name does not contain track/task separator: {task_name}")
+    return tuple(task_name.split("__", 1))  # type: ignore[return-value]
+
+
+def _evaluate_record_file(path: Path, runtime: VgbRuntime) -> dict[str, Any]:
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if record.get("run_lifecycle_status") != "completed":
+        return record
+    track, task_id = _task_identity(record)
+    trial_result_path = Path(str(record["trial_result_path"]))
+    response = _response_from_openclaw_log(trial_result_path.parent / "agent" / "openclaw.txt")
+    domain = project_agent_output(
+        runtime,
+        track=track,
+        task_id=task_id,
+        agent_output={
+            "schema_version": "agent-output.v1",
+            "answer": {"full_text": response},
+        },
+    )
+    record_id = str(record.get("record_id") or path.stem)
+    record["task_id"] = task_id
+    record["answer_text"] = response
+    record["short_answer_text"] = response
+    record["full_response_text"] = response
+    record["evaluation"] = domain.get("raw_evaluation")
+    record["vgb_domain_result"] = domain
+    record["evaluable"] = domain.get("status") == "scored"
+    record["scored"] = domain.get("status") == "scored"
+    record["execution_error_kind"] = domain.get("failure_type")
+    record["error"] = domain.get("message") if not record["scored"] else None
+    harbor_raw = dict(record.get("raw") or {})
+    runner_meta = dict(record.get("runner_meta") or {})
+    runner_meta["vgb_evaluation"] = {
+        "track": track,
+        "task_id": task_id,
+        "status": domain.get("status"),
+    }
+    projected = project_schema_v5(
+        domain,
+        group_id=str(record["group_id"]),
+        record_id=record_id,
+        answer_text=response,
+        skills_enabled=bool(record.get("skills_enabled")),
+        elapsed_seconds=record.get("elapsed_seconds"),
+        observability=record.get("observability"),
+    )
+    record.update(projected)
+    record["task_id"] = task_id
+    record["raw"] = {**dict(projected.get("raw") or {}), **harbor_raw, "vgb_domain_result": domain}
+    record["runner_meta"] = {**dict(projected.get("runner_meta") or {}), **runner_meta}
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(path)
+    return record
+
+
+async def _evaluate_group_records(record_root: Path, runtime: VgbRuntime) -> None:
+    paths = sorted(record_root.glob("*.json")) if record_root.exists() else []
+    for path in paths:
+        try:
+            await asyncio.to_thread(_evaluate_record_file, path, runtime)
+        except Exception as exc:
+            record = json.loads(path.read_text(encoding="utf-8"))
+            record["evaluation_error"] = {"type": type(exc).__name__, "message": str(exc)}
+            record["evaluable"] = False
+            record["scored"] = False
+            temporary = path.with_suffix(".json.tmp")
+            temporary.write_text(
+                json.dumps(record, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            temporary.replace(path)
 
 
 class RunEventSink:
@@ -220,6 +331,7 @@ async def run_paired_jobs(
                     n_cancelled=result.stats.n_cancelled_trials,
                 )
             )
+            await _evaluate_group_records(output_root / "per-record" / group_id, runtime)
     payload = {
         "schema_version": "harbor-paired-run.v1",
         "run_id": run_id,
