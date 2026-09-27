@@ -5,11 +5,16 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
 from harbor_agent_infra.doctor import run_doctor
-from harbor_agent_infra.harbor.job_config import materialize_job_config
+from harbor_agent_infra.harbor.job_config import (
+    materialize_job_config,
+    materialize_paired_job_configs,
+)
 from harbor_agent_infra.preparation.experiments import load_experiment
 from harbor_agent_infra.preparation.image_manager import inspect_image
 from harbor_agent_infra.preparation.resource_profiles import load_resource_config
+from integrations.vgb.runtime import VgbRuntime
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,6 +27,11 @@ def build_parser() -> argparse.ArgumentParser:
     materialize.add_argument("--experiment", type=Path, required=True)
     materialize.add_argument("--resource-config", type=Path, required=True)
     materialize.add_argument("--output", type=Path, required=True)
+    materialize.add_argument(
+        "--skills-root",
+        type=Path,
+        help="root directory containing the allowlisted skill directories for experiment.v2",
+    )
     image = subparsers.add_parser("image", help="inspect or pull an immutable Docker image")
     image_subparsers = image.add_subparsers(dest="image_command", required=True)
     for command in ("inspect", "pull"):
@@ -39,6 +49,39 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "materialize":
         spec = load_experiment(args.experiment)
         resources = load_resource_config(args.resource_config)
+        if isinstance(spec, ExperimentSpecV2):
+            paired = materialize_paired_job_configs(
+                spec,
+                resources,
+                VgbRuntime.from_environment(),
+                output_root=args.output.parent,
+                skills_root=args.skills_root,
+            )
+            payload = {
+                "schema_version": "harbor-paired-materialization.v1",
+                "experiment_sha256": next(iter(paired.groups.values())).experiment_sha256,
+                "tasks": [str(task.path) for task in paired.tasks],
+                "groups": {
+                    group_id: {
+                        "group_id": materialized.group_id,
+                        "skill_allowlist_sha256": materialized.skill_allowlist_sha256,
+                        "profile_name": materialized.profile_name,
+                        "resource_config_sha256": materialized.resource_config_sha256,
+                        "preflight": asdict(materialized.preflight),
+                        "openclaw_version": materialized.openclaw_version,
+                        "agent_base_image": materialized.agent_base_image,
+                        "job_config": materialized.job_config.model_dump(mode="json"),
+                    }
+                    for group_id, materialized in paired.groups.items()
+                },
+            }
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            print(args.output)
+            return 0
         materialized = materialize_job_config(spec, resources)
         payload = {
             "schema_version": "harbor-job-materialization.v1",
