@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -11,6 +12,7 @@ from harbor_agent_infra.harbor.job_config import (
     materialize_job_config,
     materialize_paired_job_configs,
 )
+from harbor_agent_infra.harbor.run import run_paired_jobs
 from harbor_agent_infra.preparation.experiments import load_experiment
 from harbor_agent_infra.preparation.image_manager import inspect_image
 from harbor_agent_infra.preparation.resource_profiles import load_resource_config
@@ -32,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="root directory containing the allowlisted skill directories for experiment.v2",
     )
+    run = subparsers.add_parser("run", help="run an experiment through Harbor")
+    run.add_argument("--experiment", type=Path, required=True)
+    run.add_argument("--resource-config", type=Path, required=True)
+    run.add_argument("--output-dir", type=Path, required=True)
+    run.add_argument("--skills-root", type=Path)
     image = subparsers.add_parser("image", help="inspect or pull an immutable Docker image")
     image_subparsers = image.add_subparsers(dest="image_command", required=True)
     for command in ("inspect", "pull"):
@@ -99,6 +106,22 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
         print(args.output)
+        return 0
+    if args.command == "run":
+        spec = load_experiment(args.experiment)
+        if not isinstance(spec, ExperimentSpecV2):
+            raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
+        resources = load_resource_config(args.resource_config)
+        asyncio.run(
+            run_paired_jobs(
+                spec,
+                resources,
+                VgbRuntime.from_environment(),
+                output_root=args.output_dir,
+                skills_root=args.skills_root,
+            )
+        )
+        print(args.output_dir)
         return 0
     if args.command == "image":
         reference = args.reference
