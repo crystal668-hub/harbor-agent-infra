@@ -19,6 +19,12 @@ from harbor_agent_infra.preparation.resource_profiles import load_resource_confi
 from integrations.vgb.runtime import VgbRuntime
 
 
+def _run_harbor_viewer(jobs_dir: Path, *, port: str, host: str) -> None:
+    from harbor.cli.view import view_command
+
+    view_command(folder=jobs_dir, port=port, host=host, jobs=True)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hai")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -39,6 +45,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--resource-config", type=Path, required=True)
     run.add_argument("--output-dir", type=Path, required=True)
     run.add_argument("--skills-root", type=Path)
+    viewer = subparsers.add_parser("view", help="browse native Harbor job results")
+    viewer.add_argument("--jobs-dir", type=Path, required=True)
+    viewer.add_argument("--port", default="8080-8089")
+    viewer.add_argument("--host", default="127.0.0.1")
     image = subparsers.add_parser("image", help="inspect or pull an immutable Docker image")
     image_subparsers = image.add_subparsers(dest="image_command", required=True)
     for command in ("inspect", "pull"):
@@ -122,6 +132,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         print(args.output_dir)
+        return 0
+    if args.command == "view":
+        if not args.jobs_dir.is_dir():
+            raise ValueError(f"Harbor jobs directory does not exist: {args.jobs_dir}")
+        _run_harbor_viewer(args.jobs_dir, port=args.port, host=args.host)
         return 0
     if args.command == "image":
         reference = args.reference

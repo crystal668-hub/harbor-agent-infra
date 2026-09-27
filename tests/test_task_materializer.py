@@ -139,7 +139,8 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
     assert on.skill_allowlist_sha256 is not None
     assert on.job_config.job_name == "paired-skills_on"
     assert off.job_config.job_name == "paired-skills_off"
-    assert on.job_config.jobs_dir != off.job_config.jobs_dir
+    assert on.job_config.jobs_dir == off.job_config.jobs_dir
+    assert on.job_config.job_name != off.job_config.job_name
 
 
 def test_skills_on_rejects_missing_skill_directory(tmp_path: Path) -> None:

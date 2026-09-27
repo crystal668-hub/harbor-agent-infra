@@ -98,3 +98,18 @@ uv run python scripts/verify_acceptance.py
 
 The acceptance report distinguishes completed provider-free/Docker gates from missing
 provider and optional Registry prerequisites.
+
+## Paired run results and Viewer
+
+`experiment.v2` runs create two native Harbor jobs, `skills_on` and `skills_off`, below
+the same `run-artifacts/<run-id>/jobs/` directory. Browse them with Harbor's official
+viewer through the thin Infra wrapper:
+
+```bash
+uv run hai view --jobs-dir run-artifacts/<run-id>/jobs --port 8080
+```
+
+The Viewer is the source for Harbor execution evidence such as trial state, trajectory,
+timing, tokens, rewards, config, lock and artifacts. Infra's `per-record/`,
+`results.json` and `run-manifest.json` retain the paired-group and VGB compatibility
+projection.

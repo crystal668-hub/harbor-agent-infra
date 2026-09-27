@@ -172,3 +172,15 @@ profiles:
     assert on["tasks"] == off["tasks"]
     assert on["agents"][0]["skills"] == [str(skills_root / "rdkit")]
     assert off["agents"][0]["skills"] == []
+
+
+def test_view_command_delegates_to_harbor_viewer(monkeypatch, tmp_path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    jobs_dir.mkdir()
+    calls = []
+    monkeypatch.setattr(
+        "harbor_agent_infra.cli._run_harbor_viewer",
+        lambda path, *, port, host: calls.append((path, port, host)),
+    )
+    assert main(["view", "--jobs-dir", str(jobs_dir), "--port", "8123"]) == 0
+    assert calls == [(jobs_dir, "8123", "127.0.0.1")]

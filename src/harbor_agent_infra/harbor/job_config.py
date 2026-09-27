@@ -134,7 +134,7 @@ def materialize_group_job_config(
 
     job_config = JobConfig(
         job_name=f"{spec.experiment_id}-{group.id}",
-        jobs_dir=output_root / "jobs" / group.id,
+        jobs_dir=output_root / "jobs",
         n_attempts=spec.retry.n_attempts,
         n_concurrent_trials=resource_config.capacity.max_concurrent_trials,
         quiet=True,
