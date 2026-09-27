@@ -1,0 +1,35 @@
+schema_version: experiment.v2
+experiment_id: openclaw-vgb-paired
+domain: verifier-grounded
+benchmark:
+  package_lock: runtime-lock.json
+  cases:
+    - track: open_generation_rdkit
+      task_ids:
+        - rdkit_001_qed_max
+    - track: open_generation_xtb
+      task_ids:
+        - xtb_001_gap_window
+groups:
+  - id: skills_on
+    label: "benchmark skills enabled"
+    skills_enabled: true
+    skill_allowlist_ref: configs/skills/benchmark-allowlist.v1.json
+  - id: skills_off
+    label: "benchmark skills disabled"
+    skills_enabled: false
+    skill_allowlist_ref: null
+agent:
+  adapter: openclaw
+  model: ${OPENCLAW_MODEL}
+image:
+  reference: ${HARBOR_AGENT_BASE_IMAGE_REFERENCE}
+  digest: ${HARBOR_AGENT_BASE_IMAGE_DIGEST}
+  platform: linux/arm64
+  pull_policy: if_missing
+resources:
+  profile: ${RESOURCE_PROFILE}
+  config_file: ${RESOURCE_PROFILE_FILE}
+retry:
+  n_attempts: 1
+  max_retries: 0

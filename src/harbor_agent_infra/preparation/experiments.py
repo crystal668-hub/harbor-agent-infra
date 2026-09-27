@@ -8,7 +8,11 @@ from pathlib import Path
 
 import yaml
 
-from harbor_agent_infra.contracts.experiment import ExperimentSpec
+from harbor_agent_infra.contracts.experiment import (
+    ExperimentConfig,
+    ExperimentSpec,
+    ExperimentSpecV2,
+)
 
 _PLACEHOLDER = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -34,13 +38,17 @@ def _expand_required(value: object) -> object:
     return expanded
 
 
-def load_experiment(path: Path) -> ExperimentSpec:
+def load_experiment(path: Path) -> ExperimentConfig:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("experiment config must contain a YAML mapping")
-    return ExperimentSpec.model_validate(_expand_required(payload))
+    expanded = _expand_required(payload)
+    schema_version = expanded.get("schema_version")
+    if schema_version == "experiment.v2":
+        return ExperimentSpecV2.model_validate(expanded)
+    return ExperimentSpec.model_validate(expanded)
 
 
-def experiment_sha256(spec: ExperimentSpec) -> str:
+def experiment_sha256(spec: ExperimentConfig) -> str:
     encoded = json.dumps(spec.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
