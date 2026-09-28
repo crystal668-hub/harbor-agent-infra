@@ -15,6 +15,7 @@ from harbor_agent_infra.harbor.run import (
     RunEventSink,
     _evaluate_record_file,
     _repair_event_result_paths,
+    _score_summary,
 )
 
 
@@ -87,6 +88,18 @@ def test_event_result_path_migration_only_repairs_existing_harbor_file(tmp_path:
     assert _repair_event_result_paths(events) == 1
     assert json.loads(events.read_text())["trial_result_path"] == str(trial / "result.json")
     assert _repair_event_result_paths(events) == 0
+
+
+def test_score_summary_counts_zero_and_keeps_missing_distinct() -> None:
+    records = [
+        {"scored": True, "vgb_domain_result": {"scores": {"score": 0.0}}},
+        {"scored": True, "vgb_domain_result": {"scores": {"score": 0.8}}},
+        {"scored": False},
+    ]
+    assert _score_summary(records) == {
+        "records": 3, "scored": 2, "mean_vgb_score": 0.4
+    }
+    assert _score_summary([{"scored": False}])["mean_vgb_score"] is None
 
 
 class _FakeEvaluationRuntime:

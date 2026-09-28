@@ -76,6 +76,21 @@ def _task_identity(record: dict[str, Any]) -> tuple[str, str]:
     return tuple(task_name.split("__", 1))  # type: ignore[return-value]
 
 
+def _score_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    scores = [
+        score
+        for record in records
+        if record.get("scored")
+        for score in [(record.get("vgb_domain_result") or {}).get("scores", {}).get("score")]
+        if isinstance(score, int | float) and not isinstance(score, bool)
+    ]
+    return {
+        "records": len(records),
+        "scored": len(scores),
+        "mean_vgb_score": sum(scores) / len(scores) if scores else None,
+    }
+
+
 def _evaluate_record_file(path: Path, runtime: VgbRuntime) -> dict[str, Any]:
     record = json.loads(path.read_text(encoding="utf-8"))
     if record.get("run_lifecycle_status") != "completed":
@@ -421,15 +436,26 @@ async def run_paired_jobs(
             for record in records
         ):
             status = "partial"
-        summary = {
-            item.group_id: {
-                "records": sum(record.get("group_id") == item.group_id for record in records),
+        summary = {}
+        group_track = {}
+        for item in groups:
+            group_records = [record for record in records if record["group_id"] == item.group_id]
+            summary[item.group_id] = {
+                **_score_summary(group_records),
                 "status": item.status,
                 "errors": item.n_errors,
                 "cancelled": item.n_cancelled,
             }
-            for item in groups
-        }
+            group_track[item.group_id] = {
+                track: _score_summary(
+                    [record for record in group_records
+                     if str(record.get("task_name") or "").split("__", 1)[0] == track]
+                )
+                for track in sorted({
+                    str(record.get("task_name") or "").split("__", 1)[0]
+                    for record in group_records
+                })
+            }
         results_payload = {
             "schema_version": 5,
             "run_id": run_id,
@@ -440,7 +466,11 @@ async def run_paired_jobs(
                  "skills_enabled": item.group_id == "skills_on"}
                 for item in groups
             ],
-            "summary": {"group_order": [item.group_id for item in groups], "groups": summary},
+            "summary": {
+                "group_order": [item.group_id for item in groups],
+                "groups": summary,
+                "group_track": group_track,
+            },
             "errors": errors,
         }
         (output_root / "results.json").write_text(
@@ -503,6 +533,7 @@ async def run_paired_jobs(
                 for group_id, group in materialized.groups.items()
             ],
             "group_summary": summary,
+            "group_track_summary": group_track,
             "audit_sources": {
                 "tool_calls": "agent/openclaw.session.jsonl",
                 "failures": "Harbor exception_info and agent/openclaw-evidence.json",
