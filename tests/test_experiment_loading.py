@@ -22,8 +22,8 @@ agent:
   adapter: openclaw
   model: ${TEST_MODEL}
 image:
-  reference: node:24-bookworm-slim
-  digest: sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+  reference: hai-openclaw-agent
+  digest: sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47
   platform: linux/arm64
   pull_policy: if_missing
 resources:
@@ -74,8 +74,8 @@ agent:
   adapter: openclaw
   model: ${TEST_MODEL}
 image:
-  reference: node:24-bookworm-slim
-  digest: sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+  reference: hai-openclaw-agent
+  digest: sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47
   platform: linux/arm64
   pull_policy: if_missing
 resources:
@@ -114,8 +114,8 @@ groups:
     skill_allowlist_ref: null
 agent: {adapter: openclaw, model: fixture}
 image:
-  reference: node:24-bookworm-slim
-  digest: sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+  reference: hai-openclaw-agent
+  digest: sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47
   platform: linux/arm64
   pull_policy: if_missing
 resources: {profile: local-smoke, config_file: local.yaml}
