@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from harbor import Job, JobConfig
 from harbor.trial.hooks import TrialHookEvent
@@ -17,6 +18,7 @@ from harbor_agent_infra.harbor.job_config import (
     MaterializedPairedJobs,
     materialize_paired_job_configs,
 )
+from integrations.vgb.agent_output import response_from_openclaw_log
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.result_projection import project_schema_v5
 from integrations.vgb.runtime import VgbRuntime
@@ -33,35 +35,13 @@ class GroupRunResult:
     n_cancelled: int
 
 
-def _last_json_object(text: str) -> dict[str, Any]:
-    decoder = json.JSONDecoder()
-    for index in range(len(text) - 1, -1, -1):
-        if text[index] != "{":
-            continue
-        try:
-            value, _ = decoder.raw_decode(text[index:])
-        except json.JSONDecodeError:
-            continue
-        if isinstance(value, dict) and isinstance(value.get("meta"), dict):
-            return value
-    raise ValueError("OpenClaw output did not contain a complete JSON envelope")
-
-
-def _response_from_openclaw_log(path: Path) -> str:
-    envelope = _last_json_object(path.read_text(encoding="utf-8"))
-    meta = envelope.get("meta")
-    if isinstance(meta, dict) and isinstance(meta.get("finalAssistantVisibleText"), str):
-        return meta["finalAssistantVisibleText"]
-    payloads = envelope.get("payloads")
-    if isinstance(payloads, list):
-        texts = [
-            item["text"]
-            for item in payloads
-            if isinstance(item, dict) and isinstance(item.get("text"), str)
-        ]
-        if texts:
-            return "\n\n".join(texts)
-    raise ValueError("OpenClaw output did not contain assistant text")
+def _trial_dir(uri: str) -> Path:
+    parsed = urlparse(uri)
+    if parsed.scheme == "file":
+        return Path(unquote(parsed.path))
+    if parsed.scheme:
+        raise ValueError(f"unsupported Harbor trial URI scheme: {parsed.scheme}")
+    return Path(uri)
 
 
 def _task_identity(record: dict[str, Any]) -> tuple[str, str]:
@@ -77,16 +57,31 @@ def _evaluate_record_file(path: Path, runtime: VgbRuntime) -> dict[str, Any]:
         return record
     track, task_id = _task_identity(record)
     trial_result_path = Path(str(record["trial_result_path"]))
-    response = _response_from_openclaw_log(trial_result_path.parent / "agent" / "openclaw.txt")
-    domain = project_agent_output(
-        runtime,
-        track=track,
-        task_id=task_id,
-        agent_output={
-            "schema_version": "agent-output.v1",
-            "answer": {"full_text": response},
-        },
-    )
+    response = response_from_openclaw_log(trial_result_path.parent / "agent" / "openclaw.txt")
+    artifact_path = trial_result_path.parent / "verifier" / "vgb-evaluation.json"
+    if artifact_path.exists():
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        if artifact.get("vgb_status") != "scored":
+            raise ValueError("Harbor VGB verifier artifact is not scored")
+        domain = artifact["domain_result"]
+        reward = (record.get("trial_result") or {}).get("verifier_result") or {}
+        if reward.get("rewards", {}).get("vgb_score") != domain.get("scores", {}).get("score"):
+            raise ValueError("Harbor vgb_score differs from VGB evaluator score")
+    else:
+        verifier_config = ((record.get("trial_result") or {}).get("config") or {}).get(
+            "verifier"
+        ) or {}
+        if verifier_config.get("import_path") == "adapters.vgb_verifier:VgbVerifier":
+            raise ValueError("Harbor VGB verifier artifact is missing")
+        domain = project_agent_output(
+            runtime,
+            track=track,
+            task_id=task_id,
+            agent_output={
+                "schema_version": "agent-output.v1",
+                "answer": {"full_text": response},
+            },
+        )
     record_id = str(record.get("record_id") or path.stem)
     record["task_id"] = task_id
     record["answer_text"] = response
@@ -200,7 +195,7 @@ class RunEventSink:
             "record_id": event.trial_name,
             "trial_name": event.trial_name,
             "task_name": event.task_name,
-            "trial_result_path": str(Path(result.trial_uri) / "results.json"),
+            "trial_result_path": str(_trial_dir(result.trial_uri) / "results.json"),
             "network_policy": self.network_policies.get(group_id, {}).get(event.task_name),
             "track": event.task_name,
             "eval_kind": "vgb",
@@ -247,7 +242,7 @@ class RunEventSink:
                 if result.exception_info
                 else None
             ),
-            "trial_result_path": str(Path(result.trial_uri) / "results.json"),
+            "trial_result_path": str(_trial_dir(result.trial_uri) / "results.json"),
         }
         payload = {
             **record_payload,
@@ -364,7 +359,7 @@ async def run_paired_jobs(
                 iter(materialized.groups.values())
             ).resource_config_sha256,
             "vgb_runtime": {
-                "python_executable": str(runtime.python_executable.resolve()),
+                "python_executable": str(runtime.python_executable.absolute()),
                 "lock_path": str(lock_path.resolve()),
                 "lock_sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
                 "package": lock_payload["vgb"],

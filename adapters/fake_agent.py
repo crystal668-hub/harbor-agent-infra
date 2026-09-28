@@ -17,6 +17,7 @@ class FakeAgentOptions(AgentOptions):
     behavior: Literal["success", "nonzero", "sleep", "memory", "fail_once"] = "success"
     sleep_seconds: float = Field(default=30.0, ge=0)
     allocation_mb: int = Field(default=1024, ge=1)
+    openclaw_response: str | None = None
 
 
 class FakeAgent(BaseAgent):
@@ -115,4 +116,13 @@ class FakeAgent(BaseAgent):
             raise RuntimeError(
                 f"fake agent output command failed: {result.stderr or result.return_code}"
             )
+        if self.options.openclaw_response is not None:
+            envelope = {"meta": {"finalAssistantVisibleText": self.options.openclaw_response}}
+            log_command = (
+                "printf '%s' "
+                f"{shlex.quote(json.dumps(envelope, sort_keys=True))} > /logs/agent/openclaw.txt"
+            )
+            log_result = await environment.exec(command=log_command)
+            if log_result.return_code != 0:
+                raise RuntimeError("fake OpenClaw log command failed")
         context.metadata = {"agent_output_path": output_path, "adapter": self.name()}

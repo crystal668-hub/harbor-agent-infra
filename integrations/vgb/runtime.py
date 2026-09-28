@@ -47,7 +47,7 @@ class VgbRuntime:
         configured = os.environ.get("VGB_PYTHON")
         if not configured:
             raise VgbRuntimeError("VGB_PYTHON must point to the isolated official VGB runtime")
-        path = Path(configured)
+        path = Path(configured).absolute()
         if not path.is_file():
             raise VgbRuntimeError(f"VGB Python executable does not exist: {path}")
         return cls(path)

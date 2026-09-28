@@ -7,7 +7,7 @@ from harbor import JobConfig, RetryConfig
 from harbor.models.environment_type import EnvironmentType
 from harbor.models.task.config import TaskConfig as HarborTaskConfig
 from harbor.models.task.verifier_mode import resolve_task_verifier_mode
-from harbor.models.trial.config import AgentConfig, EnvironmentConfig, TaskConfig
+from harbor.models.trial.config import AgentConfig, EnvironmentConfig, TaskConfig, VerifierConfig
 from harbor.trial.network_policy import resolve_trial_network_plan
 
 from harbor_agent_infra.contracts.experiment import (
@@ -179,6 +179,7 @@ def materialize_group_job_config(
                 kwargs={"version": lock.openclaw.version, "session_to_trajectory": True},
             )
         ],
+        verifier=VerifierConfig(import_path="adapters.vgb_verifier:VgbVerifier"),
         tasks=list(tasks),
     )
     network_policies = []
