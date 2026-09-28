@@ -193,6 +193,7 @@ def _check_paired_run(root: Path, check) -> None:
     evidence_ok = True
     rewards_ok = True
     viewer_ok = True
+    viewer_consistency_ok = True
     from fastapi.testclient import TestClient
     from harbor.cli.view import STATIC_DIR
     from harbor.viewer import create_app
@@ -232,19 +233,34 @@ def _check_paired_run(root: Path, check) -> None:
             )
         else:
             rewards_ok = False
+        trial_response = viewer.get(f"/api/jobs/{job_name}/trials/{trial_name}")
+        viewer_ok &= trial_response.status_code == 200
+        if trial_response.status_code == 200:
+            viewer_trial = trial_response.json()
+            original_trial = record.get("trial_result") or {}
+            viewer_consistency_ok &= all(
+                viewer_trial.get(key) == original_trial.get(key)
+                for key in (
+                    "agent_result", "agent_execution", "verifier", "started_at",
+                    "finished_at", "verifier_result",
+                )
+            )
         viewer_ok &= all(
             viewer.get(f"/api/jobs/{job_name}/trials/{trial_name}{suffix}").status_code == 200
-            for suffix in ("", "/trajectory", "/verifier-output", "/files", "/artifacts")
+            for suffix in ("/trajectory", "/verifier-output", "/files", "/artifacts")
         )
-        if secret:
-            for path in trial_dir.rglob("*"):
-                if path.is_file() and secret.encode() in path.read_bytes():
-                    secret_found = True
+    if secret:
+        secret_found = any(
+            secret.encode() in path.read_bytes()
+            for path in root.rglob("*") if path.is_file()
+        )
     check("paired-trial-evidence", evidence_ok, f"records={len(records)}", blocker=True)
     check("paired-reward-parity", rewards_ok, "Harbor reward equals VGB artifact and Infra score",
           blocker=True)
     check("paired-viewer", viewer_ok and STATIC_DIR.is_dir(), "official Viewer API and UI",
           blocker=True)
+    check("paired-viewer-parity", viewer_consistency_ok,
+          "Viewer timing, tokens, cost and reward match Harbor TrialResult", blocker=True)
     check("paired-secret-absence", bool(secret) and not secret_found,
           "configured provider key absent from trial files", blocker=True)
 
