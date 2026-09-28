@@ -203,7 +203,7 @@ class RunEventSink:
             "event_timestamp": event.timestamp.isoformat(),
             "record_path": str(record_path),
             "task_name": event.task_name,
-            "trial_result_path": str(trial_dir / "results.json"),
+            "trial_result_path": str(trial_dir / "result.json"),
             "network_policy": self.network_policies.get(group_id, {}).get(event.task_name),
             "tool_audit": tool_audit,
             "tool_audit_status": tool_audit["tool_audit_status"],
@@ -253,7 +253,7 @@ class RunEventSink:
                 if result.exception_info
                 else None
             ),
-            "trial_result_path": str(trial_dir / "results.json"),
+            "trial_result_path": str(trial_dir / "result.json"),
         }
         payload = {
             **record_payload,
@@ -347,12 +347,18 @@ async def run_paired_jobs(
             status = "partial"
         else:
             status = "completed"
-        attempt_records = [
-            json.loads(path.read_text(encoding="utf-8"))
-            for group_id in materialized.groups
-            for path in sorted((output_root / "per-record" / group_id).glob("*.json"))
-            if path.is_file()
-        ]
+        attempt_records = []
+        for group_id in materialized.groups:
+            for path in sorted((output_root / "per-record" / group_id).glob("*.json")):
+                record = json.loads(path.read_text(encoding="utf-8"))
+                trial_result_path = Path(record["trial_result_path"])
+                actual_path = trial_result_path.parent / "result.json"
+                if not trial_result_path.is_file() and actual_path.is_file():
+                    record["trial_result_path"] = str(actual_path)
+                    path.write_text(
+                        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+                    )
+                attempt_records.append(record)
         attempts_by_trial: dict[tuple[str, str], list[dict[str, Any]]] = {}
         for record in attempt_records:
             key = (str(record["group_id"]), str(record["trial_name"]))

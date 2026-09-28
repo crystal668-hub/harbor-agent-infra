@@ -34,7 +34,7 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     assert payload["run_id"] == "run-1"
     assert payload["group_id"] == "skills_on"
     assert payload["status"] == "completed"
-    assert payload["trial_result_path"].endswith("task__abc/results.json")
+    assert payload["trial_result_path"].endswith("task__abc/result.json")
     records = list((tmp_path / "per-record" / "skills_on").glob("*.json"))
     assert len(records) == 1
     record = json.loads(records[0].read_text())
