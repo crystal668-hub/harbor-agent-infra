@@ -45,6 +45,30 @@ def _trial_dir(uri: str) -> Path:
     return Path(uri)
 
 
+def _repair_event_result_paths(path: Path) -> int:
+    if not path.is_file():
+        return 0
+    lines = path.read_text(encoding="utf-8").splitlines()
+    repaired = 0
+    events = []
+    for line in lines:
+        event = json.loads(line)
+        result_path = Path(event["trial_result_path"])
+        actual_path = result_path.parent / "result.json"
+        if not result_path.is_file() and actual_path.is_file():
+            event["trial_result_path"] = str(actual_path)
+            repaired += 1
+        events.append(event)
+    if repaired:
+        temporary = path.with_suffix(".jsonl.tmp")
+        temporary.write_text(
+            "\n".join(json.dumps(event, sort_keys=True) for event in events) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(path)
+    return repaired
+
+
 def _task_identity(record: dict[str, Any]) -> tuple[str, str]:
     task_name = str(record.get("task_name") or "")
     if "__" not in task_name:
@@ -338,6 +362,7 @@ async def run_paired_jobs(
     cancelled = False
 
     def write_outputs() -> dict[str, Any]:
+        _repair_event_result_paths(events.path)
         finished_at = datetime.now(UTC).isoformat() if len(groups) == 2 or cancelled else None
         if cancelled:
             status = "cancelled"

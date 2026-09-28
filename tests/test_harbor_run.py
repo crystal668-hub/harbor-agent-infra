@@ -11,7 +11,11 @@ import pytest
 from test_task_materializer import FakeVgbRuntime, _resources, _spec
 
 from harbor_agent_infra.harbor import run as run_module
-from harbor_agent_infra.harbor.run import RunEventSink, _evaluate_record_file
+from harbor_agent_infra.harbor.run import (
+    RunEventSink,
+    _evaluate_record_file,
+    _repair_event_result_paths,
+)
 
 
 def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
@@ -68,6 +72,21 @@ def test_run_event_sink_persists_cancelled_trial_event(tmp_path: Path) -> None:
     payload = json.loads((tmp_path / "events" / "trials.jsonl").read_text())
     assert payload["event"] == "cancel"
     assert payload["status"] == "cancelled"
+
+
+def test_event_result_path_migration_only_repairs_existing_harbor_file(tmp_path: Path) -> None:
+    trial = tmp_path / "trial"
+    trial.mkdir()
+    (trial / "result.json").write_text("{}", encoding="utf-8")
+    events = tmp_path / "trials.jsonl"
+    events.write_text(
+        json.dumps({"trial_result_path": str(trial / "results.json"), "event": "end"})
+        + "\n",
+        encoding="utf-8",
+    )
+    assert _repair_event_result_paths(events) == 1
+    assert json.loads(events.read_text())["trial_result_path"] == str(trial / "result.json")
+    assert _repair_event_result_paths(events) == 0
 
 
 class _FakeEvaluationRuntime:
