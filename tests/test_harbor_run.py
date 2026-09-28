@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -207,3 +208,84 @@ def test_paired_run_preserves_manifest_on_cancel(monkeypatch, tmp_path: Path) ->
     assert manifest["status"] == "cancelled"
     assert manifest["groups"][0]["status"] == "cancelled"
     assert manifest["groups"][1]["status"] == "pending"
+
+
+def test_paired_run_keeps_retry_evidence_and_selects_final_attempt(
+    monkeypatch, tmp_path: Path
+) -> None:
+    spec = _spec(tmp_path)
+    skills_root = tmp_path / "skills"
+    for name in ("rdkit", "ase"):
+        (skills_root / name).mkdir(parents=True)
+    runtime = FakeVgbRuntime()
+    runtime.python_executable = Path(sys.executable)
+
+    class FakeJob:
+        def __init__(self, config):
+            self.id = config.job_name
+            self.job_dir = config.jobs_dir / config.job_name
+            self.callback = None
+
+        @classmethod
+        async def create(cls, config):
+            return cls(config)
+
+        def on_trial_ended(self, callback):
+            self.callback = callback
+
+        def on_trial_cancelled(self, callback):
+            pass
+
+        def __len__(self):
+            return 1
+
+        async def run(self):
+            if self.id.endswith("skills_on"):
+                for index, trial_id in enumerate(("z-first", "a-final")):
+                    exception = SimpleNamespace(
+                        exception_type="RuntimeError",
+                        exception_message="failed",
+                        model_dump=lambda **_: {"exception_type": "RuntimeError"},
+                    )
+                    trial_dir = self.job_dir / trial_id
+                    trial_dir.mkdir(parents=True)
+                    event = SimpleNamespace(
+                        result=SimpleNamespace(
+                            exception_info=exception,
+                            trial_uri=trial_dir.as_uri(),
+                            model_dump=lambda trial_id=trial_id, **_: {"id": trial_id},
+                        ),
+                        event=SimpleNamespace(value="end"),
+                        trial_id=trial_id,
+                        trial_name="trial-one",
+                        task_name="open_generation_rdkit__rdkit_001_qed_max",
+                        timestamp=datetime(2026, 9, 28, tzinfo=UTC) + timedelta(seconds=index),
+                    )
+                    await self.callback(event)
+            return SimpleNamespace(
+                id=self.id,
+                n_total_trials=1,
+                stats=SimpleNamespace(
+                    n_cancelled_trials=0,
+                    n_errored_trials=int(self.id.endswith("skills_on")),
+                ),
+            )
+
+    monkeypatch.setattr(run_module, "Job", FakeJob)
+    root = tmp_path / "run"
+    asyncio.run(
+        run_module.run_paired_jobs(
+            spec, _resources(), runtime, output_root=root, skills_root=skills_root
+        )
+    )
+    per_record = sorted((root / "per-record/skills_on").glob("*.json"))
+    assert len(per_record) == 2
+    results = json.loads((root / "results.json").read_text())
+    assert results["records"] == 1
+    final = results["results"][0]
+    assert final["final_attempt"]["trial_id"] == "a-final"
+    assert [item["trial_id"] for item in final["attempts"]] == ["z-first", "a-final"]
+    assert final["failure_mode"] == "retry_exhausted"
+    assert json.loads(Path(final["record_path"]).read_text())["final_attempt"] == (
+        final["final_attempt"]
+    )

@@ -14,6 +14,7 @@ from harbor.trial.hooks import TrialHookEvent
 
 from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
 from harbor_agent_infra.contracts.resource_profile import ResourceConfig
+from harbor_agent_infra.harbor.audit import audit_tool_calls, failure_mode
 from harbor_agent_infra.harbor.job_config import (
     MaterializedPairedJobs,
     materialize_paired_job_configs,
@@ -93,6 +94,7 @@ def _evaluate_record_file(path: Path, runtime: VgbRuntime) -> dict[str, Any]:
     record["scored"] = domain.get("status") == "scored"
     record["execution_error_kind"] = domain.get("failure_type")
     record["error"] = domain.get("message") if not record["scored"] else None
+    record["failure_mode"] = "vgb_evaluation_error" if not record["scored"] else None
     harbor_raw = dict(record.get("raw") or {})
     runner_meta = dict(record.get("runner_meta") or {})
     runner_meta["vgb_evaluation"] = {
@@ -129,6 +131,7 @@ async def _evaluate_group_records(record_root: Path, runtime: VgbRuntime) -> Non
             record["evaluation_error"] = {"type": type(exc).__name__, "message": str(exc)}
             record["evaluable"] = False
             record["scored"] = False
+            record["failure_mode"] = "vgb_evaluation_error"
             temporary = path.with_suffix(".json.tmp")
             temporary.write_text(
                 json.dumps(record, indent=2, sort_keys=True) + "\n",
@@ -184,6 +187,9 @@ class RunEventSink:
             if hasattr(result, "compute_token_cost_totals")
             else (None, None, None, None)
         )
+        trial_dir = _trial_dir(result.trial_uri)
+        tool_audit = audit_tool_calls(trial_dir / "agent")
+        classified_failure = failure_mode(result.exception_info, trial_dir / "agent")
         record_payload = {
             "schema_version": 5,
             "run_id": self.run_id,
@@ -194,9 +200,14 @@ class RunEventSink:
             "websearch": False,
             "record_id": event.trial_name,
             "trial_name": event.trial_name,
+            "event_timestamp": event.timestamp.isoformat(),
+            "record_path": str(record_path),
             "task_name": event.task_name,
-            "trial_result_path": str(_trial_dir(result.trial_uri) / "results.json"),
+            "trial_result_path": str(trial_dir / "results.json"),
             "network_policy": self.network_policies.get(group_id, {}).get(event.task_name),
+            "tool_audit": tool_audit,
+            "tool_audit_status": tool_audit["tool_audit_status"],
+            "failure_mode": classified_failure,
             "track": event.task_name,
             "eval_kind": "vgb",
             "run_lifecycle_status": status,
@@ -242,7 +253,7 @@ class RunEventSink:
                 if result.exception_info
                 else None
             ),
-            "trial_result_path": str(_trial_dir(result.trial_uri) / "results.json"),
+            "trial_result_path": str(trial_dir / "results.json"),
         }
         payload = {
             **record_payload,
@@ -315,12 +326,35 @@ async def run_paired_jobs(
             status = "partial"
         else:
             status = "completed"
-        records = [
+        attempt_records = [
             json.loads(path.read_text(encoding="utf-8"))
             for group_id in materialized.groups
             for path in sorted((output_root / "per-record" / group_id).glob("*.json"))
             if path.is_file()
         ]
+        attempts_by_trial: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for record in attempt_records:
+            key = (str(record["group_id"]), str(record["trial_name"]))
+            attempts_by_trial.setdefault(key, []).append(record)
+        records = []
+        for attempts in attempts_by_trial.values():
+            attempts.sort(key=lambda item: item["event_timestamp"])
+            final = attempts[-1]
+            final["attempts"] = [
+                {"trial_id": item.get("trial_result", {}).get("id"),
+                 "trial_result_path": item["trial_result_path"],
+                 "status": item["run_lifecycle_status"]}
+                for item in attempts
+            ]
+            final["final_attempt"] = final["attempts"][-1]
+            if len(attempts) > 1 and final["run_lifecycle_status"] == "failed":
+                final["failure_mode"] = "retry_exhausted"
+            if final.get("record_path"):
+                Path(final["record_path"]).write_text(
+                    json.dumps(final, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+                )
+            records.append(final)
+        records.sort(key=lambda item: (item["group_id"], item["trial_name"]))
         summary = {
             item.group_id: {
                 "records": sum(record.get("group_id") == item.group_id for record in records),
@@ -403,6 +437,21 @@ async def run_paired_jobs(
                 for group_id, group in materialized.groups.items()
             ],
             "group_summary": summary,
+            "audit_sources": {
+                "tool_calls": "agent/openclaw.session.jsonl",
+                "failures": "Harbor exception_info and agent/openclaw-evidence.json",
+                "tool_audit_available": sum(
+                    record.get("tool_audit_status") == "available" for record in records
+                ),
+                "tool_audit_unavailable": sum(
+                    record.get("tool_audit_status") != "available" for record in records
+                ),
+                "failure_modes": {
+                    mode: sum(record.get("failure_mode") == mode for record in records)
+                    for mode in sorted({record["failure_mode"] for record in records
+                                        if record.get("failure_mode")})
+                },
+            },
             "errors": errors,
             "partial_run": status != "completed",
             "resume": {"supported": False},
