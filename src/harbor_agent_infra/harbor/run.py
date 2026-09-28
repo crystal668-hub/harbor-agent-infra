@@ -293,7 +293,14 @@ async def run_paired_jobs(
     """Run skills_on and skills_off as sequential native Harbor jobs."""
     output_root.mkdir(parents=True, exist_ok=True)
     run_id = output_root.name
-    started_at = datetime.now(UTC).isoformat()
+    previous_manifest_path = output_root / "runtime-manifest.json"
+    previous_manifest = (
+        json.loads(previous_manifest_path.read_text(encoding="utf-8"))
+        if previous_manifest_path.exists() else None
+    )
+    started_at = (
+        previous_manifest["started_at"] if previous_manifest else datetime.now(UTC).isoformat()
+    )
     materialized: MaterializedPairedJobs = materialize_paired_job_configs(
         spec,
         resource_config,
@@ -301,6 +308,20 @@ async def run_paired_jobs(
         output_root=output_root,
         skills_root=skills_root,
     )
+    if previous_manifest:
+        expected = next(iter(materialized.groups.values()))
+        if (
+            previous_manifest.get("experiment_sha256") != expected.experiment_sha256
+            or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
+            or {
+                item["group_id"]: item.get("injected_skills")
+                for item in previous_manifest.get("groups", [])
+            } != {
+                group_id: list(group.injected_skills)
+                for group_id, group in materialized.groups.items()
+            }
+        ):
+            raise ValueError("existing runtime manifest does not match paired run inputs")
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
@@ -355,6 +376,11 @@ async def run_paired_jobs(
                 )
             records.append(final)
         records.sort(key=lambda item: (item["group_id"], item["trial_name"]))
+        if status == "completed" and any(
+            record.get("evaluation_error") or record.get("failure_mode")
+            for record in records
+        ):
+            status = "partial"
         summary = {
             item.group_id: {
                 "records": sum(record.get("group_id") == item.group_id for record in records),
@@ -454,7 +480,11 @@ async def run_paired_jobs(
             },
             "errors": errors,
             "partial_run": status != "completed",
-            "resume": {"supported": False},
+            "resume": {
+                "supported": True,
+                "resumed": previous_manifest is not None,
+                "previous_status": previous_manifest.get("status") if previous_manifest else None,
+            },
         }
         (output_root / "runtime-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"

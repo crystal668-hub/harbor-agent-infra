@@ -165,6 +165,15 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     assert manifest["groups"][1]["injected_skills"] == []
     assert manifest["groups"][0]["network_policies"][0]["agent"]["network_mode"] == "public"
     assert json.loads((root / "results.json").read_text())["groups"][1]["id"] == "skills_off"
+    resumed = asyncio.run(
+        run_module.run_paired_jobs(
+            spec, _resources(), runtime, output_root=root, skills_root=skills_root
+        )
+    )
+    assert resumed["started_at"] == manifest["started_at"]
+    assert resumed["resume"] == {
+        "supported": True, "resumed": True, "previous_status": "completed"
+    }
 
 
 def test_paired_run_preserves_manifest_on_cancel(monkeypatch, tmp_path: Path) -> None:
