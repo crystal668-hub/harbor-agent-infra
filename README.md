@@ -111,5 +111,6 @@ uv run hai view --jobs-dir run-artifacts/<run-id>/jobs --port 8080
 
 The Viewer is the source for Harbor execution evidence such as trial state, trajectory,
 timing, tokens, rewards, config, lock and artifacts. Infra's `per-record/`,
-`results.json` and `run-manifest.json` retain the paired-group and VGB compatibility
-projection.
+`results.json` and canonical `runtime-manifest.json` retain the paired-group and VGB
+compatibility projection. Paired Trial rewards use the official VGB `vgb_score` key.
+See [acceptance](docs/acceptance.md) for the real-run and Viewer build checks.
