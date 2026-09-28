@@ -82,6 +82,10 @@ def main(argv: list[str] | None = None) -> int:
                     group_id: {
                         "group_id": materialized.group_id,
                         "skill_allowlist_sha256": materialized.skill_allowlist_sha256,
+                        "skill_allowlist_path": materialized.skill_allowlist_path,
+                        "skill_allowlist_file_sha256": materialized.skill_allowlist_file_sha256,
+                        "skills_root": materialized.skills_root,
+                        "injected_skills": materialized.injected_skills,
                         "profile_name": materialized.profile_name,
                         "resource_config_sha256": materialized.resource_config_sha256,
                         "preflight": asdict(materialized.preflight),

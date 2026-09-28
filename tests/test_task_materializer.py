@@ -137,6 +137,12 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
     assert off.job_config.agents[0].skills == []
     assert on.group_id == "skills_on"
     assert on.skill_allowlist_sha256 is not None
+    assert on.skill_allowlist_path == str((tmp_path / "allowlist.json").resolve())
+    assert len(on.skill_allowlist_file_sha256 or "") == 64
+    assert [item["name"] for item in on.injected_skills] == ["rdkit", "ase"]
+    assert all(len(item["content_sha256"]) == 64 for item in on.injected_skills)
+    assert off.injected_skills == ()
+    assert off.skills_root is None
     assert on.job_config.job_name == "paired-skills_on"
     assert off.job_config.job_name == "paired-skills_off"
     assert on.job_config.jobs_dir == off.job_config.jobs_dir

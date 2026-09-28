@@ -21,6 +21,7 @@ from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 from harbor_agent_infra.preparation.skill_inventory import (
     load_skill_allowlist,
     skill_allowlist_sha256,
+    skill_directory_sha256,
 )
 from integrations.vgb.runtime import VgbRuntime
 
@@ -36,6 +37,10 @@ class MaterializedJob:
     agent_base_image: str
     group_id: str | None = None
     skill_allowlist_sha256: str | None = None
+    skill_allowlist_path: str | None = None
+    skill_allowlist_file_sha256: str | None = None
+    skills_root: str | None = None
+    injected_skills: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -119,6 +124,9 @@ def materialize_group_job_config(
 
     skills: list[str] = []
     allowlist_digest = None
+    allowlist_path = None
+    allowlist_file_digest = None
+    injected_skills: tuple[dict[str, str], ...] = ()
     group_allowlist_ref = group.skill_allowlist_ref
     if group.skills_enabled:
         if skills_root is None:
@@ -127,10 +135,22 @@ def materialize_group_job_config(
             raise ValueError("skills_on requires skill_allowlist_ref")
         allowlist = load_skill_allowlist(Path(group_allowlist_ref))
         allowlist_digest = skill_allowlist_sha256(allowlist)
+        allowlist_path = str(Path(group_allowlist_ref).resolve())
+        import hashlib
+
+        allowlist_file_digest = hashlib.sha256(Path(group_allowlist_ref).read_bytes()).hexdigest()
         missing = [name for name in allowlist.skills if not (skills_root / name).is_dir()]
         if missing:
             raise ValueError(f"skill allowlist contains missing directories: {missing}")
-        skills = [str(skills_root / name) for name in allowlist.skills]
+        injected_skills = tuple(
+            {
+                "name": name,
+                "directory": str((skills_root / name).resolve()),
+                "content_sha256": skill_directory_sha256(skills_root / name),
+            }
+            for name in allowlist.skills
+        )
+        skills = [item["directory"] for item in injected_skills]
 
     job_config = JobConfig(
         job_name=f"{spec.experiment_id}-{group.id}",
@@ -167,6 +187,10 @@ def materialize_group_job_config(
         agent_base_image=lock.agent_base_image.immutable_reference,
         group_id=group.id,
         skill_allowlist_sha256=allowlist_digest,
+        skill_allowlist_path=allowlist_path,
+        skill_allowlist_file_sha256=allowlist_file_digest,
+        skills_root=str(skills_root.resolve()) if group.skills_enabled else None,
+        injected_skills=injected_skills,
     )
 
 

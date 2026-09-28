@@ -6,6 +6,7 @@ from harbor_agent_infra.preparation.experiments import experiment_sha256, load_e
 from harbor_agent_infra.preparation.skill_inventory import (
     load_skill_allowlist,
     skill_allowlist_sha256,
+    skill_directory_sha256,
 )
 
 
@@ -134,3 +135,14 @@ def test_skill_allowlist_hash_is_stable(tmp_path) -> None:
     allowlist = load_skill_allowlist(path)
     assert allowlist.skills == ["rdkit", "ase"]
     assert len(skill_allowlist_sha256(allowlist)) == 64
+
+
+def test_skill_directory_hash_tracks_content_and_names(tmp_path) -> None:
+    skill = tmp_path / "skill"
+    skill.mkdir()
+    (skill / "SKILL.md").write_text("first", encoding="utf-8")
+    first = skill_directory_sha256(skill)
+    (skill / "SKILL.md").write_text("second", encoding="utf-8")
+    assert skill_directory_sha256(skill) != first
+    (skill / "SKILL.md").rename(skill / "README.md")
+    assert skill_directory_sha256(skill) != first
