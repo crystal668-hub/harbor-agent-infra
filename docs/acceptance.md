@@ -86,7 +86,9 @@ links to all attempts. `runtime-manifest.json` is the canonical run manifest;
 
 Use a local, untracked resource profile sized for OpenClaw. Load `.env` explicitly,
 set `VGB_PYTHON` to the venv's `bin/python` path (do not resolve its symlink), and set
-the image reference/digest variables from `runtime-lock.json`. Then run:
+the image reference/digest variables from `runtime-lock.json`. Set `RESOURCE_PROFILE`
+to the local profile name and `RESOURCE_PROFILE_FILE` to that untracked profile path.
+Then run:
 
 ```bash
 uv run --locked hai run \
