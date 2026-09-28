@@ -101,7 +101,7 @@ run-artifacts/<run-id>/runtime-manifest.json
 - 每个目录的内容 digest；
 - `skills_off` 的显式空注入证明。
 
-推荐方案是运行时通过 `--skills-root` 读取外部目录，不把 85 个目录复制到本仓库。原因是这些目录属于外部 skill workspace，复制会造成重复来源、内容漂移和较大的敏感依赖面。运行前必须校验 allowlist 中的每个目录存在，记录内容 digest，并在 manifest 中保存 `skills_root` 的来源信息。只有在后续需要可发布、可离线复现实验时，才另行设计带版本锁的 skill bundle；不要直接把当前 workspace 目录复制进 Git。
+已确认采用运行时通过 `--skills-root` 读取外部目录的方案，不把 85 个目录复制到本仓库。原因是这些目录属于外部 skill workspace，复制会造成重复来源、内容漂移和较大的敏感依赖面。运行前必须校验 allowlist 中的每个目录存在，记录内容 digest，并在 manifest 中保存 `skills_root` 的来源信息。只有在后续需要可发布、可离线复现实验时，才另行设计带版本锁的 skill bundle；不要直接把当前 workspace 目录复制进 Git。
 
 #### Network policy
 
@@ -197,14 +197,14 @@ uv run hai run \
 
 ### 6. Harbor Viewer 真实产物验证
 
-Viewer 应继续使用 Harbor 官方前端和 API；不重新实现原有前端。当前 Harbor Python 包：
+已确认 Viewer 继续使用 Harbor 官方前端和 API，不重新实现前端。当前 Harbor Python 包：
 
 - `harbor view` CLI 存在；
 - viewer backend/API 存在；
 - package 内没有前端 static bundle；
 - package 内也没有 bundled viewer source。
 
-下一会话应先确认官方 Harbor release 的 viewer frontend 获取方式（例如安装完整发行包或使用官方 viewer source/build），再运行：
+下一会话应获取并配置官方 Harbor release 的 viewer frontend（例如安装完整发行包或使用官方 viewer source/build），再运行：
 
 ```bash
 uv run hai view \
@@ -242,9 +242,9 @@ uv run hai view \
 - 失败、retry、取消和 partial run 可恢复；
 - `runtime-manifest.json`、`results.json`、per-record 和 Viewer 读取同一批真实产物。
 
-## 需要用户确认的两个决策
+## 已确认的实施决策
 
-1. 是否确认继续采用“外部 `--skills-root` + allowlist/contents digest”方案，不把 85 个 skill 目录复制进当前 Git 仓库？这是推荐方案。
-2. 是否确认 Harbor Viewer 采用官方前端/官方 build 产物；如果当前 Harbor 安装不带 frontend，则下一会话补官方 Viewer 安装/build 依赖，而不在本仓库重写前端？这是推荐方案。
+1. Skill source 使用外部 `--skills-root`，并记录 allowlist SHA-256、每个实际注入目录的内容 digest 和来源路径；不把 85 个 skill 目录复制进当前 Git 仓库。
+2. 结果页面使用 Harbor 官方 Viewer 前端和官方 build 产物；当前 Harbor 安装缺少 frontend 时，补充官方 Viewer 安装/build 依赖，不在本仓库重新实现前端。
 
-除上述两个策略确认外，provider `.env` 已存在，后续只需要由运行会话显式 source；不需要用户重新提供凭据。
+这两个决策已经由需求方确认，后续会话不得再次改为复制 skill 目录或自建 Viewer，除非收到新的明确要求。provider `.env` 已存在，后续只需要由运行会话显式 source；不需要用户重新提供凭据。
