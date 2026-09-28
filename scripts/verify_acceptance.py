@@ -101,6 +101,13 @@ def main() -> int:
         check("agent-base-image-lock", False, str(exc), blocker=True)
     else:
         check(
+            "agent-python-policy",
+            lock.agent_python.package_install_policy == "agent-managed"
+            and not lock.agent_python.preinstalled_packages,
+            "Python/pip tools are locked; third-party packages remain agent-managed",
+            blocker=True,
+        )
+        check(
             "openclaw-npm-lock",
             lock.openclaw.version == "2026.6.9"
             and lock.openclaw.runtime_strategy
@@ -129,6 +136,31 @@ def main() -> int:
                 "base image digest/platform verified",
                 blocker=True,
             )
+        runtime_probe = subprocess.run(
+            [
+                "docker", "run", "--rm", "--platform", lock.agent_base_image.platform,
+                "--entrypoint", "sh", lock.agent_base_image.immutable_reference,
+                "-lc",
+                "set -eu; "
+                f"test \"$(python3 --version)\" = 'Python {lock.agent_python.python_version}'; "
+                f"test \"$(python --version)\" = 'Python {lock.agent_python.python_version}'; "
+                f"pip3 --version | grep -F 'pip {lock.agent_python.pip_version} '; "
+                f"pip --version | grep -F 'pip {lock.agent_python.pip_version} '; "
+                "python3 -m venv /tmp/hai-venv; "
+                "test \"$PIP_BREAK_SYSTEM_PACKAGES\" = 1; "
+                "python3 -m pip list --format=freeze | "
+                "grep -Ev '^(pip|setuptools|wheel)==' | (! grep .)",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        check(
+            "agent-python-tools",
+            runtime_probe.returncode == 0,
+            runtime_probe.stdout.strip() or runtime_probe.stderr.strip(),
+            blocker=True,
+        )
     check(
         "registry-configured",
         bool(os.environ.get("HARBOR_REGISTRY_REFERENCE")),

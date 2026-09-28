@@ -5,9 +5,11 @@ experiments, resource profiles and immutable image identities, then delegates Jo
 lifecycle and Docker cleanup to Harbor Framework.
 
 The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Each Trial
-uses an immutable base image; Harbor installs Node 22 through nvm and pins
-`openclaw@2026.6.9` inside the agent container. The VGB integration and real provider
-runs are separate acceptance gates.
+uses the immutable `hai-openclaw-agent` image derived from the locked Node base. The image
+contains Python 3.11, pip 23.0.1 and venv support so Python-based skills can run. It does
+not contain benchmark or domain packages: the agent chooses and installs those during the
+Trial. Harbor installs Node 22 through nvm and pins `openclaw@2026.6.9` inside the agent
+container. The VGB integration and real provider runs are separate acceptance gates.
 
 ## Phase 0 setup
 
@@ -24,7 +26,8 @@ uv run pytest -m 'not integration'
 
 `hai doctor` intentionally requires Python 3.12 and reports missing Harbor/Docker tools.
 The project does not install OpenClaw on the host. The isolated VGB runtime is host-side;
-OpenClaw is installed only inside Harbor Trial containers.
+OpenClaw is installed only inside Harbor Trial containers. The host `.venv` Python and the
+agent-container Python are separate runtimes.
 
 ## Scope boundaries
 
@@ -33,6 +36,16 @@ environment lifecycle. Harbor Registry is optional and is not required for local
 The legacy workspace is only a compatibility read source for later result projection tests.
 
 ## Phase 2 fake Harbor smoke
+
+Build the locked agent image when setting up a new Docker host:
+
+```bash
+./scripts/build_agent_image.sh hai-openclaw-agent
+```
+
+The command prints the resulting immutable RepoDigest and verifies Python, pip and venv.
+Do not add skill-specific packages to the Dockerfile. A skill may install its own package
+inside its ephemeral Trial container, and those installs are not part of the image lock.
 
 Build the provider-free acceptance image and run one Harbor Docker trial:
 

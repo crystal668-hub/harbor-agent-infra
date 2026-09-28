@@ -66,8 +66,8 @@ def _spec(tmp_path: Path) -> ExperimentSpecV2:
             ],
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
-                "reference": "node:24-bookworm-slim",
-                "digest": "sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
+                "reference": "hai-openclaw-agent",
+                "digest": "sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",
             },
@@ -99,7 +99,7 @@ def test_materialize_vgb_tasks_writes_harbor_task(tmp_path: Path) -> None:
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
+        image="hai-openclaw-agent@sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47",
     )
     assert len(tasks) == 1
     task_dir = Path(tasks[0].path)
@@ -120,7 +120,7 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="node:24-bookworm-slim",
+        image="hai-openclaw-agent",
     )
     on = materialize_group_job_config(
         spec,
@@ -165,7 +165,10 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
 def test_skills_on_rejects_missing_skill_directory(tmp_path: Path) -> None:
     spec = _spec(tmp_path)
     tasks = materialize_vgb_tasks(
-        FakeVgbRuntime(), spec, output_root=tmp_path / "run", image="node:24-bookworm-slim"
+        FakeVgbRuntime(),
+        spec,
+        output_root=tmp_path / "run",
+        image="hai-openclaw-agent",
     )
     with pytest.raises(ValueError, match="missing directories"):
         materialize_group_job_config(

@@ -194,6 +194,7 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     assert manifest["status"] == "completed"
     assert manifest["vgb_runtime"]["package"]["version"] == "0.10.0"
     assert manifest["vgb_runtime"]["actual_metadata"]["version"] == "0.10.0"
+    assert manifest["agent_runtime"]["package_install_policy"] == "agent-managed"
     assert manifest["groups"][0]["injected_skills"][0]["name"] == "rdkit"
     assert manifest["groups"][1]["injected_skills"] == []
     assert manifest["groups"][0]["network_policies"][0]["agent"]["network_mode"] == "public"

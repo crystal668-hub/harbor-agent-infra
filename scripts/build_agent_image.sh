@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+image_reference="${1:?usage: $0 <immutable image tag> [--push]}"
+push_image="${2:-}"
+
+if [[ "$image_reference" == *"@"* ]]; then
+  echo "pass a tag for the build output; the resulting RepoDigest is the lock identity" >&2
+  exit 2
+fi
+
+docker build \
+  --platform linux/arm64 \
+  --tag "$image_reference" \
+  "$repo_root/images/openclaw-agent"
+
+if [[ "$push_image" == "--push" ]]; then
+  docker push "$image_reference"
+fi
+
+digest="$(docker image inspect "$image_reference" --format '{{index .RepoDigests 0}}')"
+printf '%s\n' "$digest"
+docker run --rm --platform linux/arm64 --entrypoint python3 "$digest" \
+  -c 'import sys; print(sys.version.split()[0])'
+docker run --rm --platform linux/arm64 --entrypoint pip3 "$digest" --version

@@ -87,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
                         "skills_root": materialized.skills_root,
                         "injected_skills": materialized.injected_skills,
                         "network_policies": materialized.network_policies,
+                        "agent_python": materialized.agent_python,
                         "profile_name": materialized.profile_name,
                         "resource_config_sha256": materialized.resource_config_sha256,
                         "preflight": asdict(materialized.preflight),
@@ -112,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             "profile_name": materialized.profile_name,
             "openclaw_version": materialized.openclaw_version,
             "agent_base_image": materialized.agent_base_image,
+            "agent_python": materialized.agent_python,
             "preflight": asdict(materialized.preflight),
             "job_config": materialized.job_config.model_dump(mode="json"),
         }

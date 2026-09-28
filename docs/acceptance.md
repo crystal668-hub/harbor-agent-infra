@@ -76,6 +76,16 @@ produced `openclaw.txt`, `trajectory.json`, `openclaw-evidence.json` and a sessi
 
 ## Paired Skills Acceptance
 
+The locked agent image is built with:
+
+```bash
+./scripts/build_agent_image.sh hai-openclaw-agent
+```
+
+The build verifies Python 3.11.2, pip 23.0.1 and venv inside the image. The image contains
+no benchmark-specific Python package. Python dependencies are selected and installed by
+the agent during the Trial; use a venv when a skill needs stronger isolation.
+
 The paired runner uses a Harbor custom verifier on the host. It reads the downloaded
 `openclaw.txt`, invokes the isolated official `VGB_PYTHON`, writes
 `verifier/vgb-evaluation.json`, and returns canonical Harbor reward `vgb_score` plus

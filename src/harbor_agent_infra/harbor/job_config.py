@@ -45,6 +45,7 @@ class MaterializedJob:
     skills_root: str | None = None
     injected_skills: tuple[dict[str, str], ...] = ()
     network_policies: tuple[dict[str, object], ...] = ()
+    agent_python: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +108,20 @@ def materialize_job_config(
         preflight=preflight,
         openclaw_version=lock.openclaw.version,
         agent_base_image=lock.agent_base_image.immutable_reference,
+        agent_python={
+            "python": {
+                "command": lock.agent_python.python_command,
+                "alias": lock.agent_python.python_alias,
+                "version": lock.agent_python.python_version,
+            },
+            "pip": {
+                "command": lock.agent_python.pip_command,
+                "alias": lock.agent_python.pip_alias,
+                "version": lock.agent_python.pip_version,
+            },
+            "package_install_policy": lock.agent_python.package_install_policy,
+            "preinstalled_packages": list(lock.agent_python.preinstalled_packages),
+        },
     )
 
 
@@ -217,6 +232,20 @@ def materialize_group_job_config(
         skills_root=str(skills_root.resolve()) if group.skills_enabled else None,
         injected_skills=injected_skills,
         network_policies=tuple(network_policies),
+        agent_python={
+            "python": {
+                "command": lock.agent_python.python_command,
+                "alias": lock.agent_python.python_alias,
+                "version": lock.agent_python.python_version,
+            },
+            "pip": {
+                "command": lock.agent_python.pip_command,
+                "alias": lock.agent_python.pip_alias,
+                "version": lock.agent_python.pip_version,
+            },
+            "package_install_policy": lock.agent_python.package_install_policy,
+            "preinstalled_packages": list(lock.agent_python.preinstalled_packages),
+        },
     )
 
 

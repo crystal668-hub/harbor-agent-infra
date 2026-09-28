@@ -22,6 +22,18 @@ class AgentBaseImageLock:
 
 
 @dataclass(frozen=True)
+class AgentPythonRuntimeLock:
+    python_command: str
+    python_alias: str
+    python_version: str
+    pip_command: str
+    pip_alias: str
+    pip_version: str
+    package_install_policy: str
+    preinstalled_packages: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class OpenClawRuntimeLock:
     version: str
     package_integrity: str
@@ -33,16 +45,20 @@ class OpenClawRuntimeLock:
 class InfraRuntimeLock:
     openclaw: OpenClawRuntimeLock
     agent_base_image: AgentBaseImageLock
+    agent_python: AgentPythonRuntimeLock
 
 
 def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     payload: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     openclaw = payload.get("openclaw")
     image = payload.get("agent_base_image")
+    agent_python = payload.get("agent_python")
     if not isinstance(openclaw, dict):
         raise ValueError("runtime lock is missing the openclaw object")
     if not isinstance(image, dict):
         raise ValueError("runtime lock is missing the agent_base_image object")
+    if not isinstance(agent_python, dict):
+        raise ValueError("runtime lock is missing the agent_python object")
     version = openclaw.get("version")
     integrity = openclaw.get("package_integrity")
     node_engine = openclaw.get("node_engine")
@@ -66,6 +82,24 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError("agent_base_image.digest must be an immutable sha256 digest")
     if not isinstance(platform, str) or not platform:
         raise ValueError("agent_base_image.platform is required")
+    python = agent_python.get("python")
+    pip = agent_python.get("pip")
+    policy = agent_python.get("package_install_policy")
+    preinstalled = agent_python.get("preinstalled_packages")
+    if not isinstance(python, dict) or not isinstance(pip, dict):
+        raise ValueError("agent_python must define python and pip objects")
+    required_runtime_fields = (
+        python.get("command"), python.get("alias"), python.get("version"),
+        pip.get("command"), pip.get("alias"), pip.get("version"),
+    )
+    if not all(isinstance(value, str) and value for value in required_runtime_fields):
+        raise ValueError("agent_python command, alias and version fields are required")
+    if policy != "agent-managed":
+        raise ValueError("agent_python.package_install_policy must be agent-managed")
+    if not isinstance(preinstalled, list) or any(
+        not isinstance(item, str) or not item for item in preinstalled
+    ):
+        raise ValueError("agent_python.preinstalled_packages must be a list of names")
     return InfraRuntimeLock(
         openclaw=OpenClawRuntimeLock(
             version=version,
@@ -75,5 +109,15 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         ),
         agent_base_image=AgentBaseImageLock(
             reference=reference, digest=digest, platform=platform
+        ),
+        agent_python=AgentPythonRuntimeLock(
+            python_command=python["command"],
+            python_alias=python["alias"],
+            python_version=python["version"],
+            pip_command=pip["command"],
+            pip_alias=pip["alias"],
+            pip_version=pip["version"],
+            package_install_policy=policy,
+            preinstalled_packages=tuple(preinstalled),
         ),
     )

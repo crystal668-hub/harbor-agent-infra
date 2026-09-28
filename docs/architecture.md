@@ -9,9 +9,11 @@ experiment config -> infra materializer -> Harbor Job/Trial -> agent adapter
 host-side VGB integration -> prompt/evaluation -> domain result projection
 ```
 
-The Phase 1 materializer validates the external resource profile and immutable agent base
-image digest, locks Harbor's native OpenClaw npm version, runs Docker capability
-preflight, and emits a native `JobConfig` snapshot.
+The Phase 1 materializer validates the external resource profile and immutable agent image
+digest, locks Harbor's native OpenClaw npm version, records the agent Python/pip toolchain,
+runs Docker capability preflight, and emits a native `JobConfig` snapshot. The locked agent
+image contains only Python tooling (`python`, `pip`, and `venv`) for Python-based skills;
+third-party Python packages are deliberately agent-managed at Trial time.
 Infra records identities and relationships. Harbor remains the lifecycle owner, and VGB
 evaluation stays outside the agent container.
 
@@ -21,6 +23,11 @@ is limited to explicit session identity, per-trial state directory, OpenClaw 202
 `agents.list` projection,
 configuration, evidence hashes and stable failure codes. Harbor still owns installation,
 exec, logs, trajectory download and cleanup.
+
+The agent image is built by `images/openclaw-agent/Dockerfile` from the locked Node base.
+The Dockerfile installs Debian's Python 3 interpreter, pip and venv support, but no
+benchmark-specific Python package. `PIP_BREAK_SYSTEM_PACKAGES=1` allows an agent-selected
+`pip install` in the disposable container; agents may instead create a venv.
 
 The Phase 4 VGB integration runs in a separate Python process selected by `VGB_PYTHON`.
 It sends JSON requests to the official package's public `load_track`, `prompts`, `task`

@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+
+
+def test_runtime_lock_separates_control_plane_and_agent_python() -> None:
+    lock = load_runtime_lock(Path("runtime-lock.json"))
+    assert lock.agent_python.python_version == "3.11.2"
+    assert lock.agent_python.pip_version == "23.0.1"
+    assert lock.agent_python.python_alias == "python"
+    assert lock.agent_python.pip_alias == "pip"
+    assert lock.agent_python.package_install_policy == "agent-managed"
+    assert lock.agent_python.preinstalled_packages == ()
+
+
+@pytest.mark.parametrize("mutation", ["missing", "policy", "packages"])
+def test_runtime_lock_rejects_ambiguous_agent_python_policy(tmp_path: Path, mutation: str) -> None:
+    payload = json.loads(Path("runtime-lock.json").read_text(encoding="utf-8"))
+    if mutation == "missing":
+        del payload["agent_python"]
+    elif mutation == "policy":
+        payload["agent_python"]["package_install_policy"] = "image-managed"
+    else:
+        payload["agent_python"]["preinstalled_packages"] = "requests"
+    path = tmp_path / "runtime-lock.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="agent_python"):
+        load_runtime_lock(path)

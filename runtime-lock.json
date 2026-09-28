@@ -45,8 +45,22 @@
     "node_engine": ">=22.19.0"
   },
   "agent_base_image": {
-    "reference": "node:24-bookworm-slim",
-    "digest": "sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e",
+    "reference": "hai-openclaw-agent",
+    "digest": "sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47",
     "platform": "linux/arm64"
+  },
+  "agent_python": {
+    "python": {
+      "command": "python3",
+      "alias": "python",
+      "version": "3.11.2"
+    },
+    "pip": {
+      "command": "pip3",
+      "alias": "pip",
+      "version": "23.0.1"
+    },
+    "package_install_policy": "agent-managed",
+    "preinstalled_packages": []
   }
 }
