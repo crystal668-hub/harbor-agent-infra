@@ -218,16 +218,18 @@ def _check_paired_run(root: Path, check) -> None:
         evidence_ok &= bool(record.get("network_policy"))
         evidence_ok &= all(Path(item["trial_result_path"]).is_file()
                            for item in record.get("attempts", []))
+        rewards = ((record.get("trial_result") or {}).get("verifier_result") or {}).get(
+            "rewards", {}
+        )
         if artifact_path.is_file():
             artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
-            reward = ((record.get("trial_result") or {}).get("verifier_result") or {}).get(
-                "rewards", {}
-            ).get("vgb_score")
             score = (artifact.get("domain_result") or {}).get("scores", {}).get("score")
             rewards_ok &= (
                 artifact.get("vgb_status") == "scored"
                 and isinstance(score, int | float) and not isinstance(score, bool)
-                and math.isfinite(score) and reward == score
+                and math.isfinite(score)
+                and rewards.get("vgb_score") == score
+                and rewards.get("reward") == score
                 and (record.get("vgb_domain_result") or {}).get("scores", {}).get("score")
                 == score
             )
@@ -248,6 +250,17 @@ def _check_paired_run(root: Path, check) -> None:
         viewer_ok &= all(
             viewer.get(f"/api/jobs/{job_name}/trials/{trial_name}{suffix}").status_code == 200
             for suffix in ("/trajectory", "/verifier-output", "/files", "/artifacts")
+        )
+        task_summary = viewer.get(
+            f"/api/jobs/{job_name}/tasks", params={"task": record["task_name"]}
+        )
+        viewer_consistency_ok &= (
+            task_summary.status_code == 200
+            and any(
+                item["task_name"] == record["task_name"]
+                and item["avg_reward"] == rewards.get("vgb_score")
+                for item in task_summary.json().get("items", [])
+            )
         )
     if secret:
         secret_found = any(

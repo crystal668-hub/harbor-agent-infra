@@ -37,7 +37,7 @@ def test_vgb_verifier_preserves_zero_score_and_artifact(monkeypatch, tmp_path: P
     )
     verifier = _verifier(tmp_path)
     result = asyncio.run(verifier.verify())
-    assert result.rewards == {"vgb_score": 0.0}
+    assert result.rewards == {"vgb_score": 0.0, "reward": 0.0}
     artifact = json.loads((tmp_path / "verifier/vgb-evaluation.json").read_text())
     assert artifact["vgb_status"] == "scored"
     assert artifact["domain_result"]["scores"]["score"] == 0.0

@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from harbor import Job
+from harbor.viewer import create_app
 from test_task_materializer import _resources, _spec
 
 from harbor_agent_infra.harbor.job_config import materialize_group_job_config
@@ -35,7 +37,9 @@ def test_docker_harbor_verifier_matches_official_vgb(
     )
     config = group.job_config.model_copy(deep=True)
     config.agents[0].import_path = "adapters.fake_agent:FakeAgent"
-    config.agents[0].kwargs = {"openclaw_response": "CCO"}
+    config.agents[0].kwargs = {
+        "openclaw_response": "FINAL ANSWER: CCOc1ccc2[nH]c(C(=O)N3CCCCC3)cc2c1"
+    }
     config.agents[0].skills = []
     assert "VGB_PYTHON" not in config.agents[0].env
     assert "VGB_PYTHON" not in config.environment.env
@@ -47,10 +51,13 @@ def test_docker_harbor_verifier_matches_official_vgb(
     result = asyncio.run(run())
     trial = result.trial_results[0]
     assert trial.exception_info is None
-    assert trial.verifier_result.rewards == {"vgb_score": 0.0}
+    score = trial.verifier_result.rewards["vgb_score"]
+    assert score > 0
+    assert trial.verifier_result.rewards["reward"] == score
     trial_dir = Path(trial.trial_uri.removeprefix("file://"))
     artifact = json.loads((trial_dir / "verifier/vgb-evaluation.json").read_text())
     assert artifact["vgb_status"] == "scored"
-    assert artifact["domain_result"]["scores"]["score"] == (
-        trial.verifier_result.rewards["vgb_score"]
-    )
+    assert artifact["domain_result"]["scores"]["score"] == score
+    viewer = TestClient(create_app(config.jobs_dir, mode="jobs"))
+    task_summary = viewer.get(f"/api/jobs/{config.job_name}/tasks").json()["items"]
+    assert task_summary[0]["avg_reward"] == score

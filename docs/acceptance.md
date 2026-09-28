@@ -78,9 +78,10 @@ produced `openclaw.txt`, `trajectory.json`, `openclaw-evidence.json` and a sessi
 
 The paired runner uses a Harbor custom verifier on the host. It reads the downloaded
 `openclaw.txt`, invokes the isolated official `VGB_PYTHON`, writes
-`verifier/vgb-evaluation.json`, and returns Harbor reward `vgb_score`. A zero score is a
-valid result; a missing runtime or evaluator failure is a Trial error. Each retry keeps
-its own Harbor Trial and per-record file. `results.json` selects the final attempt and
+`verifier/vgb-evaluation.json`, and returns canonical Harbor reward `vgb_score` plus
+an equal `reward` alias required by the official Viewer's task and Trial summaries.
+A zero score is a valid result; a missing runtime or evaluator failure is a Trial error.
+Each retry keeps its own Harbor Trial and per-record file. `results.json` selects the final attempt and
 links to all attempts. `runtime-manifest.json` is the canonical run manifest;
 `run-manifest.json` remains a compatibility summary.
 

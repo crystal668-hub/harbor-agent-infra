@@ -62,4 +62,4 @@ class VgbVerifier(BaseVerifier):
             ) + "\n",
             encoding="utf-8",
         )
-        return VerifierResult(rewards={"vgb_score": float(score)})
+        return VerifierResult(rewards={"vgb_score": float(score), "reward": float(score)})
