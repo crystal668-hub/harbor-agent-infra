@@ -495,7 +495,10 @@ async def run_paired_jobs(
                 "pythonpath_cleared_for_subprocess": True,
             },
             "image": spec.image.model_dump(mode="json"),
-            "agent_runtime": lock_payload["agent_python"],
+            "agent_runtime": {
+                "python": lock_payload["agent_python"],
+                "chemistry": lock_payload["agent_chemistry"],
+            },
             "jobs_root": str(output_root / "jobs"),
             "execution_order": [group.id for group in spec.groups],
             "n_attempts": spec.retry.n_attempts,

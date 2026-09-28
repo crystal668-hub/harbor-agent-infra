@@ -18,14 +18,14 @@ experiment and resource configuration hashes plus Harbor's native JobConfig snap
 
 Agent base image references used for execution must include an immutable digest. The image
 manager checks the local RepoDigest and OS/architecture before a Harbor job is created;
-the locked image already contains Python 3.11, pip 23.0.1 and venv support, while no
-skill-specific Python package is preinstalled. Harbor then installs the locked OpenClaw
+the locked image already contains Python 3.11, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1
+and venv support. Additional skill-specific Python packages remain agent-managed. Harbor then installs the locked OpenClaw
 npm package in the Trial container. Registry
 credentials are consumed by Docker's credential helper and are never written to evidence.
 
 The agent may install Python packages during a Trial according to the skill it is executing.
 Those packages are ephemeral Trial state and are not added to `runtime-lock.json`; only the
-Python/pip tool versions and the immutable image digest are locked.
+Python/pip and chemistry tool versions plus the immutable image digest are locked.
 
 For an `experiment.v2` paired run, both native Harbor jobs are placed below one
 directory so the official Harbor viewer can discover them together:

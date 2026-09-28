@@ -114,7 +114,7 @@ def test_job_materializer_projects_native_harbor_fields() -> None:
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
                 "reference": "hai-openclaw-agent",
-                "digest": "sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47",
+                "digest": "sha256:9da35f092c34756685497d869840f106e674676f6723182d5f5a1fd7952545f7",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",
             },

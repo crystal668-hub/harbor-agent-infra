@@ -15,7 +15,10 @@ def test_runtime_lock_separates_control_plane_and_agent_python() -> None:
     assert lock.agent_python.python_alias == "python"
     assert lock.agent_python.pip_alias == "pip"
     assert lock.agent_python.package_install_policy == "agent-managed"
-    assert lock.agent_python.preinstalled_packages == ()
+    assert lock.agent_python.preinstalled_packages == (
+        "numpy==2.2.6", "Pillow==11.3.0", "rdkit==2025.9.6"
+    )
+    assert lock.agent_chemistry.xtb_package == "xtb=6.5.1-3"
 
 
 @pytest.mark.parametrize("mutation", ["missing", "policy", "packages"])

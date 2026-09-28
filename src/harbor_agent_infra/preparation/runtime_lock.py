@@ -34,6 +34,18 @@ class AgentPythonRuntimeLock:
 
 
 @dataclass(frozen=True)
+class AgentChemistryToolsLock:
+    rdkit_version: str
+    rdkit_source: str
+    rdkit_wheel_sha256: str
+    numpy_version: str
+    pillow_version: str
+    xtb_version: str
+    xtb_package: str
+    xtb_source: str
+
+
+@dataclass(frozen=True)
 class OpenClawRuntimeLock:
     version: str
     package_integrity: str
@@ -46,6 +58,7 @@ class InfraRuntimeLock:
     openclaw: OpenClawRuntimeLock
     agent_base_image: AgentBaseImageLock
     agent_python: AgentPythonRuntimeLock
+    agent_chemistry: AgentChemistryToolsLock
 
 
 def load_runtime_lock(path: Path) -> InfraRuntimeLock:
@@ -53,12 +66,15 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     openclaw = payload.get("openclaw")
     image = payload.get("agent_base_image")
     agent_python = payload.get("agent_python")
+    agent_chemistry = payload.get("agent_chemistry")
     if not isinstance(openclaw, dict):
         raise ValueError("runtime lock is missing the openclaw object")
     if not isinstance(image, dict):
         raise ValueError("runtime lock is missing the agent_base_image object")
     if not isinstance(agent_python, dict):
         raise ValueError("runtime lock is missing the agent_python object")
+    if not isinstance(agent_chemistry, dict):
+        raise ValueError("runtime lock is missing the agent_chemistry object")
     version = openclaw.get("version")
     integrity = openclaw.get("package_integrity")
     node_engine = openclaw.get("node_engine")
@@ -100,6 +116,15 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         not isinstance(item, str) or not item for item in preinstalled
     ):
         raise ValueError("agent_python.preinstalled_packages must be a list of names")
+    chemistry_fields = (
+        "rdkit_version", "rdkit_source", "rdkit_wheel_sha256", "numpy_version",
+        "pillow_version", "xtb_version", "xtb_package", "xtb_source",
+    )
+    if any(
+        not isinstance(agent_chemistry.get(field), str) or not agent_chemistry[field]
+        for field in chemistry_fields
+    ):
+        raise ValueError("agent_chemistry fields are required")
     return InfraRuntimeLock(
         openclaw=OpenClawRuntimeLock(
             version=version,
@@ -119,5 +144,15 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
             pip_version=pip["version"],
             package_install_policy=policy,
             preinstalled_packages=tuple(preinstalled),
+        ),
+        agent_chemistry=AgentChemistryToolsLock(
+            rdkit_version=agent_chemistry["rdkit_version"],
+            rdkit_source=agent_chemistry["rdkit_source"],
+            rdkit_wheel_sha256=agent_chemistry["rdkit_wheel_sha256"],
+            numpy_version=agent_chemistry["numpy_version"],
+            pillow_version=agent_chemistry["pillow_version"],
+            xtb_version=agent_chemistry["xtb_version"],
+            xtb_package=agent_chemistry["xtb_package"],
+            xtb_source=agent_chemistry["xtb_source"],
         ),
     )

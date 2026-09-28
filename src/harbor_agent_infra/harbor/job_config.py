@@ -46,6 +46,7 @@ class MaterializedJob:
     injected_skills: tuple[dict[str, str], ...] = ()
     network_policies: tuple[dict[str, object], ...] = ()
     agent_python: dict[str, object] | None = None
+    agent_chemistry: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -121,6 +122,16 @@ def materialize_job_config(
             },
             "package_install_policy": lock.agent_python.package_install_policy,
             "preinstalled_packages": list(lock.agent_python.preinstalled_packages),
+        },
+        agent_chemistry={
+            "rdkit_version": lock.agent_chemistry.rdkit_version,
+            "rdkit_source": lock.agent_chemistry.rdkit_source,
+            "rdkit_wheel_sha256": lock.agent_chemistry.rdkit_wheel_sha256,
+            "numpy_version": lock.agent_chemistry.numpy_version,
+            "pillow_version": lock.agent_chemistry.pillow_version,
+            "xtb_version": lock.agent_chemistry.xtb_version,
+            "xtb_package": lock.agent_chemistry.xtb_package,
+            "xtb_source": lock.agent_chemistry.xtb_source,
         },
     )
 
@@ -245,6 +256,16 @@ def materialize_group_job_config(
             },
             "package_install_policy": lock.agent_python.package_install_policy,
             "preinstalled_packages": list(lock.agent_python.preinstalled_packages),
+        },
+        agent_chemistry={
+            "rdkit_version": lock.agent_chemistry.rdkit_version,
+            "rdkit_source": lock.agent_chemistry.rdkit_source,
+            "rdkit_wheel_sha256": lock.agent_chemistry.rdkit_wheel_sha256,
+            "numpy_version": lock.agent_chemistry.numpy_version,
+            "pillow_version": lock.agent_chemistry.pillow_version,
+            "xtb_version": lock.agent_chemistry.xtb_version,
+            "xtb_package": lock.agent_chemistry.xtb_package,
+            "xtb_source": lock.agent_chemistry.xtb_source,
         },
     )
 

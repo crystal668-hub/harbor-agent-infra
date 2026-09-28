@@ -103,8 +103,10 @@ def main() -> int:
         check(
             "agent-python-policy",
             lock.agent_python.package_install_policy == "agent-managed"
-            and not lock.agent_python.preinstalled_packages,
-            "Python/pip tools are locked; third-party packages remain agent-managed",
+            and set(lock.agent_python.preinstalled_packages)
+            == {"numpy==2.2.6", "Pillow==11.3.0", "rdkit==2025.9.6"},
+            "Python/pip and fixed chemistry packages are locked; "
+            "other packages remain agent-managed",
             blocker=True,
         )
         check(
@@ -148,8 +150,10 @@ def main() -> int:
                 f"pip --version | grep -F 'pip {lock.agent_python.pip_version} '; "
                 "python3 -m venv /tmp/hai-venv; "
                 "test \"$PIP_BREAK_SYSTEM_PACKAGES\" = 1; "
-                "python3 -m pip list --format=freeze | "
-                "grep -Ev '^(pip|setuptools|wheel)==' | (! grep .)",
+                "python3 -c 'from rdkit import Chem; "
+                "assert Chem.MolToSmiles(Chem.MolFromSmiles(\"CCO\")) == \"CCO\"'; "
+                "test \"$(xtb --version 2>&1 | grep -o 'xtb version [0-9.]*' "
+                "| head -1)\" = 'xtb version 6.5.1'",
             ],
             capture_output=True,
             text=True,
@@ -159,6 +163,25 @@ def main() -> int:
             "agent-python-tools",
             runtime_probe.returncode == 0,
             runtime_probe.stdout.strip() or runtime_probe.stderr.strip(),
+            blocker=True,
+        )
+        chemistry_probe = subprocess.run(
+            [
+                "docker", "run", "--rm", "--platform", lock.agent_base_image.platform,
+                "--entrypoint", "sh", lock.agent_base_image.immutable_reference,
+                "-lc",
+                "set -eu; python3 -c 'import rdkit, numpy, PIL'; "
+                "test \"$(xtb --version 2>&1 | grep -o 'xtb version [0-9.]*' "
+                "| head -1)\" = 'xtb version 6.5.1'",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        check(
+            "agent-chemistry-tools",
+            chemistry_probe.returncode == 0,
+            chemistry_probe.stdout.strip() or chemistry_probe.stderr.strip(),
             blocker=True,
         )
     check(

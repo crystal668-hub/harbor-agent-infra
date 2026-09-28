@@ -46,7 +46,7 @@
   },
   "agent_base_image": {
     "reference": "hai-openclaw-agent",
-    "digest": "sha256:4eeb46c007d075c00ca3644b68c669d6c7d9f3eff9eb684232b5df9d361bfd47",
+    "digest": "sha256:9da35f092c34756685497d869840f106e674676f6723182d5f5a1fd7952545f7",
     "platform": "linux/arm64"
   },
   "agent_python": {
@@ -61,6 +61,20 @@
       "version": "23.0.1"
     },
     "package_install_policy": "agent-managed",
-    "preinstalled_packages": []
+    "preinstalled_packages": [
+      "numpy==2.2.6",
+      "Pillow==11.3.0",
+      "rdkit==2025.9.6"
+    ]
+  },
+  "agent_chemistry": {
+    "rdkit_version": "2025.09.6",
+    "rdkit_source": "PyPI arm64 manylinux_2_28 wheel",
+    "rdkit_wheel_sha256": "d0ec921fee7f2908e1da8c4ea1185dbb6d0a22787bcf9749b442691c121c02ef",
+    "numpy_version": "2.2.6",
+    "pillow_version": "11.3.0",
+    "xtb_version": "6.5.1",
+    "xtb_package": "xtb=6.5.1-3",
+    "xtb_source": "Debian bookworm arm64 repository"
   }
 }
