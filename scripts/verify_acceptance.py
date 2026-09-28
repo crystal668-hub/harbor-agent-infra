@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -21,6 +23,10 @@ def _docker_ready() -> bool:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--paired-run-dir", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
     checks: list[dict[str, Any]] = []
 
     def check(name: str, ok: bool, detail: str, *, blocker: bool = False) -> None:
@@ -128,13 +134,119 @@ def main() -> int:
         bool(os.environ.get("HARBOR_REGISTRY_REFERENCE")),
         "HARBOR_REGISTRY_REFERENCE is configured; Registry acceptance is optional",
     )
+    if args.paired_run_dir is not None:
+        _check_paired_run(args.paired_run_dir, check)
     report = {
         "schema_version": "acceptance-report.v1",
         "complete": all(item["status"] == "pass" for item in checks if item["blocker"]),
         "checks": checks,
     }
-    print(json.dumps(report, indent=2, sort_keys=True))
+    encoded = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(encoded, encoding="utf-8")
+    else:
+        print(encoded, end="")
     return 0 if report["complete"] else 1
+
+
+def _check_paired_run(root: Path, check) -> None:
+    manifest_path = root / "runtime-manifest.json"
+    results_path = root / "results.json"
+    if not manifest_path.is_file() or not results_path.is_file():
+        check("paired-artifacts", False, "runtime manifest or results missing", blocker=True)
+        return
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    results = json.loads(results_path.read_text(encoding="utf-8"))
+    groups = {group["group_id"]: group for group in manifest["groups"]}
+    records = results["results"]
+    check(
+        "paired-status",
+        manifest["schema_version"] == "harbor-paired-runtime-manifest.v1"
+        and manifest["status"] == "completed"
+        and set(groups) == {"skills_on", "skills_off"},
+        f"status={manifest['status']}; groups={sorted(groups)}",
+        blocker=True,
+    )
+    on_skills = groups.get("skills_on", {}).get("injected_skills", [])
+    off_skills = groups.get("skills_off", {}).get("injected_skills", [])
+    check(
+        "paired-skill-injection",
+        len(on_skills) == 85 and off_skills == []
+        and len({item["name"] for item in on_skills}) == 85
+        and all(len(item["content_sha256"]) == 64 for item in on_skills),
+        f"skills_on={len(on_skills)}; skills_off={len(off_skills)}",
+        blocker=True,
+    )
+    task_sets = {
+        group_id: {record["task_name"] for record in records if record["group_id"] == group_id}
+        for group_id in ("skills_on", "skills_off")
+    }
+    check(
+        "paired-task-identity",
+        bool(task_sets["skills_on"]) and task_sets["skills_on"] == task_sets["skills_off"],
+        f"skills_on={len(task_sets['skills_on'])}; skills_off={len(task_sets['skills_off'])}",
+        blocker=True,
+    )
+    secret = os.environ.get("OPENAI_API_KEY")
+    secret_found = False
+    evidence_ok = True
+    rewards_ok = True
+    viewer_ok = True
+    from fastapi.testclient import TestClient
+    from harbor.cli.view import STATIC_DIR
+    from harbor.viewer import create_app
+
+    viewer = TestClient(create_app(root / "jobs", mode="jobs", static_dir=STATIC_DIR))
+    viewer_ok &= viewer.get("/").status_code == 200
+    jobs_response = viewer.get("/api/jobs")
+    viewer_ok &= jobs_response.status_code == 200 and jobs_response.json()["total"] == 2
+    for record in records:
+        trial_path = Path(record["trial_result_path"])
+        trial_dir = trial_path.parent
+        job_name = trial_dir.parent.name
+        trial_name = trial_dir.name
+        artifact_path = trial_dir / "verifier" / "vgb-evaluation.json"
+        evidence_ok &= all(
+            path.is_file() for path in (
+                trial_path, trial_dir / "config.json", trial_dir / "lock.json",
+                trial_dir / "agent" / "trajectory.json", artifact_path,
+            )
+        )
+        evidence_ok &= record.get("tool_audit_status") == "available"
+        evidence_ok &= bool(record.get("network_policy"))
+        evidence_ok &= all(Path(item["trial_result_path"]).is_file()
+                           for item in record.get("attempts", []))
+        if artifact_path.is_file():
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            reward = ((record.get("trial_result") or {}).get("verifier_result") or {}).get(
+                "rewards", {}
+            ).get("vgb_score")
+            score = (artifact.get("domain_result") or {}).get("scores", {}).get("score")
+            rewards_ok &= (
+                artifact.get("vgb_status") == "scored"
+                and isinstance(score, int | float) and not isinstance(score, bool)
+                and math.isfinite(score) and reward == score
+                and (record.get("vgb_domain_result") or {}).get("scores", {}).get("score")
+                == score
+            )
+        else:
+            rewards_ok = False
+        viewer_ok &= all(
+            viewer.get(f"/api/jobs/{job_name}/trials/{trial_name}{suffix}").status_code == 200
+            for suffix in ("", "/trajectory", "/verifier-output", "/files", "/artifacts")
+        )
+        if secret:
+            for path in trial_dir.rglob("*"):
+                if path.is_file() and secret.encode() in path.read_bytes():
+                    secret_found = True
+    check("paired-trial-evidence", evidence_ok, f"records={len(records)}", blocker=True)
+    check("paired-reward-parity", rewards_ok, "Harbor reward equals VGB artifact and Infra score",
+          blocker=True)
+    check("paired-viewer", viewer_ok and STATIC_DIR.is_dir(), "official Viewer API and UI",
+          blocker=True)
+    check("paired-secret-absence", bool(secret) and not secret_found,
+          "configured provider key absent from trial files", blocker=True)
 
 
 if __name__ == "__main__":
