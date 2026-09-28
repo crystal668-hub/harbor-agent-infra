@@ -32,6 +32,8 @@ def test_locked_agent_image_has_fixed_chemistry_tools() -> None:
             "--entrypoint", "sh", lock.agent_base_image.immutable_reference,
             "-lc",
             "python --version && python3 --version && pip --version && pip3 --version "
+            "&& command -v bash && command -v curl && command -v git "
+            "&& command -v pgrep && command -v rg && command -v xz "
             "&& python -m venv /tmp/hai-venv "
             "&& test \"$PIP_BREAK_SYSTEM_PACKAGES\" = 1 "
             "&& python -c 'from rdkit import Chem; "

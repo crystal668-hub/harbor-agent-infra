@@ -25,4 +25,4 @@ docker run --rm --platform linux/arm64 --entrypoint python3 "$digest" \
   -c 'import sys; print(sys.version.split()[0])'
 docker run --rm --platform linux/arm64 --entrypoint pip3 "$digest" --version
 docker run --rm --platform linux/arm64 --entrypoint sh "$digest" -lc \
-  'python3 -c "from rdkit import Chem; print(Chem.MolToSmiles(Chem.MolFromSmiles(\"CCO\")))" && xtb --version | grep -q "xtb version 6.5.1"'
+  'command -v bash && command -v curl && command -v git && command -v pgrep && command -v rg && command -v xz && python3 -c "from rdkit import Chem; print(Chem.MolToSmiles(Chem.MolFromSmiles(\"CCO\")))" && xtb --version | grep -q "xtb version 6.5.1"'

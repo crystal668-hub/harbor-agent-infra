@@ -15,14 +15,26 @@ ARG PILLOW_VERSION
 ARG PILLOW_WHEEL_SHA256
 ARG XTB_DEBIAN_VERSION
 
-# The benchmark skills choose their own third-party Python dependencies at run time.
-# Keep the image limited to the interpreter, pip, and venv support.
-RUN apt-get update \
-    && apt-get install --no-install-recommends --yes \
+# Keep the Harbor built-in agent installers off the network-dependent system-package
+# path. Agent CLIs themselves are still installed by Harbor inside each Trial.
+RUN for attempt in 1 2 3 4 5; do \
+      apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=120 update \
+        && break; \
+      test "$attempt" -lt 5 || exit 1; \
+      sleep 5; \
+    done \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=120 \
+      install --no-install-recommends --yes \
+        bash \
         ca-certificates \
+        curl \
+        git \
+        procps \
         python3 \
         python3-pip \
         python3-venv \
+        ripgrep \
+        xz-utils \
         xtb=${XTB_DEBIAN_VERSION} \
     && ln -sf /usr/bin/python3 /usr/local/bin/python \
     && ln -sf /usr/bin/pip3 /usr/local/bin/pip \
