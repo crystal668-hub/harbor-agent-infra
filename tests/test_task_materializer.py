@@ -147,6 +147,11 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
     assert off.job_config.job_name == "paired-skills_off"
     assert on.job_config.jobs_dir == off.job_config.jobs_dir
     assert on.job_config.job_name != off.job_config.job_name
+    assert on.network_policies == off.network_policies
+    assert on.network_policies[0]["agent"] == {
+        "network_mode": "public",
+        "allowed_hosts": [],
+    }
 
 
 def test_skills_on_rejects_missing_skill_directory(tmp_path: Path) -> None:

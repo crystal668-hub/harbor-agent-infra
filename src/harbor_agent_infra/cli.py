@@ -86,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
                         "skill_allowlist_file_sha256": materialized.skill_allowlist_file_sha256,
                         "skills_root": materialized.skills_root,
                         "injected_skills": materialized.injected_skills,
+                        "network_policies": materialized.network_policies,
                         "profile_name": materialized.profile_name,
                         "resource_config_sha256": materialized.resource_config_sha256,
                         "preflight": asdict(materialized.preflight),

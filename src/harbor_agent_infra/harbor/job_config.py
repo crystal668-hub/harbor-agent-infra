@@ -5,7 +5,10 @@ from pathlib import Path
 
 from harbor import JobConfig, RetryConfig
 from harbor.models.environment_type import EnvironmentType
+from harbor.models.task.config import TaskConfig as HarborTaskConfig
+from harbor.models.task.verifier_mode import resolve_task_verifier_mode
 from harbor.models.trial.config import AgentConfig, EnvironmentConfig, TaskConfig
+from harbor.trial.network_policy import resolve_trial_network_plan
 
 from harbor_agent_infra.contracts.experiment import (
     ExperimentGroupSpec,
@@ -41,6 +44,7 @@ class MaterializedJob:
     skill_allowlist_file_sha256: str | None = None
     skills_root: str | None = None
     injected_skills: tuple[dict[str, str], ...] = ()
+    network_policies: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -177,6 +181,26 @@ def materialize_group_job_config(
         ],
         tasks=list(tasks),
     )
+    network_policies = []
+    for task in tasks:
+        task_path = Path(task.path)
+        task_config = HarborTaskConfig.model_validate_toml(
+            (task_path / "task.toml").read_text(encoding="utf-8")
+        )
+        plan = resolve_trial_network_plan(
+            task_config,
+            job_config.agents[0],
+            job_config.environment,
+            None,
+            verifier_mode=resolve_task_verifier_mode(task_config),
+        )
+        network_policies.append(
+            {
+                "task_name": task_path.name,
+                "agent": plan.agent_phase.model_dump(mode="json"),
+                "verifier": plan.verifier_phase.model_dump(mode="json"),
+            }
+        )
     return MaterializedJob(
         job_config=job_config,
         experiment_sha256=experiment_sha256(spec),
@@ -191,6 +215,7 @@ def materialize_group_job_config(
         skill_allowlist_file_sha256=allowlist_file_digest,
         skills_root=str(skills_root.resolve()) if group.skills_enabled else None,
         injected_skills=injected_skills,
+        network_policies=tuple(network_policies),
     )
 
 

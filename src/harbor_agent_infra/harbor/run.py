@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -144,9 +145,16 @@ async def _evaluate_group_records(record_root: Path, runtime: VgbRuntime) -> Non
 class RunEventSink:
     """Append-only lifecycle events for a paired run."""
 
-    def __init__(self, path: Path, *, run_id: str):
+    def __init__(
+        self,
+        path: Path,
+        *,
+        run_id: str,
+        network_policies: dict[str, dict[str, dict[str, object]]] | None = None,
+    ):
         self.path = path
         self.run_id = run_id
+        self.network_policies = network_policies or {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     async def __call__(self, event: TrialHookEvent, *, group_id: str) -> None:
@@ -192,6 +200,8 @@ class RunEventSink:
             "record_id": event.trial_name,
             "trial_name": event.trial_name,
             "task_name": event.task_name,
+            "trial_result_path": str(Path(result.trial_uri) / "results.json"),
+            "network_policy": self.network_policies.get(group_id, {}).get(event.task_name),
             "track": event.task_name,
             "eval_kind": "vgb",
             "run_lifecycle_status": status,
@@ -278,7 +288,6 @@ async def run_paired_jobs(
     output_root.mkdir(parents=True, exist_ok=True)
     run_id = output_root.name
     started_at = datetime.now(UTC).isoformat()
-    events = RunEventSink(output_root / "events" / "trials.jsonl", run_id=run_id)
     materialized: MaterializedPairedJobs = materialize_paired_job_configs(
         spec,
         resource_config,
@@ -286,8 +295,148 @@ async def run_paired_jobs(
         output_root=output_root,
         skills_root=skills_root,
     )
+    events = RunEventSink(
+        output_root / "events" / "trials.jsonl",
+        run_id=run_id,
+        network_policies={
+            group_id: {
+                str(policy["task_name"]): policy
+                for policy in group.network_policies
+            }
+            for group_id, group in materialized.groups.items()
+        },
+    )
     groups: list[GroupRunResult] = []
     errors: list[dict[str, str]] = []
+    cancelled = False
+
+    def write_outputs() -> dict[str, Any]:
+        finished_at = datetime.now(UTC).isoformat() if len(groups) == 2 or cancelled else None
+        if cancelled:
+            status = "cancelled"
+        elif len(groups) < 2:
+            status = "running"
+        elif errors or any(group.status != "completed" for group in groups):
+            status = "partial"
+        else:
+            status = "completed"
+        records = [
+            json.loads(path.read_text(encoding="utf-8"))
+            for group_id in materialized.groups
+            for path in sorted((output_root / "per-record" / group_id).glob("*.json"))
+            if path.is_file()
+        ]
+        summary = {
+            item.group_id: {
+                "records": sum(record.get("group_id") == item.group_id for record in records),
+                "status": item.status,
+                "errors": item.n_errors,
+                "cancelled": item.n_cancelled,
+            }
+            for item in groups
+        }
+        results_payload = {
+            "schema_version": 5,
+            "run_id": run_id,
+            "records": len(records),
+            "results": records,
+            "groups": [
+                {"id": item.group_id, "status": item.status,
+                 "skills_enabled": item.group_id == "skills_on"}
+                for item in groups
+            ],
+            "summary": {"group_order": [item.group_id for item in groups], "groups": summary},
+            "errors": errors,
+        }
+        (output_root / "results.json").write_text(
+            json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        lock_path = Path(spec.benchmark.package_lock)
+        lock_payload = json.loads(lock_path.read_text(encoding="utf-8"))
+        manifest = {
+            "schema_version": "harbor-paired-runtime-manifest.v1",
+            "run_id": run_id,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "status": status,
+            "experiment_sha256": next(iter(materialized.groups.values())).experiment_sha256,
+            "resource_config_sha256": next(
+                iter(materialized.groups.values())
+            ).resource_config_sha256,
+            "vgb_runtime": {
+                "python_executable": str(runtime.python_executable.resolve()),
+                "lock_path": str(lock_path.resolve()),
+                "lock_sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
+                "package": lock_payload["vgb"],
+            },
+            "image": spec.image.model_dump(mode="json"),
+            "jobs_root": str(output_root / "jobs"),
+            "execution_order": [group.id for group in spec.groups],
+            "n_attempts": spec.retry.n_attempts,
+            "retry": {"max_retries": spec.retry.max_retries},
+            "concurrency": {
+                "max_concurrent_trials": resource_config.capacity.max_concurrent_trials
+            },
+            "cancellation_policy": "Harbor cancellation; preserve completed trial artifacts",
+            "paths": {
+                "events": str(events.path),
+                "per_record": str(output_root / "per-record"),
+                "results": str(output_root / "results.json"),
+                "viewer_jobs": str(output_root / "jobs"),
+            },
+            "groups": [
+                {
+                    "group_id": group_id,
+                    "skills_enabled": group_id == "skills_on",
+                    "skill_allowlist_path": group.skill_allowlist_path,
+                    "skill_allowlist_sha256": group.skill_allowlist_sha256,
+                    "skill_allowlist_file_sha256": group.skill_allowlist_file_sha256,
+                    "skills_root": group.skills_root,
+                    "injected_skills": group.injected_skills,
+                    "job_config": group.job_config.model_dump(mode="json"),
+                    "network_policies": group.network_policies,
+                    "job_id": next(
+                        (item.job_id for item in groups if item.group_id == group_id), None
+                    ),
+                    "job_dir": next(
+                        (str(item.job_dir) for item in groups if item.group_id == group_id), None
+                    ),
+                    "status": next(
+                        (item.status for item in groups if item.group_id == group_id), "pending"
+                    ),
+                }
+                for group_id, group in materialized.groups.items()
+            ],
+            "group_summary": summary,
+            "errors": errors,
+            "partial_run": status != "completed",
+            "resume": {"supported": False},
+        }
+        (output_root / "runtime-manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        legacy = {
+            "schema_version": "harbor-paired-run.v1",
+            "run_id": run_id,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "events_path": str(events.path),
+            "per_record_root": str(output_root / "per-record"),
+            "errors": errors,
+            "groups": [
+                {"group_id": item.group_id, "job_id": item.job_id,
+                 "job_dir": str(item.job_dir), "status": item.status,
+                 "n_trials": item.n_trials, "n_errors": item.n_errors,
+                 "n_cancelled": item.n_cancelled}
+                for item in groups
+            ],
+        }
+        (output_root / "run-manifest.json").write_text(
+            json.dumps(legacy, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return json.loads(json.dumps(manifest))
+
+    write_outputs()
     for group_id in ("skills_on", "skills_off"):
         config: JobConfig = materialized.groups[group_id].job_config
         job = None
@@ -299,6 +448,13 @@ async def run_paired_jobs(
             result = await job.run()
         except asyncio.CancelledError:
             status = "cancelled"
+            cancelled = True
+            groups.append(
+                GroupRunResult(group_id, str(job.id) if job else "",
+                               job.job_dir if job else config.jobs_dir / config.job_name,
+                               status, len(job) if job else 0, 0, 1)
+            )
+            write_outputs()
             raise
         except Exception as exc:
             status = "failed"
@@ -314,6 +470,7 @@ async def run_paired_jobs(
                     n_cancelled=0,
                 )
             )
+            write_outputs()
             continue
         else:
             if result.stats.n_cancelled_trials:
@@ -332,68 +489,5 @@ async def run_paired_jobs(
                 )
             )
             await _evaluate_group_records(output_root / "per-record" / group_id, runtime)
-    payload = {
-        "schema_version": "harbor-paired-run.v1",
-        "run_id": run_id,
-        "started_at": started_at,
-        "finished_at": datetime.now(UTC).isoformat(),
-        "events_path": str(events.path),
-        "per_record_root": str(output_root / "per-record"),
-        "errors": errors,
-        "groups": [
-            {
-                "group_id": item.group_id,
-                "job_id": item.job_id,
-                "job_dir": str(item.job_dir),
-                "status": item.status,
-                "n_trials": item.n_trials,
-                "n_errors": item.n_errors,
-                "n_cancelled": item.n_cancelled,
-            }
-            for item in groups
-        ],
-    }
-    (output_root / "run-manifest.json").write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    records = []
-    for group in groups:
-        record_root = output_root / "per-record" / group.group_id
-        records.extend(
-            json.loads(path.read_text(encoding="utf-8"))
-            for path in sorted(record_root.glob("*.json"))
-            if path.is_file()
-        )
-    results_payload = {
-        "schema_version": 5,
-        "run_id": run_id,
-        "records": len(records),
-        "results": records,
-        "groups": [
-            {
-                "id": item.group_id,
-                "status": item.status,
-                "skills_enabled": item.group_id == "skills_on",
-            }
-            for item in groups
-        ],
-        "summary": {
-            "group_order": [item.group_id for item in groups],
-            "groups": {
-                item.group_id: {
-                    "records": sum(
-                        1 for record in records if record.get("group_id") == item.group_id
-                    ),
-                    "status": item.status,
-                    "errors": item.n_errors,
-                    "cancelled": item.n_cancelled,
-                }
-                for item in groups
-            },
-        },
-        "errors": errors,
-    }
-    (output_root / "results.json").write_text(
-        json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    return payload
+        write_outputs()
+    return write_outputs()

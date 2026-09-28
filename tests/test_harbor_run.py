@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+from test_task_materializer import FakeVgbRuntime, _resources, _spec
+
+from harbor_agent_infra.harbor import run as run_module
 from harbor_agent_infra.harbor.run import RunEventSink, _evaluate_record_file
 
 
@@ -36,6 +41,7 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     assert record["schema_version"] == 5
     assert record["skills_enabled"] is True
     assert record["raw"]["harbor_trial_result"] == {}
+    assert record["trial_result_path"] == payload["trial_result_path"]
 
 
 def test_run_event_sink_persists_cancelled_trial_event(tmp_path: Path) -> None:
@@ -112,3 +118,92 @@ def test_evaluate_record_file_adds_vgb_result_and_preserves_harbor_raw(tmp_path:
     assert evaluated["raw"]["harbor_trial_result"]["id"] == "trial"
     assert evaluated["raw"]["vgb_domain_result"]["status"] == "scored"
     assert evaluated["runner_meta"]["vgb_evaluation"]["track"] == "open_generation_rdkit"
+
+
+def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    skills_root = tmp_path / "skills"
+    for name in ("rdkit", "ase"):
+        (skills_root / name).mkdir(parents=True)
+    runtime = FakeVgbRuntime()
+    runtime.python_executable = Path(sys.executable)
+
+    class FakeJob:
+        def __init__(self, config):
+            self.id = config.job_name
+            self.job_dir = config.jobs_dir / config.job_name
+
+        @classmethod
+        async def create(cls, config):
+            return cls(config)
+
+        def on_trial_ended(self, callback):
+            pass
+
+        def on_trial_cancelled(self, callback):
+            pass
+
+        async def run(self):
+            return SimpleNamespace(
+                id=self.id,
+                n_total_trials=0,
+                stats=SimpleNamespace(n_cancelled_trials=0, n_errored_trials=0),
+            )
+
+    monkeypatch.setattr(run_module, "Job", FakeJob)
+    root = tmp_path / "run"
+    manifest = asyncio.run(
+        run_module.run_paired_jobs(
+            spec, _resources(), runtime, output_root=root, skills_root=skills_root
+        )
+    )
+    assert manifest == json.loads((root / "runtime-manifest.json").read_text())
+    assert manifest["status"] == "completed"
+    assert manifest["vgb_runtime"]["package"]["version"] == "0.10.0"
+    assert manifest["groups"][0]["injected_skills"][0]["name"] == "rdkit"
+    assert manifest["groups"][1]["injected_skills"] == []
+    assert manifest["groups"][0]["network_policies"][0]["agent"]["network_mode"] == "public"
+    assert json.loads((root / "results.json").read_text())["groups"][1]["id"] == "skills_off"
+
+
+def test_paired_run_preserves_manifest_on_cancel(monkeypatch, tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    skills_root = tmp_path / "skills"
+    for name in ("rdkit", "ase"):
+        (skills_root / name).mkdir(parents=True)
+    runtime = FakeVgbRuntime()
+    runtime.python_executable = Path(sys.executable)
+
+    class CancelledJob:
+        id = "cancelled-job"
+
+        @classmethod
+        async def create(cls, config):
+            instance = cls()
+            instance.job_dir = config.jobs_dir / config.job_name
+            return instance
+
+        def on_trial_ended(self, callback):
+            pass
+
+        def on_trial_cancelled(self, callback):
+            pass
+
+        def __len__(self):
+            return 1
+
+        async def run(self):
+            raise asyncio.CancelledError
+
+    monkeypatch.setattr(run_module, "Job", CancelledJob)
+    root = tmp_path / "cancelled"
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(
+            run_module.run_paired_jobs(
+                spec, _resources(), runtime, output_root=root, skills_root=skills_root
+            )
+        )
+    manifest = json.loads((root / "runtime-manifest.json").read_text())
+    assert manifest["status"] == "cancelled"
+    assert manifest["groups"][0]["status"] == "cancelled"
+    assert manifest["groups"][1]["status"] == "pending"
