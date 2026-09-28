@@ -180,6 +180,7 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     assert manifest == json.loads((root / "runtime-manifest.json").read_text())
     assert manifest["status"] == "completed"
     assert manifest["vgb_runtime"]["package"]["version"] == "0.10.0"
+    assert manifest["vgb_runtime"]["actual_metadata"]["version"] == "0.10.0"
     assert manifest["groups"][0]["injected_skills"][0]["name"] == "rdkit"
     assert manifest["groups"][1]["injected_skills"] == []
     assert manifest["groups"][0]["network_policies"][0]["agent"]["network_mode"] == "public"
@@ -193,6 +194,20 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     assert resumed["resume"] == {
         "supported": True, "resumed": True, "previous_status": "completed"
     }
+
+
+def test_paired_run_rejects_wrong_vgb_runtime_before_materialization(tmp_path: Path) -> None:
+    runtime = FakeVgbRuntime()
+    runtime.metadata = lambda: {
+        **FakeVgbRuntime.metadata(runtime), "version": "0.9.0"
+    }
+    with pytest.raises(ValueError, match="metadata does not match"):
+        asyncio.run(
+            run_module.run_paired_jobs(
+                _spec(tmp_path), _resources(), runtime, output_root=tmp_path / "run"
+            )
+        )
+    assert not (tmp_path / "run" / "tasks").exists()
 
 
 def test_paired_run_preserves_manifest_on_cancel(monkeypatch, tmp_path: Path) -> None:

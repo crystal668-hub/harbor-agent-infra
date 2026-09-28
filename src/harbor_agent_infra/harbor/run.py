@@ -317,6 +317,15 @@ async def run_paired_jobs(
     """Run skills_on and skills_off as sequential native Harbor jobs."""
     output_root.mkdir(parents=True, exist_ok=True)
     run_id = output_root.name
+    lock_path = Path(spec.benchmark.package_lock)
+    lock_payload = json.loads(lock_path.read_text(encoding="utf-8"))
+    runtime_metadata = runtime.metadata()
+    if (
+        runtime_metadata.get("package") != lock_payload["vgb"]["package"]
+        or runtime_metadata.get("version") != lock_payload["vgb"]["version"]
+        or runtime_metadata.get("tracks") != lock_payload["vgb"]["tracks"]
+    ):
+        raise ValueError("VGB runtime metadata does not match the runtime lock")
     previous_manifest_path = output_root / "runtime-manifest.json"
     previous_manifest = (
         json.loads(previous_manifest_path.read_text(encoding="utf-8"))
@@ -437,8 +446,6 @@ async def run_paired_jobs(
         (output_root / "results.json").write_text(
             json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-        lock_path = Path(spec.benchmark.package_lock)
-        lock_payload = json.loads(lock_path.read_text(encoding="utf-8"))
         manifest = {
             "schema_version": "harbor-paired-runtime-manifest.v1",
             "run_id": run_id,
@@ -454,6 +461,8 @@ async def run_paired_jobs(
                 "lock_path": str(lock_path.resolve()),
                 "lock_sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
                 "package": lock_payload["vgb"],
+                "actual_metadata": runtime_metadata,
+                "pythonpath_cleared_for_subprocess": True,
             },
             "image": spec.image.model_dump(mode="json"),
             "jobs_root": str(output_root / "jobs"),

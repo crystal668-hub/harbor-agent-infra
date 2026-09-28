@@ -16,7 +16,14 @@ from harbor_agent_infra.harbor.task_materializer import materialize_vgb_tasks, t
 
 class FakeVgbRuntime:
     def metadata(self) -> dict[str, object]:
-        return {"tracks": ["open_generation_rdkit"]}
+        return {
+            "package": "verifier-grounded-benchmark",
+            "version": "0.10.0",
+            "tracks": [
+                "open_generation_rdkit", "open_generation_xtb",
+                "property_calculation_advanced", "property_calculation_basic",
+            ],
+        }
 
     def prompts(self, track: str) -> list[dict[str, object]]:
         assert track == "open_generation_rdkit"
