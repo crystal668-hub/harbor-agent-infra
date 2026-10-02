@@ -17,7 +17,10 @@ from harbor_agent_infra.contracts.experiment import (
 )
 from harbor_agent_infra.contracts.resource_profile import ResourceConfig
 from harbor_agent_infra.harbor.preflight import CapabilityPreflight, preflight_docker_resources
-from harbor_agent_infra.harbor.task_materializer import materialize_vgb_tasks
+from harbor_agent_infra.harbor.task_materializer import (
+    TaskRuntimeSettings,
+    materialize_vgb_tasks,
+)
 from harbor_agent_infra.preparation.experiments import experiment_sha256
 from harbor_agent_infra.preparation.resource_profiles import config_sha256, select_profile
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
@@ -144,6 +147,7 @@ def materialize_group_job_config(
     tasks: tuple[TaskConfig, ...],
     output_root: Path,
     skills_root: Path | None = None,
+    delete_containers: bool = True,
 ) -> MaterializedJob:
     """Project one paired experiment group into a native Harbor JobConfig."""
     if not tasks:
@@ -191,7 +195,7 @@ def materialize_group_job_config(
         retry=RetryConfig(max_retries=spec.retry.max_retries),
         environment=EnvironmentConfig(
             type=EnvironmentType.DOCKER,
-            delete=True,
+            delete=delete_containers,
             cpu_enforcement_policy=profile.cpu_enforcement_policy,
             memory_enforcement_policy=profile.memory_enforcement_policy,
             override_cpus=int(profile.cpus),
@@ -277,6 +281,8 @@ def materialize_paired_job_configs(
     *,
     output_root: Path,
     skills_root: Path | None = None,
+    task_settings: TaskRuntimeSettings | None = None,
+    delete_containers: bool = True,
 ) -> MaterializedPairedJobs:
     """Materialize one task set and one native JobConfig per experiment group."""
     lock = _locked_image(spec)
@@ -285,6 +291,7 @@ def materialize_paired_job_configs(
         spec,
         output_root=output_root,
         image=lock.agent_base_image.immutable_reference,
+        task_settings=task_settings,
     )
     groups = {
         group.id: materialize_group_job_config(
@@ -294,6 +301,7 @@ def materialize_paired_job_configs(
             tasks=tasks,
             output_root=output_root,
             skills_root=skills_root,
+            delete_containers=delete_containers,
         )
         for group in spec.groups
     }

@@ -43,14 +43,18 @@ class VgbRuntime:
     python_executable: Path
 
     @classmethod
+    def from_executable(cls, executable: str | Path) -> VgbRuntime:
+        path = Path(executable).absolute()
+        if not path.is_file():
+            raise VgbRuntimeError(f"VGB Python executable does not exist: {path}")
+        return cls(path)
+
+    @classmethod
     def from_environment(cls) -> VgbRuntime:
         configured = os.environ.get("VGB_PYTHON")
         if not configured:
             raise VgbRuntimeError("VGB_PYTHON must point to the isolated official VGB runtime")
-        path = Path(configured).absolute()
-        if not path.is_file():
-            raise VgbRuntimeError(f"VGB Python executable does not exist: {path}")
-        return cls(path)
+        return cls.from_executable(configured)
 
     def call(self, operation: str, **payload: Any) -> Any:
         request = {"operation": operation, **payload}

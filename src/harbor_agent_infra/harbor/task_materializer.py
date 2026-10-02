@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from harbor.models.trial.config import TaskConfig
 
@@ -10,7 +12,23 @@ from integrations.vgb.prompts import materialize_prompt
 from integrations.vgb.runtime import VgbRuntime
 
 
-def _write_task(task_dir: Path, *, image: str, prompt: str) -> None:
+@dataclass(frozen=True)
+class TaskRuntimeSettings:
+    agent_timeout_sec: float = 900.0
+    verifier_timeout_sec: float = 60.0
+    agent_network_mode: Literal["no-network", "allowlist", "public"] = "public"
+    agent_allowed_hosts: tuple[str, ...] = ()
+    verifier_network_mode: Literal["no-network", "allowlist", "public"] = "public"
+    verifier_allowed_hosts: tuple[str, ...] = ()
+
+
+def _write_task(
+    task_dir: Path,
+    *,
+    image: str,
+    prompt: str,
+    settings: TaskRuntimeSettings,
+) -> None:
     task_dir.mkdir(parents=True, exist_ok=True)
     (task_dir / "environment").mkdir(exist_ok=True)
     (task_dir / "solution").mkdir(exist_ok=True)
@@ -21,9 +39,13 @@ def _write_task(task_dir: Path, *, image: str, prompt: str) -> None:
         "[metadata]\n"
         "description = \"Harbor VGB task\"\n\n"
         "[verifier]\n"
-        "timeout_sec = 60.0\n\n"
+        f"timeout_sec = {settings.verifier_timeout_sec}\n"
+        f"network_mode = {json.dumps(settings.verifier_network_mode)}\n"
+        f"allowed_hosts = {json.dumps(list(settings.verifier_allowed_hosts))}\n\n"
         "[agent]\n"
-        "timeout_sec = 900.0\n\n"
+        f"timeout_sec = {settings.agent_timeout_sec}\n"
+        f"network_mode = {json.dumps(settings.agent_network_mode)}\n"
+        f"allowed_hosts = {json.dumps(list(settings.agent_allowed_hosts))}\n\n"
         "[environment]\n"
         f'docker_image = {json.dumps(image)}\n'
         'os = "linux"\n',
@@ -52,9 +74,11 @@ def materialize_vgb_tasks(
     *,
     output_root: Path,
     image: str,
+    task_settings: TaskRuntimeSettings | None = None,
 ) -> tuple[TaskConfig, ...]:
     """Materialize configured VGB prompts as Harbor local task definitions."""
     task_configs: list[TaskConfig] = []
+    settings = task_settings or TaskRuntimeSettings()
     for case in spec.benchmark.cases:
         for task_id in case.task_ids:
             task_dir = _case_task_dir(output_root, case, task_id)
@@ -65,7 +89,12 @@ def materialize_vgb_tasks(
                 task_id=task_id,
                 output_path=prompt_path,
             )
-            _write_task(task_dir, image=image, prompt=prompt_record["prompt"])
+            _write_task(
+                task_dir,
+                image=image,
+                prompt=prompt_record["prompt"],
+                settings=settings,
+            )
             task_configs.append(TaskConfig(path=task_dir))
     return tuple(task_configs)
 

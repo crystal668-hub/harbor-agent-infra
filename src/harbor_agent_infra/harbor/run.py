@@ -19,6 +19,7 @@ from harbor_agent_infra.harbor.job_config import (
     MaterializedPairedJobs,
     materialize_paired_job_configs,
 )
+from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from integrations.vgb.agent_output import response_from_openclaw_log
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.result_projection import project_schema_v5
@@ -328,6 +329,8 @@ async def run_paired_jobs(
     *,
     output_root: Path,
     skills_root: Path | None = None,
+    task_settings: TaskRuntimeSettings | None = None,
+    delete_containers: bool = True,
 ) -> dict[str, Any]:
     """Run skills_on and skills_off as sequential native Harbor jobs."""
     output_root.mkdir(parents=True, exist_ok=True)
@@ -355,6 +358,8 @@ async def run_paired_jobs(
         runtime,
         output_root=output_root,
         skills_root=skills_root,
+        task_settings=task_settings,
+        delete_containers=delete_containers,
     )
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))

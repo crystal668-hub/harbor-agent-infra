@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from harbor.models.task.config import TaskConfig as HarborTaskConfig
 
 from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
 from harbor_agent_infra.contracts.resource_profile import ResourceConfig
@@ -11,7 +12,11 @@ from harbor_agent_infra.harbor.job_config import (
     materialize_group_job_config,
     materialize_paired_job_configs,
 )
-from harbor_agent_infra.harbor.task_materializer import materialize_vgb_tasks, task_identity
+from harbor_agent_infra.harbor.task_materializer import (
+    TaskRuntimeSettings,
+    materialize_vgb_tasks,
+    task_identity,
+)
 
 
 class FakeVgbRuntime:
@@ -109,6 +114,31 @@ def test_materialize_vgb_tasks_writes_harbor_task(tmp_path: Path) -> None:
     assert task_identity(tasks) == (str(task_dir),)
     prompt = json.loads((task_dir / "agent-trial-input.v1.json").read_text())
     assert prompt["task_id"] == "rdkit_001_qed_max"
+
+
+def test_materialize_vgb_tasks_applies_runtime_task_settings(tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    tasks = materialize_vgb_tasks(
+        FakeVgbRuntime(),
+        spec,
+        output_root=tmp_path / "run",
+        image="hai-openclaw-agent",
+        task_settings=TaskRuntimeSettings(
+            agent_timeout_sec=120,
+            verifier_timeout_sec=30,
+            agent_network_mode="allowlist",
+            agent_allowed_hosts=("api.example.test",),
+            verifier_network_mode="no-network",
+        ),
+    )
+    parsed = HarborTaskConfig.model_validate_toml(
+        (Path(tasks[0].path) / "task.toml").read_text(encoding="utf-8")
+    )
+    assert parsed.agent.timeout_sec == 120
+    assert parsed.agent.network_mode.value == "allowlist"
+    assert parsed.agent.allowed_hosts == ["api.example.test"]
+    assert parsed.verifier.timeout_sec == 30
+    assert parsed.verifier.network_mode.value == "no-network"
 
 
 def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path) -> None:

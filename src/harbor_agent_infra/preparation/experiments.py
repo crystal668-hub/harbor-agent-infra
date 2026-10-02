@@ -17,11 +17,11 @@ from harbor_agent_infra.contracts.experiment import (
 _PLACEHOLDER = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
-def _expand_required(value: object) -> object:
+def expand_required(value: object) -> object:
     if isinstance(value, dict):
-        return {str(key): _expand_required(item) for key, item in value.items()}
+        return {str(key): expand_required(item) for key, item in value.items()}
     if isinstance(value, list):
-        return [_expand_required(item) for item in value]
+        return [expand_required(item) for item in value]
     if not isinstance(value, str):
         return value
 
@@ -42,7 +42,7 @@ def load_experiment(path: Path) -> ExperimentConfig:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("experiment config must contain a YAML mapping")
-    expanded = _expand_required(payload)
+    expanded = expand_required(payload)
     schema_version = expanded.get("schema_version")
     if schema_version == "experiment.v2":
         return ExperimentSpecV2.model_validate(expanded)

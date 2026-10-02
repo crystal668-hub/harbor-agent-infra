@@ -13,9 +13,11 @@ from harbor_agent_infra.harbor.job_config import (
     materialize_paired_job_configs,
 )
 from harbor_agent_infra.harbor.run import run_paired_jobs
+from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.preparation.experiments import load_experiment
 from harbor_agent_infra.preparation.image_manager import inspect_image
 from harbor_agent_infra.preparation.resource_profiles import load_resource_config
+from harbor_agent_infra.preparation.run_config import load_run_config
 from integrations.vgb.runtime import VgbRuntime
 
 
@@ -32,18 +34,22 @@ def build_parser() -> argparse.ArgumentParser:
     materialize = subparsers.add_parser(
         "materialize", help="validate an experiment and emit a Harbor JobConfig snapshot"
     )
-    materialize.add_argument("--experiment", type=Path, required=True)
-    materialize.add_argument("--resource-config", type=Path, required=True)
-    materialize.add_argument("--output", type=Path, required=True)
+    materialize_sources = materialize.add_mutually_exclusive_group(required=True)
+    materialize_sources.add_argument("--config", type=Path)
+    materialize_sources.add_argument("--experiment", type=Path)
+    materialize.add_argument("--resource-config", type=Path)
+    materialize.add_argument("--output", type=Path)
     materialize.add_argument(
         "--skills-root",
         type=Path,
         help="root directory containing the allowlisted skill directories for experiment.v2",
     )
     run = subparsers.add_parser("run", help="run an experiment through Harbor")
-    run.add_argument("--experiment", type=Path, required=True)
-    run.add_argument("--resource-config", type=Path, required=True)
-    run.add_argument("--output-dir", type=Path, required=True)
+    run_sources = run.add_mutually_exclusive_group(required=True)
+    run_sources.add_argument("--config", type=Path)
+    run_sources.add_argument("--experiment", type=Path)
+    run.add_argument("--resource-config", type=Path)
+    run.add_argument("--output-dir", type=Path)
     run.add_argument("--skills-root", type=Path)
     viewer = subparsers.add_parser("view", help="browse native Harbor job results")
     viewer.add_argument("--jobs-dir", type=Path, required=True)
@@ -64,15 +70,36 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         return run_doctor()
     if args.command == "materialize":
-        spec = load_experiment(args.experiment)
-        resources = load_resource_config(args.resource_config)
+        if args.config:
+            config = load_run_config(args.config)
+            spec = config.experiment
+            resources = config.resources
+            runtime = VgbRuntime.from_executable(config.run.vgb_python)
+            output = args.output or Path(config.run.output_dir) / "materialized.json"
+            skills_root = Path(args.skills_root or config.run.skills_root)
+            task_settings = _task_settings(config)
+            delete_containers = config.docker.delete_containers
+        else:
+            if args.resource_config is None or args.output is None:
+                raise ValueError("--resource-config and --output are required with --experiment")
+            spec = load_experiment(args.experiment)
+            resources = load_resource_config(args.resource_config)
+            runtime = VgbRuntime.from_environment() if isinstance(spec, ExperimentSpecV2) else None
+            output = args.output
+            skills_root = args.skills_root
+            task_settings = None
+            delete_containers = True
         if isinstance(spec, ExperimentSpecV2):
+            if runtime is None:
+                raise AssertionError("paired materialization requires a VGB runtime")
             paired = materialize_paired_job_configs(
                 spec,
                 resources,
-                VgbRuntime.from_environment(),
-                output_root=args.output.parent,
-                skills_root=args.skills_root,
+                runtime,
+                output_root=output.parent,
+                skills_root=skills_root,
+                task_settings=task_settings,
+                delete_containers=delete_containers,
             )
             payload = {
                 "schema_version": "harbor-paired-materialization.v1",
@@ -99,12 +126,12 @@ def main(argv: list[str] | None = None) -> int:
                     for group_id, materialized in paired.groups.items()
                 },
             }
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_text(
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(
                 json.dumps(payload, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
-            print(args.output)
+            print(output)
             return 0
         materialized = materialize_job_config(spec, resources)
         payload = {
@@ -119,28 +146,49 @@ def main(argv: list[str] | None = None) -> int:
             "preflight": asdict(materialized.preflight),
             "job_config": materialized.job_config.model_dump(mode="json"),
         }
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-        print(args.output)
+        print(output)
         return 0
     if args.command == "run":
-        spec = load_experiment(args.experiment)
+        if args.config:
+            config = load_run_config(args.config)
+            spec = config.experiment
+            resources = config.resources
+            output_dir = args.output_dir or Path(config.run.output_dir)
+            skills_root = Path(args.skills_root or config.run.skills_root)
+            runtime = VgbRuntime.from_executable(config.run.vgb_python)
+            task_settings = _task_settings(config)
+            delete_containers = config.docker.delete_containers
+        else:
+            if args.resource_config is None or args.output_dir is None:
+                raise ValueError(
+                    "--resource-config and --output-dir are required with --experiment"
+                )
+            spec = load_experiment(args.experiment)
+            resources = load_resource_config(args.resource_config)
+            output_dir = args.output_dir
+            skills_root = args.skills_root
+            runtime = VgbRuntime.from_environment()
+            task_settings = None
+            delete_containers = True
         if not isinstance(spec, ExperimentSpecV2):
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
-        resources = load_resource_config(args.resource_config)
         asyncio.run(
             run_paired_jobs(
                 spec,
                 resources,
-                VgbRuntime.from_environment(),
-                output_root=args.output_dir,
-                skills_root=args.skills_root,
+                runtime,
+                output_root=output_dir,
+                skills_root=skills_root,
+                task_settings=task_settings,
+                delete_containers=delete_containers,
             )
         )
-        print(args.output_dir)
+        print(output_dir)
         return 0
     if args.command == "view":
         if not args.jobs_dir.is_dir():
@@ -159,6 +207,17 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(evidence.to_dict(), indent=2, sort_keys=True))
         return 0
     raise AssertionError(f"unhandled command: {args.command}")
+
+
+def _task_settings(config) -> TaskRuntimeSettings:
+    return TaskRuntimeSettings(
+        agent_timeout_sec=config.task.agent_timeout_sec,
+        verifier_timeout_sec=config.task.verifier_timeout_sec,
+        agent_network_mode=config.task.agent_network_mode,
+        agent_allowed_hosts=tuple(config.task.agent_allowed_hosts),
+        verifier_network_mode=config.task.verifier_network_mode,
+        verifier_allowed_hosts=tuple(config.task.verifier_allowed_hosts),
+    )
 
 
 if __name__ == "__main__":

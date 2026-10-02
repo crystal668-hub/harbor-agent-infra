@@ -128,3 +128,13 @@ timing, tokens, rewards, config, lock and artifacts. Infra's `per-record/`,
 compatibility projection. Paired Trial rewards use the canonical VGB `vgb_score` key
 and an equal `reward` alias for the official Viewer.
 See [acceptance](docs/acceptance.md) for the real-run and Viewer build checks.
+
+For repeatable paired-run management, use the consolidated `harbor-run.v1` example. It
+contains the experiment matrix, immutable image, resource limits, retry policy, task
+timeouts/network policy, VGB runtime and output directory:
+
+```bash
+export OPENCLAW_SKILLS_ROOT=/Users/xutao/.openclaw/workspace/skills
+uv run --locked hai run \
+  --config configs/experiments/openclaw-vgb-paired.config.yaml
+```

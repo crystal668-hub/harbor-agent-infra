@@ -16,6 +16,27 @@ The command fails before any trial is allocated when a placeholder, profile, bas
 digest, runtime lock or Docker resource capability is invalid. The output records the
 experiment and resource configuration hashes plus Harbor's native JobConfig snapshot.
 
+For paired experiments, a single `harbor-run.v1` file can hold the experiment, resource
+profile, Docker cleanup policy, task timeouts/network policy, VGB runtime and output paths:
+
+```bash
+export OPENCLAW_SKILLS_ROOT=/Users/xutao/.openclaw/workspace/skills
+uv run --locked hai run \
+  --config configs/experiments/openclaw-vgb-paired.config.yaml
+```
+
+The consolidated file is intentionally free of provider credentials. `OPENCLAW_SKILLS_ROOT`
+is expanded at load time because the skills workspace is external to this repository. The
+older `--experiment` plus `--resource-config` form remains supported for compatibility.
+
+The same file can produce a native JobConfig snapshot:
+
+```bash
+uv run --locked hai materialize \
+  --config configs/experiments/openclaw-vgb-paired.config.yaml \
+  --output run-artifacts/materialized-job.json
+```
+
 Agent base image references used for execution must include an immutable digest. The image
 manager checks the local RepoDigest and OS/architecture before a Harbor job is created;
 the locked image already contains Python 3.11, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1
