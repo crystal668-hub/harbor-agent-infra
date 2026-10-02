@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 .env
+configs/
 configs/resources/local.yaml
 run-artifacts/
 dist/

@@ -1,8 +1,0 @@
-schema_version: vgb-domain.v1
-package: verifier-grounded-benchmark
-package_lock: runtime-lock.json
-tracks:
-  - open_generation_rdkit
-  - open_generation_xtb
-  - property_calculation_advanced
-  - property_calculation_basic

@@ -1,5 +1,0 @@
-schema_version: image-spec.v1
-reference: ${HARBOR_AGENT_BASE_IMAGE_REFERENCE}
-digest: ${HARBOR_AGENT_BASE_IMAGE_DIGEST}
-platform: linux/arm64
-pull_policy: if_missing
