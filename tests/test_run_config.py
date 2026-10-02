@@ -9,8 +9,8 @@ def test_load_consolidated_run_config_expands_external_paths(monkeypatch) -> Non
 
     assert config.schema_version == "harbor-run.v1"
     assert config.experiment.experiment_id == "openclaw-vgb-paired"
-    assert config.resources.profiles["openclaw"].cpus == 2
-    assert config.resources.profiles["openclaw"].memory_mb == 4096
+    assert config.resources.profiles["openclaw"].cpus == 4
+    assert config.resources.profiles["openclaw"].memory_mb == 8192
     assert config.run.skills_root == "/tmp/openclaw-skills"
-    assert config.task.agent_timeout_sec == 900
+    assert config.task.agent_timeout_sec == 7200
     assert config.task.verifier_network_mode == "public"

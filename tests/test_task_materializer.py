@@ -185,6 +185,12 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
     assert on.job_config.jobs_dir == off.job_config.jobs_dir
     assert on.job_config.job_name != off.job_config.job_name
     assert on.job_config.verifier.import_path == "adapters.vgb_verifier:VgbVerifier"
+    assert on.job_config.agents[0].kwargs == {
+        "version": "2026.6.9",
+        "thinking": "medium",
+        "session_to_trajectory": True,
+    }
+    assert off.job_config.agents[0].kwargs == on.job_config.agents[0].kwargs
     assert on.network_policies == off.network_policies
     assert on.network_policies[0]["agent"] == {
         "network_mode": "public",

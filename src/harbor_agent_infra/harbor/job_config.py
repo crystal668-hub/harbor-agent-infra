@@ -206,7 +206,11 @@ def materialize_group_job_config(
                 import_path="adapters.openclaw.adapter:OpenClawAgent",
                 model_name=spec.agent.model,
                 skills=skills,
-                kwargs={"version": lock.openclaw.version, "session_to_trajectory": True},
+                kwargs={
+                    "version": lock.openclaw.version,
+                    "thinking": spec.agent.thinking,
+                    "session_to_trajectory": True,
+                },
             )
         ],
         verifier=VerifierConfig(import_path="adapters.vgb_verifier:VgbVerifier"),

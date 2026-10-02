@@ -13,6 +13,7 @@ class AgentSpec(BaseModel):
 
     adapter: Literal["openclaw"]
     model: str = Field(min_length=1)
+    thinking: str = Field(default="medium", min_length=1)
 
 
 class RetrySpec(BaseModel):
