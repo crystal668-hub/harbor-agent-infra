@@ -110,6 +110,17 @@ class OpenClawAgent(HarborOpenClaw):
                 # Qwen is exposed through an OpenAI-compatible endpoint. OpenClaw
                 # requires the explicit API discriminator for custom providers.
                 provider_config["api"] = "openai-completions"
+                provider_config["apiKey"] = {
+                    "source": "env",
+                    "provider": "default",
+                    "id": "QWEN_API_KEY",
+                }
+                config.setdefault("secrets", {}).setdefault("providers", {})[
+                    "default"
+                ] = {
+                    "source": "env",
+                    "allowlist": ["QWEN_API_KEY"],
+                }
             models = provider_config.get("models")
             if isinstance(models, list):
                 for model in models:

@@ -115,6 +115,15 @@ def test_qwen_openai_compatible_provider_is_configured_from_qwen_env(
     provider = config["models"]["providers"]["qwen"]
     assert provider["baseUrl"] == "https://qwen.example/v1"
     assert provider["api"] == "openai-completions"
+    assert provider["apiKey"] == {
+        "source": "env",
+        "provider": "default",
+        "id": "QWEN_API_KEY",
+    }
+    assert config["secrets"]["providers"]["default"] == {
+        "source": "env",
+        "allowlist": ["QWEN_API_KEY"],
+    }
     assert provider["models"] == [
         {
             "id": "qwen3.8-flash",
