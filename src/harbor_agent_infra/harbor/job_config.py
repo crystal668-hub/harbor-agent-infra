@@ -147,6 +147,7 @@ def materialize_group_job_config(
     tasks: tuple[TaskConfig, ...],
     output_root: Path,
     skills_root: Path | None = None,
+    vgb_python: Path | None = None,
     delete_containers: bool = True,
 ) -> MaterializedJob:
     """Project one paired experiment group into a native Harbor JobConfig."""
@@ -213,7 +214,10 @@ def materialize_group_job_config(
                 },
             )
         ],
-        verifier=VerifierConfig(import_path="adapters.vgb_verifier:VgbVerifier"),
+        verifier=VerifierConfig(
+            import_path="adapters.vgb_verifier:VgbVerifier",
+            env={"VGB_PYTHON": str(vgb_python)} if vgb_python else {},
+        ),
         tasks=list(tasks),
     )
     network_policies = []
@@ -285,6 +289,7 @@ def materialize_paired_job_configs(
     *,
     output_root: Path,
     skills_root: Path | None = None,
+    vgb_python: Path | None = None,
     task_settings: TaskRuntimeSettings | None = None,
     delete_containers: bool = True,
 ) -> MaterializedPairedJobs:
@@ -305,6 +310,7 @@ def materialize_paired_job_configs(
             tasks=tasks,
             output_root=output_root,
             skills_root=skills_root,
+            vgb_python=vgb_python,
             delete_containers=delete_containers,
         )
         for group in spec.groups

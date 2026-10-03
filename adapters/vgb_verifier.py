@@ -26,7 +26,12 @@ class VgbVerifier(BaseVerifier):
         try:
             track, task_id = self.task.name.split("__", 1)
             response = response_from_openclaw_log(self.trial_paths.agent_dir / "openclaw.txt")
-            runtime = VgbRuntime.from_environment()
+            configured_python = (self.verifier_env or {}).get("VGB_PYTHON")
+            runtime = (
+                VgbRuntime.from_executable(configured_python)
+                if configured_python
+                else VgbRuntime.from_environment()
+            )
             domain = await asyncio.to_thread(
                 project_agent_output,
                 runtime,

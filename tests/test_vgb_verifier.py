@@ -9,6 +9,7 @@ import pytest
 
 from adapters.vgb_verifier import VgbVerifier, VgbVerifierError
 from harbor_agent_infra.harbor.run import _evaluate_record_file
+from integrations.vgb.runtime import VgbRuntime
 
 
 def _verifier(tmp_path: Path) -> VgbVerifier:
@@ -53,6 +54,27 @@ def test_vgb_verifier_records_missing_runtime_as_error(monkeypatch, tmp_path: Pa
     artifact = json.loads((tmp_path / "verifier/vgb-evaluation.json").read_text())
     assert artifact["vgb_status"] == "error"
     assert "domain_result" not in artifact
+
+
+def test_vgb_verifier_uses_explicit_verifier_runtime(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Runtime:
+        def metadata(self):
+            return {"tracks": ["open_generation_rdkit"]}
+
+        def evaluate(self, track, answer):
+            return {"task_id": answer["task_id"], "status": "scored", "scores": {"score": 1.0}}
+
+    verifier = _verifier(tmp_path)
+    verifier.verifier_env = {"VGB_PYTHON": "/tmp/isolated-vgb/bin/python"}
+    monkeypatch.setattr(
+        VgbRuntime,
+        "from_executable",
+        classmethod(lambda cls, executable: Runtime()),
+    )
+    result = asyncio.run(verifier.verify())
+    assert result.rewards == {"vgb_score": 1.0, "reward": 1.0}
 
 
 def test_record_uses_harbor_verifier_artifact(tmp_path: Path) -> None:

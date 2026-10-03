@@ -358,6 +358,7 @@ async def run_paired_jobs(
         runtime,
         output_root=output_root,
         skills_root=skills_root,
+        vgb_python=runtime.python_executable,
         task_settings=task_settings,
         delete_containers=delete_containers,
     )

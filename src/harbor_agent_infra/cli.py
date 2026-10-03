@@ -98,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
                 runtime,
                 output_root=output.parent,
                 skills_root=skills_root,
+                vgb_python=getattr(runtime, "python_executable", None),
                 task_settings=task_settings,
                 delete_containers=delete_containers,
             )
