@@ -128,8 +128,12 @@ def test_qwen_openai_compatible_provider_is_configured_from_qwen_env(
         {
             "id": "qwen3.8-flash",
             "name": "qwen3.8-flash",
-            "reasoning": False,
+            "reasoning": True,
             "input": ["text"],
+            "compat": {
+                "supportsReasoningEffort": True,
+                "supportedReasoningEfforts": ["none", "low", "medium", "high"],
+            },
         }
     ]
     assert "qwen" in agent._SUPPORTED_PROVIDERS

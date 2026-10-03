@@ -128,8 +128,17 @@ class OpenClawAgent(HarborOpenClaw):
                         model["id"] = model_id
                         model["name"] = model_id
                         if provider == "qwen":
-                            model["reasoning"] = False
+                            model["reasoning"] = True
                             model["input"] = ["text"]
+                            model["compat"] = {
+                                "supportsReasoningEffort": True,
+                                "supportedReasoningEfforts": [
+                                    "none",
+                                    "low",
+                                    "medium",
+                                    "high",
+                                ],
+                            }
                         if provider == "openai" and model_id == "gpt-5.6-sol":
                             model.update(
                                 {
