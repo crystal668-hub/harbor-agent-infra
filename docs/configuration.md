@@ -1,41 +1,34 @@
 # Configuration
 
-Local secrets and resource values belong in untracked files or environment variables.
-The committed examples contain no credentials, private image references or machine paths.
+Local secrets and provider run templates belong in ignored files or environment variables.
+The two templates under `configs/experiments/` contain no credentials. Keep their fixed
+provider settings intact and edit only `benchmark.cases` and `task_ids` for each run.
 
-To validate and materialize a Harbor JobConfig, provide every value explicitly:
-
-```bash
-uv run hai materialize \
-  --experiment configs/experiments/openclaw-vgb-smoke.yaml \
-  --resource-config configs/resources/local.yaml \
-  --output run-artifacts/materialized-job.json
-```
-
-The command fails before any trial is allocated when a placeholder, profile, base image
-digest, runtime lock or Docker resource capability is invalid. The output records the
-experiment and resource configuration hashes plus Harbor's native JobConfig snapshot.
-
-For paired experiments, a single `harbor-run.v1` file can hold the experiment, resource
-profile, Docker cleanup policy, task timeouts/network policy, VGB runtime and output paths:
+The GPT template fixes `openai/gpt-5.6-sol` with `thinking: xhigh`; the Qwen template fixes
+`qwen/qwen3.8-flash` with `thinking: high`. Run either consolidated `harbor-run.v1` file:
 
 ```bash
 export OPENCLAW_SKILLS_ROOT=/Users/xutao/.openclaw/workspace/skills
+export VGB_PYTHON=.vgb-runtime/bin/python
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-paired.config.yaml
+  --config configs/experiments/openclaw-vgb-gpt.config.yaml
+# Or use configs/experiments/openclaw-vgb-qwen.config.yaml.
 ```
 
-The consolidated file is intentionally free of provider credentials. `OPENCLAW_SKILLS_ROOT`
-is expanded at load time because the skills workspace is external to this repository. The
-older `--experiment` plus `--resource-config` form remains supported for compatibility.
+The templates are intentionally free of provider credentials. `OPENCLAW_SKILLS_ROOT` is
+expanded at load time because the skills workspace is external to this repository.
 
 The same file can produce a native JobConfig snapshot:
 
 ```bash
 uv run --locked hai materialize \
-  --config configs/experiments/openclaw-vgb-paired.config.yaml \
+  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
   --output run-artifacts/materialized-job.json
 ```
+
+Materialization fails before any trial is allocated when a placeholder, profile, base image
+digest, runtime lock or Docker resource capability is invalid. The output records the
+experiment and resource configuration hashes plus Harbor's native JobConfig snapshot.
 
 Agent base image references used for execution must include an immutable digest. The image
 manager checks the local RepoDigest and OS/architecture before a Harbor job is created;

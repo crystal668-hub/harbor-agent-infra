@@ -129,12 +129,14 @@ compatibility projection. Paired Trial rewards use the canonical VGB `vgb_score`
 and an equal `reward` alias for the official Viewer.
 See [acceptance](docs/acceptance.md) for the real-run and Viewer build checks.
 
-For repeatable paired-run management, use the consolidated `harbor-run.v1` example. It
-contains the experiment matrix, immutable image, resource limits, retry policy, task
-timeouts/network policy, VGB runtime and output directory:
+For repeatable paired-run management, use one of the local provider templates. They keep
+the model, thinking level, immutable image, resources, retry policy and runtime settings
+fixed; edit only `benchmark.cases` and `task_ids` for each run:
 
 ```bash
 export OPENCLAW_SKILLS_ROOT=/Users/xutao/.openclaw/workspace/skills
+export VGB_PYTHON=.vgb-runtime/bin/python
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-paired.config.yaml
+  --config configs/experiments/openclaw-vgb-gpt.config.yaml
+# Or use configs/experiments/openclaw-vgb-qwen.config.yaml.
 ```

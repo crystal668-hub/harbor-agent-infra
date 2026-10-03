@@ -95,17 +95,16 @@ Each retry keeps its own Harbor Trial and per-record file. `results.json` select
 links to all attempts. `runtime-manifest.json` is the canonical run manifest;
 `run-manifest.json` remains a compatibility summary.
 
-Use a local, untracked resource profile sized for OpenClaw. Load `.env` explicitly,
-set `VGB_PYTHON` to the venv's `bin/python` path (do not resolve its symlink), and set
-the image reference/digest variables from `runtime-lock.json`. Set `RESOURCE_PROFILE`
-to the local profile name and `RESOURCE_PROFILE_FILE` to that untracked profile path.
-Then run:
+Load `.env` explicitly and set `VGB_PYTHON` to the venv's `bin/python` path (do not
+resolve its symlink). Select the fixed GPT or Qwen provider template and edit only its
+benchmark cases/task IDs before running:
 
 ```bash
+set -a; source .env; set +a
+export OPENCLAW_SKILLS_ROOT=/path/to/openclaw/workspace/skills
+export VGB_PYTHON=.vgb-runtime/bin/python
 uv run --locked hai run \
-  --experiment configs/experiments/openclaw-vgb-paired.yaml \
-  --resource-config /path/to/local-resources.yaml \
-  --skills-root /path/to/openclaw/workspace/skills \
+  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
   --output-dir run-artifacts/paired-live
 
 uv run --locked python scripts/verify_acceptance.py \
