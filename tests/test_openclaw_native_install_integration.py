@@ -45,7 +45,7 @@ async def _run_native_install() -> None:
                 {
                     "import_path": "adapters.openclaw.adapter:OpenClawAgent",
                     "model_name": "openai/fixture-model",
-                    "kwargs": {"version": "2026.6.9"},
+                    "kwargs": {"version": "2026.6.34"},
                 }
             ],
         }
@@ -55,7 +55,7 @@ async def _run_native_install() -> None:
     result = await job.run()
     trial = result.trial_results[0]
     assert trial.exception_info is None
-    assert trial.agent_info.version == "2026.6.9"
+    assert trial.agent_info.version == "2026.6.34"
 
 
 def test_harbor_native_openclaw_install_only() -> None:

@@ -46,7 +46,7 @@ uv run pytest -m integration \
 This gate exercises non-zero exit, agent timeout, Docker memory pressure, cancellation
 cleanup, retry Trial context isolation and concurrent trials. It does not replace the
 real OpenClaw/provider gate: that gate still requires the Harbor native nvm22 install of
-`openclaw@2026.6.9` with its `--workspace` setup compatibility shim, provider credentials
+`openclaw@2026.6.34` with its `--workspace` setup compatibility shim, provider credentials
 and one real task in each allowlisted VGB track.
 
 The native install gate is networked and explicit:

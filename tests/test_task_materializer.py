@@ -72,7 +72,7 @@ def _spec(tmp_path: Path) -> ExperimentSpecV2:
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
                 "reference": "hai-openclaw-agent",
-                "digest": "sha256:ed539ba6c65ba53e9e4867ca2b8aa1d690a244032498c083a1523337b5ccbe1e",
+                "digest": "sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",
             },
@@ -104,7 +104,7 @@ def test_materialize_vgb_tasks_writes_harbor_task(tmp_path: Path) -> None:
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent@sha256:ed539ba6c65ba53e9e4867ca2b8aa1d690a244032498c083a1523337b5ccbe1e",
+        image="hai-openclaw-agent@sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
     )
     assert len(tasks) == 1
     task_dir = Path(tasks[0].path)
@@ -186,7 +186,7 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
     assert on.job_config.job_name != off.job_config.job_name
     assert on.job_config.verifier.import_path == "adapters.vgb_verifier:VgbVerifier"
     assert on.job_config.agents[0].kwargs == {
-        "version": "2026.6.9",
+        "version": "2026.6.34",
         "thinking": "medium",
         "session_to_trajectory": True,
     }

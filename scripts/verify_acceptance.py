@@ -111,7 +111,7 @@ def main() -> int:
         )
         check(
             "openclaw-npm-lock",
-            lock.openclaw.version == "2026.6.9"
+            lock.openclaw.version == "2026.6.34"
             and lock.openclaw.runtime_strategy
             == "harbor-native-nvm22-openclaw-setup-workspace",
             f"OpenClaw npm {lock.openclaw.version} via {lock.openclaw.runtime_strategy}",

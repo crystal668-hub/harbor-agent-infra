@@ -8,7 +8,7 @@ The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Ea
 uses the immutable `hai-openclaw-agent` image derived from the locked Node base. The image
 contains Python 3.11, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1 and venv support. Other
 Python packages remain agent-managed during the Trial. Harbor installs Node 22 through nvm
-and pins `openclaw@2026.6.9` inside the agent
+and pins `openclaw@2026.6.34` inside the agent
 container. The VGB integration and real provider runs are separate acceptance gates.
 
 ## Phase 0 setup
@@ -61,7 +61,7 @@ trial result, the mounted `agent-output.v1` file, verifier reward and container 
 ## Phase 3 OpenClaw contract checks
 
 The provider-free adapter checks cover explicit `agentId/sessionKey/sessionId`, `agents.list`
-projection for OpenClaw 2026.6.9, isolated `OPENCLAW_STATE_DIR`, evidence manifest hashes and typed
+projection for OpenClaw 2026.6.34, isolated `OPENCLAW_STATE_DIR`, evidence manifest hashes and typed
 failure mapping. The native Harbor installation and provider checks are separate from
 these adapter contract checks:
 

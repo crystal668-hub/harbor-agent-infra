@@ -30,8 +30,8 @@
     "adapter_version": "0.1.0",
     "package_manager": "npm",
     "package_registry": "https://registry.npmjs.org",
-    "package_tarball": "https://registry.npmjs.org/openclaw/-/openclaw-2026.6.9.tgz",
-    "package_integrity": "sha512-y0PGUdE87S8QtQXABPDL0CjNKhH3q/R1h9/WiRQkhVCGSBVhs63/M1iZn2DYVyJCAbDyMz3KNyAE0WzSQIWCRg==",
+    "package_tarball": "https://registry.npmjs.org/openclaw/-/openclaw-2026.6.34.tgz",
+    "package_integrity": "sha512-Rm4khBrWn9HYqE99NBryCFgjwlsIuwBqK5jIANn2773CGXJ1JIZkDn5twEHB+8SVFdh0FPNPHRVgZepzNJDfHg==",
     "runtime_strategy": "harbor-native-nvm22-openclaw-setup-workspace",
     "adapter_source_hashes": {
       "adapters/openclaw/__init__.py": "sha256:ebb3560cf19b28d1ecde28ea0ff38c187d7126bf441af947ccee1ec9084ca386",
@@ -41,12 +41,12 @@
       "adapters/openclaw/failure.py": "sha256:e3792988212daf31ce06b285f4a530f973f366d58d081133a9a681b89b37c33e",
       "adapters/openclaw/session.py": "sha256:aa8598269934d4b06e666161d98452d5d93f14bbbf4febdf20b001b58995d482"
     },
-    "version": "2026.6.9",
+    "version": "2026.6.34",
     "node_engine": ">=22.19.0"
   },
   "agent_base_image": {
     "reference": "hai-openclaw-agent",
-    "digest": "sha256:ed539ba6c65ba53e9e4867ca2b8aa1d690a244032498c083a1523337b5ccbe1e",
+    "digest": "sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
     "platform": "linux/arm64"
   },
   "agent_python": {
