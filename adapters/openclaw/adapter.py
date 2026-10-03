@@ -97,6 +97,37 @@ class OpenClawAgent(HarborOpenClaw):
     def _build_full_openclaw_config(self) -> dict[str, Any]:
         identity = self.session_identity()
         config = super()._build_full_openclaw_config()
+        provider, _, model_id = self.model_name.partition("/")
+        provider_config = config.get("models", {}).get("providers", {}).get(provider)
+        if isinstance(provider_config, dict) and model_id:
+            models = provider_config.get("models")
+            if isinstance(models, list):
+                for model in models:
+                    if isinstance(model, dict) and model.get("id") == self.model_name:
+                        model["id"] = model_id
+                        model["name"] = model_id
+                        if provider == "openai" and model_id == "gpt-5.6-sol":
+                            model.update(
+                                {
+                                    "reasoning": True,
+                                    "thinkingLevelMap": {
+                                        "off": "none",
+                                        "xhigh": "xhigh",
+                                        "max": "max",
+                                    },
+                                    "compat": {
+                                        "supportsReasoningEffort": True,
+                                        "supportedReasoningEfforts": [
+                                            "none",
+                                            "low",
+                                            "medium",
+                                            "high",
+                                            "xhigh",
+                                            "max",
+                                        ],
+                                    },
+                                }
+                            )
         return project_agents_entries(
             config,
             identity=identity,

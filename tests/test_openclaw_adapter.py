@@ -58,8 +58,9 @@ def test_openclaw_adapter_projects_context_id_into_identity(tmp_path: Path) -> N
     assert first.session_identity().session_key != second.session_identity().session_key
 
 
-def test_openclaw_config_and_command_project_identity(tmp_path: Path) -> None:
+def test_openclaw_config_and_command_project_identity(tmp_path: Path, monkeypatch) -> None:
     agent = _agent(tmp_path)
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://provider.example/v1")
     assert agent._SETUP_CLI == "openclaw setup --workspace ."
     config = agent._build_full_openclaw_config()
     entries = config["agents"]["list"]
@@ -68,12 +69,31 @@ def test_openclaw_config_and_command_project_identity(tmp_path: Path) -> None:
     assert entry["id"] == "openclaw"
     assert entry["workspace"] == "/workspace"
     assert entry["agentDir"].endswith("/agents/openclaw")
+    assert config["models"]["providers"]["openai"]["models"] == [
+        {"id": "fixture-model", "name": "fixture-model"}
+    ]
     assert "--agent openclaw" in agent.build_cli_flags()
     assert "--session-key agent:openclaw:explicit:task__attempt-1" in agent.build_cli_flags()
     assert "--session-id task__attempt-1" in agent.build_cli_flags()
     assert agent.session_inventory_command() == (
         "openclaw sessions --json --agent openclaw --limit all"
     )
+
+
+def test_openai_gpt_56_sol_custom_provider_preserves_thinking_profile(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://provider.example/v1")
+    agent = OpenClawAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="openai/gpt-5.6-sol",
+        version="2026.6.34",
+    )
+    agent.session_id = "task__attempt-1__agent"
+    model = agent._build_full_openclaw_config()["models"]["providers"]["openai"]["models"][0]
+    assert model["id"] == "gpt-5.6-sol"
+    assert model["thinkingLevelMap"]["xhigh"] == "xhigh"
+    assert "xhigh" in model["compat"]["supportedReasoningEfforts"]
     assert "--session-key agent:openclaw:explicit:task__attempt-1" in (
         agent.trajectory_export_command()
     )
