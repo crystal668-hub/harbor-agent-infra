@@ -23,6 +23,12 @@ from adapters.openclaw.session import (
 class OpenClawAgent(HarborOpenClaw):
     """Thin Harbor OpenClaw wrapper with Infra-owned identity and evidence."""
 
+    # Harbor's stock OpenClaw adapter validates a small built-in provider set.
+    # Qwen exposes an OpenAI-compatible endpoint using the conventional
+    # QWEN_API_KEY/QWEN_BASE_URL variables, so only the provider allowlist needs
+    # extending; Harbor still owns env forwarding and OpenClaw execution.
+    _SUPPORTED_PROVIDERS = HarborOpenClaw._SUPPORTED_PROVIDERS | {"qwen"}
+
     # Harbor v0.23.0 uses the pre-2026.6 setup flags. OpenClaw 2026.6.9
     # accepts the workspace through --workspace; installation, provider
     # forwarding and agent execution remain owned by Harbor's installed-agent

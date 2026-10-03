@@ -99,6 +99,27 @@ def test_openai_gpt_56_sol_custom_provider_preserves_thinking_profile(
     )
 
 
+def test_qwen_openai_compatible_provider_is_configured_from_qwen_env(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("QWEN_BASE_URL", "https://qwen.example/v1")
+    monkeypatch.setenv("QWEN_API_KEY", "test-qwen-key")
+    agent = OpenClawAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="qwen/qwen3.8-flash",
+        version="2026.6.34",
+    )
+    agent.session_id = "task__attempt-1__agent"
+
+    config = agent._build_full_openclaw_config()
+    provider = config["models"]["providers"]["qwen"]
+    assert provider["baseUrl"] == "https://qwen.example/v1"
+    assert provider["models"] == [
+        {"id": "qwen3.8-flash", "name": "qwen3.8-flash"}
+    ]
+    assert "qwen" in agent._SUPPORTED_PROVIDERS
+
+
 def test_openclaw_adapter_is_discoverable_through_harbor_factory() -> None:
     agent_class = AgentFactory.get_agent_class_from_config(
         AgentConfig(
