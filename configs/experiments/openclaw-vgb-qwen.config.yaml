@@ -52,7 +52,7 @@ experiment:
   agent:
     adapter: openclaw
     model: ${OPENCLAW_MODEL}
-    thinking: medium
+    thinking: off
   image:
     reference: hai-openclaw-agent
     digest: sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb

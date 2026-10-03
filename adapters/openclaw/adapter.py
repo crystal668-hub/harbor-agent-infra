@@ -106,12 +106,19 @@ class OpenClawAgent(HarborOpenClaw):
         provider, _, model_id = self.model_name.partition("/")
         provider_config = config.get("models", {}).get("providers", {}).get(provider)
         if isinstance(provider_config, dict) and model_id:
+            if provider == "qwen":
+                # Qwen is exposed through an OpenAI-compatible endpoint. OpenClaw
+                # requires the explicit API discriminator for custom providers.
+                provider_config["api"] = "openai-completions"
             models = provider_config.get("models")
             if isinstance(models, list):
                 for model in models:
                     if isinstance(model, dict) and model.get("id") == self.model_name:
                         model["id"] = model_id
                         model["name"] = model_id
+                        if provider == "qwen":
+                            model["reasoning"] = False
+                            model["input"] = ["text"]
                         if provider == "openai" and model_id == "gpt-5.6-sol":
                             model.update(
                                 {

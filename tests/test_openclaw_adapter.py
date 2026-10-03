@@ -114,8 +114,14 @@ def test_qwen_openai_compatible_provider_is_configured_from_qwen_env(
     config = agent._build_full_openclaw_config()
     provider = config["models"]["providers"]["qwen"]
     assert provider["baseUrl"] == "https://qwen.example/v1"
+    assert provider["api"] == "openai-completions"
     assert provider["models"] == [
-        {"id": "qwen3.8-flash", "name": "qwen3.8-flash"}
+        {
+            "id": "qwen3.8-flash",
+            "name": "qwen3.8-flash",
+            "reasoning": False,
+            "input": ["text"],
+        }
     ]
     assert "qwen" in agent._SUPPORTED_PROVIDERS
 
