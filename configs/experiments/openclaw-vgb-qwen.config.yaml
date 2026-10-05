@@ -1,0 +1,101 @@
+schema_version: harbor-run.v1
+
+# Local Qwen run template. Credentials stay in the environment; edit only the
+# benchmark cases/task_ids for each run.
+run:
+  output_dir: run-artifacts/openclaw-vgb-qwen
+  skills_root: ${OPENCLAW_SKILLS_ROOT}
+  vgb_python: .vgb-runtime/bin/python
+
+docker:
+  delete_containers: true
+
+task:
+  agent_timeout_sec: 7200
+  verifier_timeout_sec: 60
+  agent_network_mode: public
+  agent_allowed_hosts: []
+  verifier_network_mode: public
+  verifier_allowed_hosts: []
+
+resources:
+  schema_version: resource-profiles.v1
+  capacity:
+    source: harbor-job
+    max_concurrent_trials: 2
+  profiles:
+    openclaw:
+      cpus: 4
+      memory_mb: 6144
+      cpu_enforcement_policy: limit
+      memory_enforcement_policy: limit
+
+experiment:
+  schema_version: experiment.v2
+  experiment_id: openclaw-vgb-qwen
+  domain: verifier-grounded
+  benchmark:
+    package_lock: runtime-lock.json
+    cases:
+      - track: open_generation_rdkit
+        task_ids:
+          - rdkit_001_qed_max
+          - rdkit_002_sa_min
+          - rdkit_003_logp_window
+          - rdkit_004_tpsa_window
+          - rdkit_005_hba_window
+          - rdkit_006_hbd_window
+          - rdkit_007_fsp3_max
+          - rdkit_008_qed_sa
+          - rdkit_009_logp_tpsa
+          - rdkit_010_hba_hbd
+          - rdkit_011_logp_target
+          - rdkit_012_sa_logp_target
+          - rdkit_013_chain_end_to_end_max
+          - rdkit_014_caffeine_similarity_max
+      - track: open_generation_xtb
+        task_ids:
+          - xtb_001_gap_window
+          - xtb_002_dipole_window
+          - xtb_003_gap_max
+          - xtb_004_gap_min
+          - xtb_005_dipole_max
+          - xtb_006_low_gap_high_dipole_opt
+          - xtb_007_gap_dipole_window
+          - xtb_008_lumo_min
+          - xtb_009_polarizability_dipole_opt
+          - xtb_010_solvation_selectivity_alpb
+          - xtb_011_electrophilicity_max
+          - xtb_012_fukui_carbon_site
+          - xtb_013_hessian_thermo_stability
+          - xtb_014_formula_dipole_min
+          - xtb_015_two_fluorine_gap_min
+          - xtb_016_c10_f2_gap_min
+          - xtb_017_roy_singlepoint_energy_min
+          - xtb_018_ritonavir_optimized_energy_min
+          - xtb_019_odd_element_counts_gap_max
+          - xtb_020_pyrene_substituent_energy_min
+  groups:
+    - id: skills_on
+      label: "benchmark skills enabled"
+      skills_enabled: true
+      skill_allowlist_ref: configs/skills/benchmark-allowlist.v1.json
+    - id: skills_off
+      label: "benchmark skills disabled"
+      skills_enabled: false
+      skill_allowlist_ref: null
+  agent:
+    adapter: openclaw
+    model: qwen/qwen3.8-flash
+    thinking: high
+  image:
+    reference: hai-openclaw-agent
+    digest: sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb
+    platform: linux/arm64
+    pull_policy: if_missing
+  resources:
+    profile: openclaw
+    config_file: embedded
+  retry:
+    n_attempts: 1
+    max_retries: 0
