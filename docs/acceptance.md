@@ -95,14 +95,12 @@ Each retry keeps its own Harbor Trial and per-record file. `results.json` select
 links to all attempts. `runtime-manifest.json` is the canonical run manifest;
 `run-manifest.json` remains a compatibility summary.
 
-Load `.env` explicitly and set `VGB_PYTHON` to the venv's `bin/python` path (do not
-resolve its symlink). Select the fixed GPT or Qwen provider template and edit only its
+The CLI loads the nearest `.env` automatically. Set `OPENCLAW_SKILLS_ROOT` and
+`VGB_PYTHON` there, using the venv's `bin/python` path (do not resolve its symlink).
+Select the fixed GPT or Qwen provider template and edit only its
 benchmark cases/task IDs before running:
 
 ```bash
-set -a; source .env; set +a
-export OPENCLAW_SKILLS_ROOT=/path/to/openclaw/workspace/skills
-export VGB_PYTHON=.vgb-runtime/bin/python
 uv run --locked hai run \
   --config configs/experiments/openclaw-vgb-gpt.config.yaml \
   --output-dir run-artifacts/paired-live

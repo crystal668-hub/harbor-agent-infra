@@ -134,8 +134,6 @@ the model, thinking level, immutable image, resources, retry policy and runtime 
 fixed; edit only `benchmark.cases` and `task_ids` for each run:
 
 ```bash
-export OPENCLAW_SKILLS_ROOT=/Users/xutao/.openclaw/workspace/skills
-export VGB_PYTHON=.vgb-runtime/bin/python
 uv run --locked hai run \
   --config configs/experiments/openclaw-vgb-gpt.config.yaml
 # Or use configs/experiments/openclaw-vgb-qwen.config.yaml.

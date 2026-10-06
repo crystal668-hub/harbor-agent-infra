@@ -8,15 +8,15 @@ The GPT template fixes `openai/gpt-5.6-sol` with `thinking: xhigh`; the Qwen tem
 `qwen/qwen3.8-flash` with `thinking: high`. Run either consolidated `harbor-run.v1` file:
 
 ```bash
-export OPENCLAW_SKILLS_ROOT=/Users/xutao/.openclaw/workspace/skills
-export VGB_PYTHON=.vgb-runtime/bin/python
 uv run --locked hai run \
   --config configs/experiments/openclaw-vgb-gpt.config.yaml
 # Or use configs/experiments/openclaw-vgb-qwen.config.yaml.
 ```
 
-The templates are intentionally free of provider credentials. `OPENCLAW_SKILLS_ROOT` is
-expanded at load time because the skills workspace is external to this repository.
+The CLI automatically loads the nearest `.env` when reading a consolidated config. Put
+local paths such as `OPENCLAW_SKILLS_ROOT` and `VGB_PYTHON` there; explicit shell
+environment variables take precedence. Provider credentials remain local and are never
+written to the YAML templates.
 
 The same file can produce a native JobConfig snapshot:
 

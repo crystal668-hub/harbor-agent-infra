@@ -566,6 +566,7 @@ dependencies = [
     { name = "harbor" },
     { name = "packaging" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
 
@@ -582,6 +583,7 @@ requires-dist = [
     { name = "harbor", git = "https://github.com/harbor-framework/harbor.git?rev=1e5c5c6db929a10a140d05e606882c671ae20729" },
     { name = "packaging", specifier = ">=25.0" },
     { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "python-dotenv", specifier = ">=1.1.0,<2" },
     { name = "pyyaml", specifier = ">=6.0.2" },
 ]
 
