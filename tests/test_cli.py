@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from harbor_agent_infra.cli import main
+from harbor_agent_infra.cli import build_parser, main
 
 
 class _FakeVgbRuntime:
@@ -12,6 +12,23 @@ class _FakeVgbRuntime:
     def prompts(self, track: str) -> list[dict[str, object]]:
         assert track == "open_generation_rdkit"
         return [{"task_id": "rdkit_001_qed_max", "prompt": "Make a molecule."}]
+
+
+def test_run_parser_accepts_single_group() -> None:
+    args = build_parser().parse_args(
+        [
+            "run",
+            "--experiment",
+            "experiment.yaml",
+            "--resource-config",
+            "resources.yaml",
+            "--output-dir",
+            "run-artifacts/single",
+            "--group",
+            "skills_off",
+        ]
+    )
+    assert args.group == "skills_off"
 
 
 def test_materialize_command_writes_job_snapshot(monkeypatch, tmp_path) -> None:

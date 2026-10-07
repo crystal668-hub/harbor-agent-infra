@@ -292,8 +292,11 @@ def materialize_paired_job_configs(
     vgb_python: Path | None = None,
     task_settings: TaskRuntimeSettings | None = None,
     delete_containers: bool = True,
+    group_id: str | None = None,
 ) -> MaterializedPairedJobs:
-    """Materialize one task set and one native JobConfig per experiment group."""
+    """Materialize one task set and the requested native JobConfig(s)."""
+    if group_id is not None and group_id not in {group.id for group in spec.groups}:
+        raise ValueError(f"unknown experiment group: {group_id}")
     lock = _locked_image(spec)
     tasks = materialize_vgb_tasks(
         runtime,
@@ -314,5 +317,6 @@ def materialize_paired_job_configs(
             delete_containers=delete_containers,
         )
         for group in spec.groups
+        if group_id is None or group.id == group_id
     }
     return MaterializedPairedJobs(tasks=tasks, groups=groups)

@@ -138,3 +138,18 @@ uv run --locked hai run \
   --config configs/experiments/openclaw-vgb-gpt.config.yaml
 # Or use configs/experiments/openclaw-vgb-qwen.config.yaml.
 ```
+
+To run only one experiment group, pass `--group skills_on` or `--group skills_off`:
+
+```bash
+uv run --locked hai run \
+  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
+  --group skills_off \
+  --output-dir run-artifacts/skills-off
+```
+
+A single-group run creates one Harbor Job and writes only that group's `per-record/`
+files, `results.json` entries and manifest entry. `results.json` records
+`run_mode: single_group` and `selected_group`; `runtime-manifest.json` uses
+`harbor-single-group-runtime-manifest.v1`. The default without `--group` remains the
+paired run and retains both groups.

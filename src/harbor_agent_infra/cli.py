@@ -51,6 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--resource-config", type=Path)
     run.add_argument("--output-dir", type=Path)
     run.add_argument("--skills-root", type=Path)
+    run.add_argument(
+        "--group",
+        choices=("skills_on", "skills_off"),
+        help="run only one experiment group instead of the paired run",
+    )
     viewer = subparsers.add_parser("view", help="browse native Harbor job results")
     viewer.add_argument("--jobs-dir", type=Path, required=True)
     viewer.add_argument("--port", default="8080-8089")
@@ -187,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
                 skills_root=skills_root,
                 task_settings=task_settings,
                 delete_containers=delete_containers,
+                group_id=args.group,
             )
         )
         print(output_dir)

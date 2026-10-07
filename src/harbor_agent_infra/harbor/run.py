@@ -181,7 +181,7 @@ async def _evaluate_group_records(record_root: Path, runtime: VgbRuntime) -> Non
 
 
 class RunEventSink:
-    """Append-only lifecycle events for a paired run."""
+    """Append-only lifecycle events for an experiment run."""
 
     def __init__(
         self,
@@ -331,8 +331,9 @@ async def run_paired_jobs(
     skills_root: Path | None = None,
     task_settings: TaskRuntimeSettings | None = None,
     delete_containers: bool = True,
+    group_id: str | None = None,
 ) -> dict[str, Any]:
-    """Run skills_on and skills_off as sequential native Harbor jobs."""
+    """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
     output_root.mkdir(parents=True, exist_ok=True)
     run_id = output_root.name
     lock_path = Path(spec.benchmark.package_lock)
@@ -361,6 +362,7 @@ async def run_paired_jobs(
         vgb_python=runtime.python_executable,
         task_settings=task_settings,
         delete_containers=delete_containers,
+        group_id=group_id,
     )
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))
@@ -375,7 +377,7 @@ async def run_paired_jobs(
                 for group_id, group in materialized.groups.items()
             }
         ):
-            raise ValueError("existing runtime manifest does not match paired run inputs")
+            raise ValueError("existing runtime manifest does not match run inputs")
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
@@ -393,10 +395,15 @@ async def run_paired_jobs(
 
     def write_outputs() -> dict[str, Any]:
         _repair_event_result_paths(events.path)
-        finished_at = datetime.now(UTC).isoformat() if len(groups) == 2 or cancelled else None
+        expected_group_count = len(materialized.groups)
+        finished_at = (
+            datetime.now(UTC).isoformat()
+            if len(groups) == expected_group_count or cancelled
+            else None
+        )
         if cancelled:
             status = "cancelled"
-        elif len(groups) < 2:
+        elif len(groups) < expected_group_count:
             status = "running"
         elif errors or any(group.status != "completed" for group in groups):
             status = "partial"
@@ -465,6 +472,8 @@ async def run_paired_jobs(
         results_payload = {
             "schema_version": 5,
             "run_id": run_id,
+            "run_mode": "single_group" if group_id else "paired",
+            "selected_group": group_id,
             "records": len(records),
             "results": records,
             "groups": [
@@ -483,8 +492,14 @@ async def run_paired_jobs(
             json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         manifest = {
-            "schema_version": "harbor-paired-runtime-manifest.v1",
+            "schema_version": (
+                "harbor-single-group-runtime-manifest.v1"
+                if group_id
+                else "harbor-paired-runtime-manifest.v1"
+            ),
             "run_id": run_id,
+            "run_mode": "single_group" if group_id else "paired",
+            "selected_group": group_id,
             "started_at": started_at,
             "finished_at": finished_at,
             "status": status,
@@ -506,7 +521,7 @@ async def run_paired_jobs(
                 "chemistry": lock_payload["agent_chemistry"],
             },
             "jobs_root": str(output_root / "jobs"),
-            "execution_order": [group.id for group in spec.groups],
+            "execution_order": list(materialized.groups),
             "n_attempts": spec.retry.n_attempts,
             "retry": {"max_retries": spec.retry.max_retries},
             "concurrency": {
@@ -571,8 +586,12 @@ async def run_paired_jobs(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         legacy = {
-            "schema_version": "harbor-paired-run.v1",
+            "schema_version": (
+                "harbor-single-group-run.v1" if group_id else "harbor-paired-run.v1"
+            ),
             "run_id": run_id,
+            "run_mode": "single_group" if group_id else "paired",
+            "selected_group": group_id,
             "started_at": started_at,
             "finished_at": finished_at,
             "events_path": str(events.path),
@@ -592,20 +611,20 @@ async def run_paired_jobs(
         return json.loads(json.dumps(manifest))
 
     write_outputs()
-    for group_id in ("skills_on", "skills_off"):
-        config: JobConfig = materialized.groups[group_id].job_config
+    for current_group_id in materialized.groups:
+        config: JobConfig = materialized.groups[current_group_id].job_config
         job = None
         status = "completed"
         try:
             job = await Job.create(config)
-            job.on_trial_ended(_hook(events, group_id))
-            job.on_trial_cancelled(_hook(events, group_id))
+            job.on_trial_ended(_hook(events, current_group_id))
+            job.on_trial_cancelled(_hook(events, current_group_id))
             result = await job.run()
         except asyncio.CancelledError:
             status = "cancelled"
             cancelled = True
             groups.append(
-                GroupRunResult(group_id, str(job.id) if job else "",
+                GroupRunResult(current_group_id, str(job.id) if job else "",
                                job.job_dir if job else config.jobs_dir / config.job_name,
                                status, len(job) if job else 0, 0, 1)
             )
@@ -613,10 +632,12 @@ async def run_paired_jobs(
             raise
         except Exception as exc:
             status = "failed"
-            errors.append({"group_id": group_id, "type": type(exc).__name__, "message": str(exc)})
+            errors.append(
+                {"group_id": current_group_id, "type": type(exc).__name__, "message": str(exc)}
+            )
             groups.append(
                 GroupRunResult(
-                    group_id=group_id,
+                    group_id=current_group_id,
                     job_id=str(job.id) if job is not None else "",
                     job_dir=job.job_dir if job is not None else config.jobs_dir / config.job_name,
                     status=status,
@@ -634,7 +655,7 @@ async def run_paired_jobs(
                 status = "failed"
             groups.append(
                 GroupRunResult(
-                    group_id=group_id,
+                    group_id=current_group_id,
                     job_id=str(result.id),
                     job_dir=job.job_dir,
                     status=status,
@@ -643,6 +664,30 @@ async def run_paired_jobs(
                     n_cancelled=result.stats.n_cancelled_trials,
                 )
             )
-            await _evaluate_group_records(output_root / "per-record" / group_id, runtime)
+            await _evaluate_group_records(output_root / "per-record" / current_group_id, runtime)
         write_outputs()
     return write_outputs()
+
+
+async def run_group_jobs(
+    spec: ExperimentSpecV2,
+    resource_config: ResourceConfig,
+    runtime: VgbRuntime,
+    *,
+    group_id: str,
+    output_root: Path,
+    skills_root: Path | None = None,
+    task_settings: TaskRuntimeSettings | None = None,
+    delete_containers: bool = True,
+) -> dict[str, Any]:
+    """Run exactly one experiment group."""
+    return await run_paired_jobs(
+        spec,
+        resource_config,
+        runtime,
+        output_root=output_root,
+        skills_root=skills_root,
+        task_settings=task_settings,
+        delete_containers=delete_containers,
+        group_id=group_id,
+    )

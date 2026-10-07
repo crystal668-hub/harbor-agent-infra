@@ -53,3 +53,9 @@ uv run hai view \
 This delegates to Harbor's official viewer for trial state, trajectory, timing, tokens,
 rewards, config, lock and artifact views. Infra's `results.json` remains the paired
 experiment compatibility aggregate.
+
+To run one group in isolation, add `--group skills_on` or `--group skills_off` to
+`hai run`. The selected group is the only group materialized and executed; the other
+group is absent from `jobs/`, `per-record/`, `results.json` and the manifests. The
+single-group result carries `run_mode: single_group` and `selected_group`, and its
+canonical manifest uses schema `harbor-single-group-runtime-manifest.v1`.

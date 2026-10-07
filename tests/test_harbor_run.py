@@ -16,6 +16,7 @@ from harbor_agent_infra.harbor.run import (
     _evaluate_record_file,
     _repair_event_result_paths,
     _score_summary,
+    run_group_jobs,
 )
 
 
@@ -209,6 +210,63 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     assert resumed["resume"] == {
         "supported": True, "resumed": True, "previous_status": "completed"
     }
+
+
+def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    runtime = FakeVgbRuntime()
+    runtime.python_executable = Path(sys.executable)
+    created = []
+
+    class FakeJob:
+        def __init__(self, config):
+            self.id = config.job_name
+            self.job_dir = config.jobs_dir / config.job_name
+            created.append(config)
+
+        @classmethod
+        async def create(cls, config):
+            return cls(config)
+
+        def on_trial_ended(self, callback):
+            pass
+
+        def on_trial_cancelled(self, callback):
+            pass
+
+        async def run(self):
+            return SimpleNamespace(
+                id=self.id,
+                n_total_trials=0,
+                stats=SimpleNamespace(n_cancelled_trials=0, n_errored_trials=0),
+            )
+
+    monkeypatch.setattr(run_module, "Job", FakeJob)
+    root = tmp_path / "single"
+    manifest = asyncio.run(
+        run_group_jobs(
+            spec,
+            _resources(),
+            runtime,
+            group_id="skills_off",
+            output_root=root,
+        )
+    )
+
+    assert [config.job_name for config in created] == ["paired-skills_off"]
+    assert manifest["schema_version"] == "harbor-single-group-runtime-manifest.v1"
+    assert manifest["run_mode"] == "single_group"
+    assert manifest["selected_group"] == "skills_off"
+    assert manifest["execution_order"] == ["skills_off"]
+    assert [group["group_id"] for group in manifest["groups"]] == ["skills_off"]
+    assert manifest["status"] == "completed"
+    results = json.loads((root / "results.json").read_text(encoding="utf-8"))
+    assert results["run_mode"] == "single_group"
+    assert results["selected_group"] == "skills_off"
+    assert results["groups"] == [
+        {"id": "skills_off", "skills_enabled": False, "status": "completed"}
+    ]
+    assert not (root / "per-record" / "skills_on").exists()
 
 
 def test_paired_run_rejects_wrong_vgb_runtime_before_materialization(tmp_path: Path) -> None:
