@@ -59,3 +59,16 @@ To run one group in isolation, add `--group skills_on` or `--group skills_off` t
 group is absent from `jobs/`, `per-record/`, `results.json` and the manifests. The
 single-group result carries `run_mode: single_group` and `selected_group`, and its
 canonical manifest uses schema `harbor-single-group-runtime-manifest.v1`.
+
+To replace failed records in an existing output directory, pass that directory's
+`results.json` to `--rerun-failed` together with the group. The command schedules
+only non-completed records from that group, deletes only their old trial artifacts,
+and preserves records from the other group in the rebuilt aggregate:
+
+```bash
+uv run --locked hai run \
+  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
+  --group skills_off \
+  --output-dir run-artifacts/openclaw-gpt-5.6-sol-pcb \
+  --rerun-failed run-artifacts/openclaw-gpt-5.6-sol-pcb/results.json
+```

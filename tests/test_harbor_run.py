@@ -16,6 +16,7 @@ from harbor_agent_infra.harbor.run import (
     _evaluate_record_file,
     _repair_event_result_paths,
     _score_summary,
+    failed_task_names_from_results,
     run_group_jobs,
 )
 
@@ -74,6 +75,26 @@ def test_run_event_sink_persists_cancelled_trial_event(tmp_path: Path) -> None:
     payload = json.loads((tmp_path / "events" / "trials.jsonl").read_text())
     assert payload["event"] == "cancel"
     assert payload["status"] == "cancelled"
+
+
+def test_failed_task_names_selects_non_completed_group_records(tmp_path: Path) -> None:
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps(
+            {
+                "results": [
+                    {"group_id": "skills_off", "task_name": "track__failed",
+                     "run_lifecycle_status": "failed"},
+                    {"group_id": "skills_off", "task_name": "track__passed",
+                     "run_lifecycle_status": "completed"},
+                    {"group_id": "skills_on", "task_name": "track__other",
+                     "run_lifecycle_status": "failed"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert failed_task_names_from_results(results, group_id="skills_off") == {"track__failed"}
 
 
 def test_event_result_path_migration_only_repairs_existing_harbor_file(tmp_path: Path) -> None:

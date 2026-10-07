@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -35,6 +36,61 @@ class GroupRunResult:
     n_trials: int
     n_errors: int
     n_cancelled: int
+
+
+def failed_task_names_from_results(path: Path, *, group_id: str) -> frozenset[str]:
+    """Return non-completed task names for one group in a prior results file."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    records = payload.get("results")
+    if not isinstance(records, list):
+        raise ValueError(f"results file does not contain a results list: {path}")
+    task_names = {
+        str(record["task_name"])
+        for record in records
+        if isinstance(record, dict)
+        and record.get("group_id") == group_id
+        and record.get("run_lifecycle_status") != "completed"
+        and isinstance(record.get("task_name"), str)
+    }
+    if not task_names:
+        raise ValueError(f"results file has no failed records for group {group_id}: {path}")
+    return frozenset(task_names)
+
+
+def _remove_replaced_records(
+    output_root: Path,
+    *,
+    group_id: str,
+    task_names: frozenset[str],
+) -> None:
+    """Remove only the prior artifacts for task names being replaced."""
+    record_root = output_root / "per-record" / group_id
+    jobs_root = (output_root / "jobs").resolve()
+    trial_dirs: set[Path] = set()
+    if record_root.is_dir():
+        for path in record_root.glob("*.json"):
+            record = json.loads(path.read_text(encoding="utf-8"))
+            if record.get("task_name") not in task_names:
+                continue
+            trial_path = Path(str(record.get("trial_result_path") or "")).parent
+            if trial_path.is_dir() and trial_path.resolve().is_relative_to(jobs_root):
+                trial_dirs.add(trial_path)
+            path.unlink()
+    for trial_dir in sorted(trial_dirs, key=lambda item: len(item.parts), reverse=True):
+        shutil.rmtree(trial_dir)
+
+    events_path = output_root / "events" / "trials.jsonl"
+    if not events_path.is_file():
+        return
+    retained = []
+    for line in events_path.read_text(encoding="utf-8").splitlines():
+        event = json.loads(line)
+        if event.get("group_id") == group_id and event.get("task_name") in task_names:
+            continue
+        retained.append(json.dumps(event, sort_keys=True))
+    events_path.write_text(
+        "\n".join(retained) + ("\n" if retained else ""), encoding="utf-8"
+    )
 
 
 def _trial_dir(uri: str) -> Path:
@@ -332,6 +388,7 @@ async def run_paired_jobs(
     task_settings: TaskRuntimeSettings | None = None,
     delete_containers: bool = True,
     group_id: str | None = None,
+    replace_group_task_names: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
     output_root.mkdir(parents=True, exist_ok=True)
@@ -350,6 +407,12 @@ async def run_paired_jobs(
         json.loads(previous_manifest_path.read_text(encoding="utf-8"))
         if previous_manifest_path.exists() else None
     )
+    previous_results_path = output_root / "results.json"
+    previous_results = (
+        json.loads(previous_results_path.read_text(encoding="utf-8"))
+        if replace_group_task_names and previous_results_path.exists()
+        else None
+    )
     started_at = (
         previous_manifest["started_at"] if previous_manifest else datetime.now(UTC).isoformat()
     )
@@ -366,18 +429,31 @@ async def run_paired_jobs(
     )
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))
+        previous_group_skills = {
+            item["group_id"]: item.get("injected_skills")
+            for item in previous_manifest.get("groups", [])
+        }
+        requested_group_skills = {
+            current_group_id: list(group.injected_skills)
+            for current_group_id, group in materialized.groups.items()
+        }
         if (
             previous_manifest.get("experiment_sha256") != expected.experiment_sha256
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
-            or {
-                item["group_id"]: item.get("injected_skills")
-                for item in previous_manifest.get("groups", [])
-            } != {
-                group_id: list(group.injected_skills)
-                for group_id, group in materialized.groups.items()
-            }
+            or any(
+                previous_group_skills.get(current_group_id) != skills
+                for current_group_id, skills in requested_group_skills.items()
+            )
         ):
             raise ValueError("existing runtime manifest does not match run inputs")
+    if replace_group_task_names is not None:
+        if group_id is None:
+            raise ValueError("replacing failed records requires a selected group")
+        _remove_replaced_records(
+            output_root,
+            group_id=group_id,
+            task_names=replace_group_task_names,
+        )
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
@@ -443,6 +519,12 @@ async def run_paired_jobs(
                     json.dumps(final, indent=2, sort_keys=True) + "\n", encoding="utf-8"
                 )
             records.append(final)
+        if previous_results is not None:
+            records.extend(
+                record
+                for record in previous_results.get("results", [])
+                if isinstance(record, dict) and record.get("group_id") not in materialized.groups
+            )
         records.sort(key=lambda item: (item["group_id"], item["trial_name"]))
         if status == "completed" and any(
             record.get("evaluation_error") or record.get("failure_mode")
@@ -451,15 +533,28 @@ async def run_paired_jobs(
             status = "partial"
         summary = {}
         group_track = {}
-        for item in groups:
-            group_records = [record for record in records if record["group_id"] == item.group_id]
-            summary[item.group_id] = {
+        historical_groups = {
+            str(item.get("id")): item
+            for item in (previous_results or {}).get("groups", [])
+            if isinstance(item, dict) and item.get("id") not in materialized.groups
+        }
+        historical_summary = ((previous_results or {}).get("summary") or {}).get("groups") or {}
+        active_groups = {item.group_id: item for item in groups}
+        available_group_ids = {*historical_groups, *materialized.groups}
+        ordered_group_ids = [item.id for item in spec.groups if item.id in available_group_ids]
+        for current_group_id in ordered_group_ids:
+            group_records = [
+                record for record in records if record["group_id"] == current_group_id
+            ]
+            active = active_groups.get(current_group_id)
+            historical = historical_summary.get(current_group_id, {})
+            summary[current_group_id] = {
                 **_score_summary(group_records),
-                "status": item.status,
-                "errors": item.n_errors,
-                "cancelled": item.n_cancelled,
+                "status": active.status if active else historical.get("status", "completed"),
+                "errors": active.n_errors if active else historical.get("errors", 0),
+                "cancelled": active.n_cancelled if active else historical.get("cancelled", 0),
             }
-            group_track[item.group_id] = {
+            group_track[current_group_id] = {
                 track: _score_summary(
                     [record for record in group_records
                      if str(record.get("task_name") or "").split("__", 1)[0] == track]
@@ -477,12 +572,15 @@ async def run_paired_jobs(
             "records": len(records),
             "results": records,
             "groups": [
-                {"id": item.group_id, "status": item.status,
-                 "skills_enabled": item.group_id == "skills_on"}
-                for item in groups
+                {
+                    "id": current_group_id,
+                    "status": summary[current_group_id]["status"],
+                    "skills_enabled": current_group_id == "skills_on",
+                }
+                for current_group_id in ordered_group_ids
             ],
             "summary": {
-                "group_order": [item.group_id for item in groups],
+                "group_order": ordered_group_ids,
                 "groups": summary,
                 "group_track": group_track,
             },

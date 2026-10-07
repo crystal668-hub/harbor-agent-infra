@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 
-from harbor_agent_infra.cli import build_parser, main
+from harbor_agent_infra.cli import _with_selected_task_names, build_parser, main
+from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
 
 
 class _FakeVgbRuntime:
@@ -29,6 +30,59 @@ def test_run_parser_accepts_single_group() -> None:
         ]
     )
     assert args.group == "skills_off"
+
+
+def test_run_parser_accepts_failed_record_rerun() -> None:
+    args = build_parser().parse_args(
+        [
+            "run",
+            "--experiment",
+            "experiment.yaml",
+            "--resource-config",
+            "resources.yaml",
+            "--output-dir",
+            "run-artifacts/single",
+            "--group",
+            "skills_off",
+            "--rerun-failed",
+            "old/results.json",
+        ]
+    )
+    assert args.rerun_failed.name == "results.json"
+
+
+def test_selected_failed_tasks_filter_configured_cases(tmp_path) -> None:
+    spec = ExperimentSpecV2.model_validate(
+        {
+            "schema_version": "experiment.v2",
+            "experiment_id": "test",
+            "domain": "verifier-grounded",
+            "benchmark": {
+                "package_lock": "runtime-lock.json",
+                "cases": [
+                    {"track": "open_generation_rdkit", "task_ids": ["rdkit_001_qed_max"]},
+                    {"track": "open_generation_xtb", "task_ids": ["xtb_001_gap_window"]},
+                ],
+            },
+            "groups": [
+                {"id": "skills_on", "label": "on", "skills_enabled": True,
+                 "skill_allowlist_ref": str(tmp_path / "allowlist.json")},
+                {"id": "skills_off", "label": "off", "skills_enabled": False},
+            ],
+            "agent": {"adapter": "openclaw", "model": "test"},
+            "image": {
+                "reference": "image",
+                "digest": "sha256:" + "a" * 64,
+                "platform": "linux/arm64",
+                "pull_policy": "if_missing",
+            },
+            "resources": {"profile": "test", "config_file": "test.yaml"},
+        }
+    )
+    selected = _with_selected_task_names(
+        spec, frozenset({"open_generation_xtb__xtb_001_gap_window"})
+    )
+    assert [case.task_ids for case in selected.benchmark.cases] == [["xtb_001_gap_window"]]
 
 
 def test_materialize_command_writes_job_snapshot(monkeypatch, tmp_path) -> None:

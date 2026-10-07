@@ -12,7 +12,7 @@ from harbor_agent_infra.harbor.job_config import (
     materialize_job_config,
     materialize_paired_job_configs,
 )
-from harbor_agent_infra.harbor.run import run_paired_jobs
+from harbor_agent_infra.harbor.run import failed_task_names_from_results, run_paired_jobs
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.preparation.experiments import load_experiment
 from harbor_agent_infra.preparation.image_manager import inspect_image
@@ -55,6 +55,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--group",
         choices=("skills_on", "skills_off"),
         help="run only one experiment group instead of the paired run",
+    )
+    run.add_argument(
+        "--rerun-failed",
+        type=Path,
+        metavar="RESULTS_JSON",
+        help="rerun failed records for --group and replace their prior artifacts in --output-dir",
     )
     viewer = subparsers.add_parser("view", help="browse native Harbor job results")
     viewer.add_argument("--jobs-dir", type=Path, required=True)
@@ -183,6 +189,14 @@ def main(argv: list[str] | None = None) -> int:
             delete_containers = True
         if not isinstance(spec, ExperimentSpecV2):
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
+        replace_group_task_names = None
+        if args.rerun_failed:
+            if args.group is None:
+                raise ValueError("--rerun-failed requires --group")
+            replace_group_task_names = failed_task_names_from_results(
+                args.rerun_failed, group_id=args.group
+            )
+            spec = _with_selected_task_names(spec, replace_group_task_names)
         asyncio.run(
             run_paired_jobs(
                 spec,
@@ -193,6 +207,7 @@ def main(argv: list[str] | None = None) -> int:
                 task_settings=task_settings,
                 delete_containers=delete_containers,
                 group_id=args.group,
+                replace_group_task_names=replace_group_task_names,
             )
         )
         print(output_dir)
@@ -225,6 +240,29 @@ def _task_settings(config) -> TaskRuntimeSettings:
         verifier_network_mode=config.task.verifier_network_mode,
         verifier_allowed_hosts=tuple(config.task.verifier_allowed_hosts),
     )
+
+
+def _with_selected_task_names(
+    spec: ExperimentSpecV2, task_names: frozenset[str]
+) -> ExperimentSpecV2:
+    cases = []
+    configured = set()
+    for case in spec.benchmark.cases:
+        selected = []
+        for task_id in case.task_ids:
+            task_name = f"{case.track}__{task_id}"
+            configured.add(task_name)
+            if task_name in task_names:
+                selected.append(task_id)
+        if selected:
+            cases.append(case.model_copy(update={"task_ids": selected}))
+    unknown = sorted(task_names - configured)
+    if unknown:
+        raise ValueError(f"failed records are not configured for this run: {unknown}")
+    if not cases:
+        raise ValueError("no configured tasks matched the failed records")
+    benchmark = spec.benchmark.model_copy(update={"cases": cases})
+    return spec.model_copy(update={"benchmark": benchmark})
 
 
 if __name__ == "__main__":
