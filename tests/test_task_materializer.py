@@ -198,6 +198,25 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
     }
 
 
+def test_group_job_config_uses_rerun_job_name_suffix(tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    tasks = materialize_vgb_tasks(
+        FakeVgbRuntime(),
+        spec,
+        output_root=tmp_path / "run",
+        image="hai-openclaw-agent",
+    )
+    materialized = materialize_group_job_config(
+        spec,
+        spec.groups[1],
+        _resources(),
+        tasks=tasks,
+        output_root=tmp_path / "run",
+        job_name_suffix="-rerun-1234abcd",
+    )
+    assert materialized.job_config.job_name == "paired-skills_off-rerun-1234abcd"
+
+
 def test_skills_on_rejects_missing_skill_directory(tmp_path: Path) -> None:
     spec = _spec(tmp_path)
     tasks = materialize_vgb_tasks(

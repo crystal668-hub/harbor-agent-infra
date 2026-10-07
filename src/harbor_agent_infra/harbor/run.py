@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
+from uuid import uuid4
 
 from harbor import Job, JobConfig
 from harbor.trial.hooks import TrialHookEvent
@@ -426,6 +427,7 @@ async def run_paired_jobs(
         task_settings=task_settings,
         delete_containers=delete_containers,
         group_id=group_id,
+        job_name_suffix=(f"-rerun-{uuid4().hex[:8]}" if replace_group_task_names else ""),
     )
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))
