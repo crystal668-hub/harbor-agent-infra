@@ -14,7 +14,9 @@ from harbor_agent_infra.harbor import run as run_module
 from harbor_agent_infra.harbor.run import (
     RunEventSink,
     _evaluate_record_file,
+    _remove_replaced_records,
     _repair_event_result_paths,
+    _replacement_artifacts,
     _score_summary,
     failed_task_names_from_results,
     run_group_jobs,
@@ -95,6 +97,41 @@ def test_failed_task_names_selects_non_completed_group_records(tmp_path: Path) -
         encoding="utf-8",
     )
     assert failed_task_names_from_results(results, group_id="skills_off") == {"track__failed"}
+
+
+def test_replacement_artifacts_are_removed_only_when_committed(tmp_path: Path) -> None:
+    output_root = tmp_path / "run"
+    trial = output_root / "jobs" / "skills-off" / "trial"
+    trial.mkdir(parents=True)
+    record_path = output_root / "per-record" / "skills_off" / "old.json"
+    record_path.parent.mkdir(parents=True)
+    record_path.write_text(
+        json.dumps(
+            {
+                "group_id": "skills_off",
+                "task_name": "track__failed",
+                "trial_result_path": str(trial / "result.json"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    events_path = output_root / "events" / "trials.jsonl"
+    events_path.parent.mkdir()
+    events_path.write_text(
+        json.dumps({"group_id": "skills_off", "task_name": "track__failed"}) + "\n",
+        encoding="utf-8",
+    )
+
+    artifacts = _replacement_artifacts(
+        output_root, group_id="skills_off", task_names=frozenset({"track__failed"})
+    )
+    assert record_path.exists()
+    assert trial.exists()
+    _remove_replaced_records(output_root, artifacts)
+
+    assert not record_path.exists()
+    assert not trial.exists()
+    assert events_path.read_text(encoding="utf-8") == ""
 
 
 def test_event_result_path_migration_only_repairs_existing_harbor_file(tmp_path: Path) -> None:

@@ -58,40 +58,57 @@ def failed_task_names_from_results(path: Path, *, group_id: str) -> frozenset[st
     return frozenset(task_names)
 
 
-def _remove_replaced_records(
+def _replacement_artifacts(
     output_root: Path,
     *,
     group_id: str,
     task_names: frozenset[str],
-) -> None:
-    """Remove only the prior artifacts for task names being replaced."""
+) -> tuple[tuple[Path, ...], tuple[Path, ...], frozenset[str]]:
+    """Find prior artifacts without removing them before a rerun has started."""
     record_root = output_root / "per-record" / group_id
     jobs_root = (output_root / "jobs").resolve()
+    record_paths = []
     trial_dirs: set[Path] = set()
     if record_root.is_dir():
         for path in record_root.glob("*.json"):
             record = json.loads(path.read_text(encoding="utf-8"))
             if record.get("task_name") not in task_names:
                 continue
+            record_paths.append(path)
             trial_path = Path(str(record.get("trial_result_path") or "")).parent
             if trial_path.is_dir() and trial_path.resolve().is_relative_to(jobs_root):
                 trial_dirs.add(trial_path)
-            path.unlink()
-    for trial_dir in sorted(trial_dirs, key=lambda item: len(item.parts), reverse=True):
-        shutil.rmtree(trial_dir)
-
     events_path = output_root / "events" / "trials.jsonl"
-    if not events_path.is_file():
+    event_lines = frozenset()
+    if events_path.is_file():
+        event_lines = frozenset(
+            line
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+            if (event := json.loads(line)).get("group_id") == group_id
+            and event.get("task_name") in task_names
+        )
+    return tuple(record_paths), tuple(trial_dirs), event_lines
+
+
+def _remove_replaced_records(
+    output_root: Path,
+    artifacts: tuple[tuple[Path, ...], tuple[Path, ...], frozenset[str]],
+) -> None:
+    """Commit replacement by removing prior records after the new job completed."""
+    record_paths, trial_dirs, event_lines = artifacts
+    for path in record_paths:
+        path.unlink(missing_ok=True)
+    for trial_dir in sorted(trial_dirs, key=lambda item: len(item.parts), reverse=True):
+        shutil.rmtree(trial_dir, ignore_errors=True)
+    events_path = output_root / "events" / "trials.jsonl"
+    if not events_path.is_file() or not event_lines:
         return
-    retained = []
-    for line in events_path.read_text(encoding="utf-8").splitlines():
-        event = json.loads(line)
-        if event.get("group_id") == group_id and event.get("task_name") in task_names:
-            continue
-        retained.append(json.dumps(event, sort_keys=True))
-    events_path.write_text(
-        "\n".join(retained) + ("\n" if retained else ""), encoding="utf-8"
-    )
+    retained = [
+        line
+        for line in events_path.read_text(encoding="utf-8").splitlines()
+        if line not in event_lines
+    ]
+    events_path.write_text("\n".join(retained) + ("\n" if retained else ""), encoding="utf-8")
 
 
 def _trial_dir(uri: str) -> Path:
@@ -448,10 +465,11 @@ async def run_paired_jobs(
             )
         ):
             raise ValueError("existing runtime manifest does not match run inputs")
+    replacement_artifacts = None
     if replace_group_task_names is not None:
         if group_id is None:
             raise ValueError("replacing failed records requires a selected group")
-        _remove_replaced_records(
+        replacement_artifacts = _replacement_artifacts(
             output_root,
             group_id=group_id,
             task_names=replace_group_task_names,
@@ -764,6 +782,8 @@ async def run_paired_jobs(
                     n_cancelled=result.stats.n_cancelled_trials,
                 )
             )
+            if replacement_artifacts is not None:
+                _remove_replaced_records(output_root, replacement_artifacts)
             await _evaluate_group_records(output_root / "per-record" / current_group_id, runtime)
         write_outputs()
     return write_outputs()
