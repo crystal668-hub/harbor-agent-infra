@@ -4,11 +4,24 @@ import shlex
 from typing import override
 
 from harbor.agents.installed.hermes import Hermes as HarborHermes
+from harbor.agents.installed.hermes import HermesOptions as HarborHermesOptions
 from harbor.environments.base import BaseEnvironment
+from pydantic import Field
+
+
+class HermesOptions(HarborHermesOptions):
+    source_commit: str = Field(
+        min_length=40,
+        max_length=40,
+        pattern=r"^[0-9a-f]{40}$",
+        description="Immutable Hermes source commit used for installer and checkout.",
+    )
 
 
 class HermesAgent(HarborHermes):
     """Harbor Hermes adapter with an immutable installer and current version probe."""
+
+    options_model = HermesOptions
 
     def __init__(self, *args, source_commit: str, **kwargs):
         invalid_commit = len(source_commit) != 40 or any(
@@ -17,7 +30,7 @@ class HermesAgent(HarborHermes):
         if invalid_commit:
             raise ValueError("Hermes source_commit must be a full lowercase Git commit")
         self._source_commit = source_commit
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source_commit=source_commit, **kwargs)
 
     @override
     def get_version_command(self) -> str | None:
