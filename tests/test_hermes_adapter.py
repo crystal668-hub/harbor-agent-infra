@@ -19,6 +19,7 @@ def _agent(tmp_path: Path) -> HermesAgent:
         model_name="openai/fixture-model",
         version="v0.21.6",
         source_commit=SOURCE_COMMIT,
+        install_branch="main",
     )
 
 
@@ -27,7 +28,11 @@ def test_hermes_adapter_is_discoverable_through_harbor_factory() -> None:
         AgentConfig(
             import_path="adapters.hermes.adapter:HermesAgent",
             model_name="openai/fixture-model",
-            kwargs={"version": "v0.21.6", "source_commit": SOURCE_COMMIT},
+            kwargs={
+                "version": "v0.21.6",
+                "source_commit": SOURCE_COMMIT,
+                "install_branch": "main",
+            },
         )
     )
     assert agent_class is HermesAgent
@@ -51,7 +56,7 @@ def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch)
     command = execute.await_args.kwargs["command"]
     assert f"/{SOURCE_COMMIT}/scripts/install.sh" in command
     assert "curl --retry 5 --retry-all-errors --retry-delay 2" in command
-    assert "--branch v0.21.6" in command
+    assert "--branch main" in command
     assert f"--commit {SOURCE_COMMIT}" in command
     assert command.endswith("hermes --version")
     assert "hermes version" not in command
@@ -64,4 +69,5 @@ def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
             model_name="openai/fixture-model",
             version="v0.21.6",
             source_commit="main",
+            install_branch="main",
         )

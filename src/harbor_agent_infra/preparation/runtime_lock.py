@@ -59,6 +59,7 @@ class HermesRuntimeLock:
     package_version: str
     source_tag: str
     source_commit: str
+    install_branch: str
     version_command: str
 
 
@@ -111,6 +112,8 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError("Hermes source_tag must match package_version")
     if not isinstance(hermes_commit, str) or not _GIT_COMMIT.fullmatch(hermes_commit):
         raise ValueError("Hermes source_commit must be a full lowercase Git commit")
+    if hermes.get("install_branch") != "main":
+        raise ValueError("Hermes install_branch must be main")
     if hermes.get("installer_source") != "source-commit":
         raise ValueError("Hermes installer_source must be source-commit")
     if hermes.get("version_command") != "hermes --version":
@@ -162,6 +165,7 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
             package_version=hermes_version,
             source_tag=hermes_tag,
             source_commit=hermes_commit,
+            install_branch=hermes["install_branch"],
             version_command=hermes["version_command"],
         ),
         agent_base_image=AgentBaseImageLock(

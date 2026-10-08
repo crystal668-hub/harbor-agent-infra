@@ -13,6 +13,7 @@ def test_runtime_lock_separates_control_plane_and_agent_python() -> None:
     assert lock.hermes.package_version == "0.21.6"
     assert lock.hermes.source_tag == "v0.21.6"
     assert lock.hermes.source_commit == "818c13be1dc4fd28987e1e881a9408224afd4535"
+    assert lock.hermes.install_branch == "main"
     assert lock.hermes.version_command == "hermes --version"
     assert lock.agent_python.python_version == "3.11.2"
     assert lock.agent_python.pip_version == "23.0.1"
@@ -25,13 +26,15 @@ def test_runtime_lock_separates_control_plane_and_agent_python() -> None:
     assert lock.agent_chemistry.xtb_package == "xtb=6.5.1-3"
 
 
-@pytest.mark.parametrize("mutation", ["tag", "commit", "installer", "command"])
+@pytest.mark.parametrize("mutation", ["tag", "commit", "branch", "installer", "command"])
 def test_runtime_lock_rejects_ambiguous_hermes_pin(tmp_path: Path, mutation: str) -> None:
     payload = json.loads(Path("runtime-lock.json").read_text(encoding="utf-8"))
     if mutation == "tag":
         payload["hermes"]["source_tag"] = "main"
     elif mutation == "commit":
         payload["hermes"]["source_commit"] = "818c13be"
+    elif mutation == "branch":
+        payload["hermes"]["install_branch"] = "release"
     elif mutation == "installer":
         payload["hermes"]["installer_source"] = "main"
     else:

@@ -57,6 +57,7 @@ async def _run_native_install() -> None:
                     "kwargs": {
                         "version": lock.hermes.source_tag,
                         "source_commit": lock.hermes.source_commit,
+                        "install_branch": lock.hermes.install_branch,
                     },
                 }
             ],
