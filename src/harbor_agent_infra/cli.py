@@ -14,7 +14,7 @@ from harbor_agent_infra.harbor.job_config import (
 )
 from harbor_agent_infra.harbor.run import failed_task_names_from_results, run_paired_jobs
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
-from harbor_agent_infra.preparation.experiments import load_experiment
+from harbor_agent_infra.preparation.experiments import experiment_sha256, load_experiment
 from harbor_agent_infra.preparation.image_manager import inspect_image
 from harbor_agent_infra.preparation.resource_profiles import load_resource_config
 from harbor_agent_infra.preparation.run_config import load_run_config
@@ -189,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
             delete_containers = True
         if not isinstance(spec, ExperimentSpecV2):
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
+        source_experiment_sha256 = experiment_sha256(spec)
         replace_group_task_names = None
         if args.rerun_failed:
             if args.group is None:
@@ -208,6 +209,7 @@ def main(argv: list[str] | None = None) -> int:
                 delete_containers=delete_containers,
                 group_id=args.group,
                 replace_group_task_names=replace_group_task_names,
+                source_experiment_sha256=source_experiment_sha256,
             )
         )
         print(output_dir)

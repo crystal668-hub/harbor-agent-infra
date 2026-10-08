@@ -407,6 +407,7 @@ async def run_paired_jobs(
     delete_containers: bool = True,
     group_id: str | None = None,
     replace_group_task_names: frozenset[str] | None = None,
+    source_experiment_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
     output_root.mkdir(parents=True, exist_ok=True)
@@ -448,6 +449,10 @@ async def run_paired_jobs(
     )
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))
+        expected_source_hash = source_experiment_sha256 or expected.experiment_sha256
+        previous_source_hash = previous_manifest.get(
+            "source_experiment_sha256", previous_manifest.get("experiment_sha256")
+        )
         previous_group_skills = {
             item["group_id"]: item.get("injected_skills")
             for item in previous_manifest.get("groups", [])
@@ -457,7 +462,7 @@ async def run_paired_jobs(
             for current_group_id, group in materialized.groups.items()
         }
         if (
-            previous_manifest.get("experiment_sha256") != expected.experiment_sha256
+            previous_source_hash != expected_source_hash
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
             or any(
                 previous_group_skills.get(current_group_id) != skills
@@ -622,6 +627,11 @@ async def run_paired_jobs(
             "finished_at": finished_at,
             "status": status,
             "experiment_sha256": next(iter(materialized.groups.values())).experiment_sha256,
+            "source_experiment_sha256": (
+                source_experiment_sha256
+                or (previous_manifest or {}).get("source_experiment_sha256")
+                or next(iter(materialized.groups.values())).experiment_sha256
+            ),
             "resource_config_sha256": next(
                 iter(materialized.groups.values())
             ).resource_config_sha256,
