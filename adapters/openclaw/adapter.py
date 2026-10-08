@@ -29,13 +29,12 @@ class OpenClawAgent(HarborOpenClaw):
     # extending; Harbor still owns env forwarding and OpenClaw execution.
     _SUPPORTED_PROVIDERS = HarborOpenClaw._SUPPORTED_PROVIDERS | {"qwen"}
 
-    # Harbor v0.23.0 uses the pre-2026.6 setup flags. OpenClaw 2026.6.9
-    # accepts the workspace through --workspace; installation, provider
-    # forwarding and agent execution remain owned by Harbor's installed-agent
-    # implementation.
+    # Harbor v0.23.0 uses the pre-2026.6 setup flags. OpenClaw 2026.6.34
+    # accepts the workspace through --workspace. Persist skipBootstrap before
+    # setup so the trial workspace is not seeded with unrelated Markdown files.
     _SETUP_CLI = (
-        "openclaw setup --workspace . && "
-        "rm -f ./BOOTSTRAP.md ./IDENTITY.md"
+        "openclaw config set agents.defaults.skipBootstrap true && "
+        "openclaw setup --workspace ."
     )
 
     @override
@@ -106,6 +105,9 @@ class OpenClawAgent(HarborOpenClaw):
     def _build_full_openclaw_config(self) -> dict[str, Any]:
         identity = self.session_identity()
         config = super()._build_full_openclaw_config()
+        config.setdefault("agents", {}).setdefault("defaults", {})[
+            "skipBootstrap"
+        ] = True
         provider, _, model_id = self.model_name.partition("/")
         provider_config = config.get("models", {}).get("providers", {}).get(provider)
         if isinstance(provider_config, dict) and model_id:

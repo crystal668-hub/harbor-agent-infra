@@ -62,10 +62,11 @@ def test_openclaw_config_and_command_project_identity(tmp_path: Path, monkeypatc
     agent = _agent(tmp_path)
     monkeypatch.setenv("OPENAI_BASE_URL", "https://provider.example/v1")
     assert agent._SETUP_CLI == (
-        "openclaw setup --workspace . && "
-        "rm -f ./BOOTSTRAP.md ./IDENTITY.md"
+        "openclaw config set agents.defaults.skipBootstrap true && "
+        "openclaw setup --workspace ."
     )
     config = agent._build_full_openclaw_config()
+    assert config["agents"]["defaults"]["skipBootstrap"] is True
     entries = config["agents"]["list"]
     assert len(entries) == 1
     entry = entries[0]
@@ -81,6 +82,20 @@ def test_openclaw_config_and_command_project_identity(tmp_path: Path, monkeypatc
     assert agent.session_inventory_command() == (
         "openclaw sessions --json --agent openclaw --limit all"
     )
+
+
+def test_openclaw_config_keeps_workspace_bootstrap_disabled(tmp_path: Path) -> None:
+    agent = OpenClawAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="openai/fixture-model",
+        version="2026.6.34",
+        openclaw_config={"agents": {"defaults": {"skipBootstrap": False}}},
+    )
+    agent.session_id = "task__attempt-1__agent"
+
+    config = agent._build_full_openclaw_config()
+
+    assert config["agents"]["defaults"]["skipBootstrap"] is True
 
 
 def test_openai_gpt_56_sol_custom_provider_preserves_thinking_profile(
