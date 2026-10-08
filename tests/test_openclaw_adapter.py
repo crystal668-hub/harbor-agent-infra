@@ -61,7 +61,10 @@ def test_openclaw_adapter_projects_context_id_into_identity(tmp_path: Path) -> N
 def test_openclaw_config_and_command_project_identity(tmp_path: Path, monkeypatch) -> None:
     agent = _agent(tmp_path)
     monkeypatch.setenv("OPENAI_BASE_URL", "https://provider.example/v1")
-    assert agent._SETUP_CLI == "openclaw setup --workspace ."
+    assert agent._SETUP_CLI == (
+        "openclaw setup --workspace . && "
+        "rm -f ./BOOTSTRAP.md ./IDENTITY.md"
+    )
     config = agent._build_full_openclaw_config()
     entries = config["agents"]["list"]
     assert len(entries) == 1

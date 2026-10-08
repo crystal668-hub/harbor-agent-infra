@@ -33,7 +33,10 @@ class OpenClawAgent(HarborOpenClaw):
     # accepts the workspace through --workspace; installation, provider
     # forwarding and agent execution remain owned by Harbor's installed-agent
     # implementation.
-    _SETUP_CLI = "openclaw setup --workspace ."
+    _SETUP_CLI = (
+        "openclaw setup --workspace . && "
+        "rm -f ./BOOTSTRAP.md ./IDENTITY.md"
+    )
 
     @override
     async def ensure_system_dependencies(
