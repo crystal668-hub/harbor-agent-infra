@@ -79,7 +79,7 @@ produced `openclaw.txt`, `trajectory.json`, `openclaw-evidence.json` and a sessi
 The locked agent image is built with:
 
 ```bash
-./scripts/build_agent_image.sh hai-openclaw-agent
+./scripts/build_agent_image.sh hai-base-env
 ```
 
 The build verifies Python 3.11.2, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1 and venv inside

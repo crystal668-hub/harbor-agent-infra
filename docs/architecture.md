@@ -24,7 +24,7 @@ is limited to explicit session identity, per-trial state directory, OpenClaw 202
 configuration, evidence hashes and stable failure codes. Harbor still owns installation,
 exec, logs, trajectory download and cleanup.
 
-The agent image is built by `images/openclaw-agent/Dockerfile` from the locked Node base.
+The shared agent base image is built by `images/base-env/Dockerfile` from the locked Node base.
 The Dockerfile installs Debian's Python 3 interpreter, pip, venv support, RDKit and xTB.
 `PIP_BREAK_SYSTEM_PACKAGES=1` allows an agent-selected
 `pip install` in the disposable container; agents may instead create a venv.

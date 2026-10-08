@@ -113,7 +113,7 @@ def test_job_materializer_projects_native_harbor_fields() -> None:
             "tracks": ["open_generation_rdkit"],
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
-                "reference": "hai-openclaw-agent",
+                "reference": "hai-base-env",
                 "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",

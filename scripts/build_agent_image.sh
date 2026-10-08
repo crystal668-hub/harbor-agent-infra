@@ -13,7 +13,7 @@ fi
 docker build \
   --platform linux/arm64 \
   --tag "$image_reference" \
-  "$repo_root/images/openclaw-agent"
+  "$repo_root/images/base-env"
 
 if [[ "$push_image" == "--push" ]]; then
   docker push "$image_reference"

@@ -5,7 +5,7 @@ experiments, resource profiles and immutable image identities, then delegates Jo
 lifecycle and Docker cleanup to Harbor Framework.
 
 The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Each Trial
-uses the immutable `hai-openclaw-agent` image derived from the locked Node base. The image
+uses the immutable `hai-base-env` image derived from the locked Node base. The image
 contains Python 3.11, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1 and venv support. Other
 Python packages remain agent-managed during the Trial. Harbor installs Node 22 through nvm
 and pins `openclaw@2026.6.34` inside the agent
@@ -40,7 +40,7 @@ The legacy workspace is only a compatibility read source for later result projec
 Build the locked agent image when setting up a new Docker host:
 
 ```bash
-./scripts/build_agent_image.sh hai-openclaw-agent
+./scripts/build_agent_image.sh hai-base-env
 ```
 
 The command prints the resulting immutable RepoDigest and verifies Python, pip and venv.

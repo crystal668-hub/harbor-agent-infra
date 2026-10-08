@@ -22,7 +22,7 @@ agent:
   adapter: openclaw
   model: ${TEST_MODEL}
 image:
-  reference: hai-openclaw-agent
+  reference: hai-base-env
   digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
   platform: linux/arm64
   pull_policy: if_missing
@@ -74,7 +74,7 @@ agent:
   adapter: openclaw
   model: ${TEST_MODEL}
 image:
-  reference: hai-openclaw-agent
+  reference: hai-base-env
   digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
   platform: linux/arm64
   pull_policy: if_missing
@@ -114,7 +114,7 @@ groups:
     skill_allowlist_ref: null
 agent: {adapter: openclaw, model: fixture}
 image:
-  reference: hai-openclaw-agent
+  reference: hai-base-env
   digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
   platform: linux/arm64
   pull_policy: if_missing

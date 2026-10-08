@@ -109,7 +109,7 @@ def test_selected_failed_tasks_filter_configured_cases(tmp_path) -> None:
 
 def test_materialize_command_writes_job_snapshot(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("OPENCLAW_MODEL", "fixture-model")
-    monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "hai-openclaw-agent")
+    monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "hai-base-env")
     monkeypatch.setenv(
         "HARBOR_AGENT_BASE_IMAGE_DIGEST",
         "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
@@ -181,7 +181,7 @@ profiles:
 
 def test_materialize_v2_command_writes_paired_job_snapshot(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("OPENCLAW_MODEL", "fixture-model")
-    monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "hai-openclaw-agent")
+    monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "hai-base-env")
     monkeypatch.setenv(
         "HARBOR_AGENT_BASE_IMAGE_DIGEST",
         "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",

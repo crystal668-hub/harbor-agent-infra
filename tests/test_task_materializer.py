@@ -71,7 +71,7 @@ def _spec(tmp_path: Path) -> ExperimentSpecV2:
             ],
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
-                "reference": "hai-openclaw-agent",
+                "reference": "hai-base-env",
                 "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",
@@ -104,7 +104,7 @@ def test_materialize_vgb_tasks_writes_harbor_task(tmp_path: Path) -> None:
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent@sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
+        image="hai-base-env@sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
     )
     assert len(tasks) == 1
     task_dir = Path(tasks[0].path)
@@ -122,7 +122,7 @@ def test_materialize_vgb_tasks_applies_runtime_task_settings(tmp_path: Path) -> 
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent",
+        image="hai-base-env",
         task_settings=TaskRuntimeSettings(
             agent_timeout_sec=120,
             verifier_timeout_sec=30,
@@ -150,7 +150,7 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent",
+        image="hai-base-env",
     )
     on = materialize_group_job_config(
         spec,
@@ -204,7 +204,7 @@ def test_group_job_config_uses_rerun_job_name_suffix(tmp_path: Path) -> None:
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent",
+        image="hai-base-env",
     )
     materialized = materialize_group_job_config(
         spec,
@@ -223,7 +223,7 @@ def test_skills_on_rejects_missing_skill_directory(tmp_path: Path) -> None:
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent",
+        image="hai-base-env",
     )
     with pytest.raises(ValueError, match="missing directories"):
         materialize_group_job_config(
