@@ -52,7 +52,7 @@ def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch)
     assert f"/{SOURCE_COMMIT}/scripts/install.sh" in command
     assert "curl --retry 5 --retry-all-errors --retry-delay 2" in command
     assert "--branch v0.21.6" in command
-    assert f"--commit {SOURCE_COMMIT} --force-commit" in command
+    assert f"--commit {SOURCE_COMMIT}" in command
     assert command.endswith("hermes --version")
     assert "hermes version" not in command
 

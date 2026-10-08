@@ -54,7 +54,7 @@ class HermesAgent(HarborHermes):
                 f"curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "
                 f"{shlex.quote(installer_url)} | bash -s -- "
                 f"--skip-setup --branch {shlex.quote(self._version)} "
-                f"--commit {shlex.quote(self._source_commit)} --force-commit && "
+                f"--commit {shlex.quote(self._source_commit)} && "
                 'export PATH="$HOME/.local/bin:$PATH" && '
                 'export HERMES_HOME="${HERMES_HOME:-/tmp/hermes}" && '
                 'mkdir -p "$HERMES_HOME" "$HERMES_HOME/sessions" '
