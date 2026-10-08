@@ -14,6 +14,7 @@ from harbor_agent_infra.harbor import run as run_module
 from harbor_agent_infra.harbor.run import (
     RunEventSink,
     _evaluate_record_file,
+    _job_execution_settings,
     _remove_replaced_records,
     _repair_event_result_paths,
     _replacement_artifacts,
@@ -160,6 +161,19 @@ def test_score_summary_counts_zero_and_keeps_missing_distinct() -> None:
         "records": 3, "scored": 2, "mean_vgb_score": 0.4
     }
     assert _score_summary([{"scored": False}])["mean_vgb_score"] is None
+
+
+def test_job_execution_settings_ignores_retry_exception_order() -> None:
+    previous = {
+        "n_attempts": 1,
+        "retry": {"max_retries": 0, "exclude_exceptions": ["B", "A"]},
+    }
+    current = {
+        "n_attempts": 1,
+        "retry": {"max_retries": 0, "exclude_exceptions": ["A", "B"]},
+    }
+
+    assert _job_execution_settings(previous) == _job_execution_settings(current)
 
 
 class _FakeEvaluationRuntime:

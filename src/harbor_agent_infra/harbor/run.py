@@ -41,7 +41,7 @@ class GroupRunResult:
 
 def _job_execution_settings(job_config: dict[str, Any]) -> dict[str, Any]:
     """Return settings that must not change when selecting tasks for a new job."""
-    return {
+    settings = {
         key: job_config.get(key)
         for key in (
             "n_attempts",
@@ -52,6 +52,14 @@ def _job_execution_settings(job_config: dict[str, Any]) -> dict[str, Any]:
             "verifier",
         )
     }
+    retry = settings.get("retry")
+    if isinstance(retry, dict):
+        retry = dict(retry)
+        for key in ("exclude_exceptions", "include_exceptions"):
+            if isinstance(retry.get(key), list):
+                retry[key] = sorted(retry[key])
+        settings["retry"] = retry
+    return settings
 
 
 def failed_task_names_from_results(path: Path, *, group_id: str) -> frozenset[str]:
