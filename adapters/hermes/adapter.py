@@ -63,14 +63,14 @@ class HermesAgent(HarborHermes):
             environment,
             command=(
                 "set -euo pipefail; "
+                'export HERMES_HOME="${HERMES_HOME:-/tmp/hermes}"; '
+                'mkdir -p "$HERMES_HOME" "$HERMES_HOME/sessions" '
+                '"$HERMES_HOME/skills" "$HERMES_HOME/memories"; '
                 f"curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "
                 f"{shlex.quote(installer_url)} | bash -s -- "
                 f"--skip-setup --branch {shlex.quote(self._install_branch)} "
                 f"--commit {shlex.quote(self._source_commit)} && "
                 'export PATH="$HOME/.local/bin:$PATH" && '
-                'export HERMES_HOME="${HERMES_HOME:-/tmp/hermes}" && '
-                'mkdir -p "$HERMES_HOME" "$HERMES_HOME/sessions" '
-                '"$HERMES_HOME/skills" "$HERMES_HOME/memories" && '
                 "hermes --version"
             ),
         )

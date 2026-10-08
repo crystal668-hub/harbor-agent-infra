@@ -60,6 +60,7 @@ def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch)
     assert f"--commit {SOURCE_COMMIT}" in command
     assert command.endswith("hermes --version")
     assert "hermes version" not in command
+    assert command.index("export HERMES_HOME") < command.index("curl --retry")
 
 
 def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
