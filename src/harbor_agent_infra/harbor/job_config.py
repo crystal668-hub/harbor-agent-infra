@@ -39,8 +39,11 @@ class MaterializedJob:
     resource_config_sha256: str
     profile_name: str
     preflight: CapabilityPreflight
-    openclaw_version: str
+    openclaw_version: str | None
     agent_base_image: str
+    agent_name: str = "openclaw"
+    agent_version: str | None = None
+    agent_source_commit: str | None = None
     group_id: str | None = None
     skill_allowlist_sha256: str | None = None
     skill_allowlist_path: str | None = None
@@ -56,6 +59,41 @@ class MaterializedJob:
 class MaterializedPairedJobs:
     tasks: tuple[TaskConfig, ...]
     groups: dict[str, MaterializedJob]
+
+
+def _agent_config(
+    spec: ExperimentSpec | ExperimentSpecV2,
+    lock,
+    *,
+    skills=(),
+    paired: bool = False,
+):
+    if spec.agent.adapter == "hermes":
+        return AgentConfig(
+            import_path="adapters.hermes.adapter:HermesAgent",
+            model_name=spec.agent.model,
+            skills=list(skills),
+            override_setup_timeout_sec=1200,
+            kwargs={
+                "version": lock.hermes.source_tag,
+                "source_commit": lock.hermes.source_commit,
+                "install_branch": lock.hermes.install_branch,
+            },
+        )
+    kwargs = {"version": lock.openclaw.version}
+    if paired:
+        kwargs.update(
+            {
+                "thinking": spec.agent.thinking or "medium",
+                "session_to_trajectory": True,
+            }
+        )
+    return AgentConfig(
+        import_path="adapters.openclaw.adapter:OpenClawAgent",
+        model_name=spec.agent.model,
+        skills=list(skills),
+        kwargs=kwargs,
+    )
 
 
 def _locked_image(spec: ExperimentSpec | ExperimentSpecV2):
@@ -96,13 +134,7 @@ def materialize_job_config(
             override_cpus=int(profile.cpus),
             override_memory_mb=profile.memory_mb,
         ),
-        agents=[
-            AgentConfig(
-                import_path="adapters.openclaw.adapter:OpenClawAgent",
-                model_name=spec.agent.model,
-                kwargs={"version": lock.openclaw.version},
-            )
-        ],
+        agents=[_agent_config(spec, lock)],
     )
     return MaterializedJob(
         job_config=job_config,
@@ -110,8 +142,17 @@ def materialize_job_config(
         resource_config_sha256=config_sha256(resource_config),
         profile_name=spec.resources.profile,
         preflight=preflight,
-        openclaw_version=lock.openclaw.version,
+        openclaw_version=(lock.openclaw.version if spec.agent.adapter == "openclaw" else None),
         agent_base_image=lock.agent_base_image.immutable_reference,
+        agent_name=spec.agent.adapter,
+        agent_version=(
+            lock.openclaw.version
+            if spec.agent.adapter == "openclaw"
+            else lock.hermes.package_version
+        ),
+        agent_source_commit=(
+            lock.hermes.source_commit if spec.agent.adapter == "hermes" else None
+        ),
         agent_python={
             "python": {
                 "command": lock.agent_python.python_command,
@@ -203,18 +244,7 @@ def materialize_group_job_config(
             override_cpus=int(profile.cpus),
             override_memory_mb=profile.memory_mb,
         ),
-        agents=[
-            AgentConfig(
-                import_path="adapters.openclaw.adapter:OpenClawAgent",
-                model_name=spec.agent.model,
-                skills=skills,
-                kwargs={
-                    "version": lock.openclaw.version,
-                    "thinking": spec.agent.thinking,
-                    "session_to_trajectory": True,
-                },
-            )
-        ],
+        agents=[_agent_config(spec, lock, skills=skills, paired=True)],
         verifier=VerifierConfig(
             import_path="adapters.vgb_verifier:VgbVerifier",
             env={"VGB_PYTHON": str(vgb_python)} if vgb_python else {},
@@ -247,8 +277,17 @@ def materialize_group_job_config(
         resource_config_sha256=config_sha256(resource_config),
         profile_name=spec.resources.profile,
         preflight=preflight,
-        openclaw_version=lock.openclaw.version,
+        openclaw_version=(lock.openclaw.version if spec.agent.adapter == "openclaw" else None),
         agent_base_image=lock.agent_base_image.immutable_reference,
+        agent_name=spec.agent.adapter,
+        agent_version=(
+            lock.openclaw.version
+            if spec.agent.adapter == "openclaw"
+            else lock.hermes.package_version
+        ),
+        agent_source_commit=(
+            lock.hermes.source_commit if spec.agent.adapter == "hermes" else None
+        ),
         group_id=group.id,
         skill_allowlist_sha256=allowlist_digest,
         skill_allowlist_path=allowlist_path,

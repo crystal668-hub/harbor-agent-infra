@@ -11,9 +11,15 @@ from integrations.vgb.release_lock import TRACKS
 class AgentSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    adapter: Literal["openclaw"]
+    adapter: Literal["openclaw", "hermes"]
     model: str = Field(min_length=1)
-    thinking: str = Field(default="medium", min_length=1)
+    thinking: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_thinking(self) -> AgentSpec:
+        if self.adapter == "hermes" and self.thinking is not None:
+            raise ValueError("thinking is only supported by the OpenClaw adapter")
+        return self
 
 
 class RetrySpec(BaseModel):
