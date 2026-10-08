@@ -19,6 +19,11 @@ from adapters.openclaw.session import (
     trajectory_export_command,
 )
 
+# OpenClaw's current model catalog declares this output limit for GPT-5.6 Sol.
+_OPENAI_GPT_56_SOL_MAX_TOKENS = 128_000
+# OpenClaw 2026.9.5 uses this fallback for inline providers without model metadata.
+_UNKNOWN_INLINE_MODEL_MAX_TOKENS = 200_000
+
 
 class OpenClawAgent(HarborOpenClaw):
     """Thin Harbor OpenClaw wrapper with Infra-owned identity and evidence."""
@@ -135,6 +140,7 @@ class OpenClawAgent(HarborOpenClaw):
                         if provider == "qwen":
                             model["reasoning"] = True
                             model["input"] = ["text"]
+                            model["maxTokens"] = _UNKNOWN_INLINE_MODEL_MAX_TOKENS
                             model["compat"] = {
                                 "supportsReasoningEffort": True,
                                 "supportedReasoningEfforts": [
@@ -147,6 +153,7 @@ class OpenClawAgent(HarborOpenClaw):
                         if provider == "openai" and model_id == "gpt-5.6-sol":
                             model.update(
                                 {
+                                    "maxTokens": _OPENAI_GPT_56_SOL_MAX_TOKENS,
                                     "reasoning": True,
                                     "thinkingLevelMap": {
                                         "off": "none",

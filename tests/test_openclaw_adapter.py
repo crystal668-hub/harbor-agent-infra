@@ -110,6 +110,7 @@ def test_openai_gpt_56_sol_custom_provider_preserves_thinking_profile(
     agent.session_id = "task__attempt-1__agent"
     model = agent._build_full_openclaw_config()["models"]["providers"]["openai"]["models"][0]
     assert model["id"] == "gpt-5.6-sol"
+    assert model["maxTokens"] == 128_000
     assert model["thinkingLevelMap"]["xhigh"] == "xhigh"
     assert "xhigh" in model["compat"]["supportedReasoningEfforts"]
     assert "--session-key agent:openclaw:explicit:task__attempt-1" in (
@@ -146,6 +147,7 @@ def test_qwen_openai_compatible_provider_is_configured_from_qwen_env(
         {
             "id": "qwen3.8-flash",
             "name": "qwen3.8-flash",
+            "maxTokens": 200_000,
             "reasoning": True,
             "input": ["text"],
             "compat": {
