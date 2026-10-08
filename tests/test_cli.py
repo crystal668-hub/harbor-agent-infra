@@ -90,7 +90,7 @@ def test_materialize_command_writes_job_snapshot(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "hai-openclaw-agent")
     monkeypatch.setenv(
         "HARBOR_AGENT_BASE_IMAGE_DIGEST",
-        "sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
+        "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
     )
     monkeypatch.setenv("RESOURCE_PROFILE", "local-smoke")
     monkeypatch.setenv("RESOURCE_PROFILE_FILE", "local.yaml")
@@ -151,7 +151,7 @@ profiles:
     assert payload["job_config"]["environment"]["override_memory_mb"] == 512
     assert payload["job_config"]["agents"][0]["kwargs"]["version"] == "2026.6.34"
     assert payload["agent_base_image"].endswith(
-        "@sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb"
+        "@sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68"
     )
     assert payload["agent_python"]["package_install_policy"] == "agent-managed"
     assert payload["agent_chemistry"]["xtb_version"] == "6.5.1"
@@ -162,7 +162,7 @@ def test_materialize_v2_command_writes_paired_job_snapshot(monkeypatch, tmp_path
     monkeypatch.setenv("HARBOR_AGENT_BASE_IMAGE_REFERENCE", "hai-openclaw-agent")
     monkeypatch.setenv(
         "HARBOR_AGENT_BASE_IMAGE_DIGEST",
-        "sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
+        "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
     )
     monkeypatch.setenv("RESOURCE_PROFILE", "local-smoke")
     monkeypatch.setenv("RESOURCE_PROFILE_FILE", "local.yaml")

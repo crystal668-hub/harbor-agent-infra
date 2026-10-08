@@ -32,7 +32,7 @@ def test_locked_agent_image_has_fixed_chemistry_tools() -> None:
             "--entrypoint", "sh", lock.agent_base_image.immutable_reference,
             "-lc",
             "python --version && python3 --version && pip --version && pip3 --version "
-            "&& openclaw --version "
+            "&& ! command -v openclaw "
             "&& command -v bash && command -v curl && command -v git "
             "&& command -v pgrep && command -v rg && command -v xz "
             "&& python -m venv /tmp/hai-venv "
@@ -51,7 +51,6 @@ def test_locked_agent_image_has_fixed_chemistry_tools() -> None:
     )
     assert probe.returncode == 0, probe.stdout + probe.stderr
     lines = probe.stdout.splitlines()
-    assert any(lock.openclaw.version in line for line in lines)
     installed = json.loads(lines[-1])
     names = {item["name"].lower() for item in installed}
     assert {"rdkit", "numpy", "pillow"} <= names

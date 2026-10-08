@@ -72,7 +72,7 @@ def _spec(tmp_path: Path) -> ExperimentSpecV2:
             "agent": {"adapter": "openclaw", "model": "fixture-model"},
             "image": {
                 "reference": "hai-openclaw-agent",
-                "digest": "sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
+                "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
                 "platform": "linux/arm64",
                 "pull_policy": "if_missing",
             },
@@ -104,7 +104,7 @@ def test_materialize_vgb_tasks_writes_harbor_task(tmp_path: Path) -> None:
         FakeVgbRuntime(),
         spec,
         output_root=tmp_path / "run",
-        image="hai-openclaw-agent@sha256:2c37378bf989fc37621e8fff7acb47ae2369de64f503ecb172e2fee30f4942eb",
+        image="hai-openclaw-agent@sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
     )
     assert len(tasks) == 1
     task_dir = Path(tasks[0].path)

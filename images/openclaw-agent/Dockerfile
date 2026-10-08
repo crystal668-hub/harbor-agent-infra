@@ -1,5 +1,4 @@
 ARG BASE_IMAGE=node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
-ARG OPENCLAW_VERSION=2026.6.34
 ARG RDKIT_VERSION=2025.9.6
 ARG RDKIT_WHEEL_SHA256=d0ec921fee7f2908e1da8c4ea1185dbb6d0a22787bcf9749b442691c121c02ef
 ARG NUMPY_VERSION=2.2.6
@@ -8,7 +7,6 @@ ARG PILLOW_VERSION=11.3.0
 ARG PILLOW_WHEEL_SHA256=7d1aa4de119a0ecac0a34a9c8bde33f34022e2e8f99104e47a3ca392fd60e37d
 ARG XTB_DEBIAN_VERSION=6.5.1-3
 FROM ${BASE_IMAGE}
-ARG OPENCLAW_VERSION
 ARG RDKIT_VERSION
 ARG RDKIT_WHEEL_SHA256
 ARG NUMPY_VERSION
@@ -17,14 +15,7 @@ ARG PILLOW_VERSION
 ARG PILLOW_WHEEL_SHA256
 ARG XTB_DEBIAN_VERSION
 
-RUN npm install --global --no-audit --no-fund \
-      --allow-scripts=openclaw,@google/genai,protobufjs,tree-sitter-bash \
-      "openclaw@${OPENCLAW_VERSION}" \
-    && openclaw --version | grep -F "${OPENCLAW_VERSION}"
-
 # Keep Harbor's system dependency checks off the network-dependent package path.
-# The locked OpenClaw CLI is already available in the image; Harbor may reinstall
-# the same version in Trial-local Node state.
 RUN for attempt in 1 2 3 4 5; do \
       apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=120 update \
         && break; \
