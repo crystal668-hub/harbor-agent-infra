@@ -461,13 +461,21 @@ async def run_paired_jobs(
             current_group_id: list(group.injected_skills)
             for current_group_id, group in materialized.groups.items()
         }
+        skills_mismatch = any(
+            (
+                current_group_id in previous_group_skills
+                and previous_group_skills[current_group_id] != skills
+            )
+            or (
+                current_group_id not in previous_group_skills
+                and replace_group_task_names is None
+            )
+            for current_group_id, skills in requested_group_skills.items()
+        )
         if (
             previous_source_hash != expected_source_hash
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
-            or any(
-                previous_group_skills.get(current_group_id) != skills
-                for current_group_id, skills in requested_group_skills.items()
-            )
+            or skills_mismatch
         ):
             raise ValueError("existing runtime manifest does not match run inputs")
     replacement_artifacts = None
@@ -614,6 +622,38 @@ async def run_paired_jobs(
         (output_root / "results.json").write_text(
             json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
+        manifest_groups = {
+            item["group_id"]: item
+            for item in (previous_manifest or {}).get("groups", [])
+        }
+        manifest_groups.update(
+            {
+                current_group_id: {
+                    "group_id": current_group_id,
+                    "skills_enabled": current_group_id == "skills_on",
+                    "skill_allowlist_path": group.skill_allowlist_path,
+                    "skill_allowlist_sha256": group.skill_allowlist_sha256,
+                    "skill_allowlist_file_sha256": group.skill_allowlist_file_sha256,
+                    "skills_root": group.skills_root,
+                    "injected_skills": group.injected_skills,
+                    "job_config": group.job_config.model_dump(mode="json"),
+                    "network_policies": group.network_policies,
+                    "job_id": next(
+                        (item.job_id for item in groups if item.group_id == current_group_id),
+                        None,
+                    ),
+                    "job_dir": next(
+                        (str(item.job_dir) for item in groups if item.group_id == current_group_id),
+                        None,
+                    ),
+                    "status": next(
+                        (item.status for item in groups if item.group_id == current_group_id),
+                        "pending",
+                    ),
+                }
+                for current_group_id, group in materialized.groups.items()
+            }
+        )
         manifest = {
             "schema_version": (
                 "harbor-single-group-runtime-manifest.v1"
@@ -663,27 +703,9 @@ async def run_paired_jobs(
                 "viewer_jobs": str(output_root / "jobs"),
             },
             "groups": [
-                {
-                    "group_id": group_id,
-                    "skills_enabled": group_id == "skills_on",
-                    "skill_allowlist_path": group.skill_allowlist_path,
-                    "skill_allowlist_sha256": group.skill_allowlist_sha256,
-                    "skill_allowlist_file_sha256": group.skill_allowlist_file_sha256,
-                    "skills_root": group.skills_root,
-                    "injected_skills": group.injected_skills,
-                    "job_config": group.job_config.model_dump(mode="json"),
-                    "network_policies": group.network_policies,
-                    "job_id": next(
-                        (item.job_id for item in groups if item.group_id == group_id), None
-                    ),
-                    "job_dir": next(
-                        (str(item.job_dir) for item in groups if item.group_id == group_id), None
-                    ),
-                    "status": next(
-                        (item.status for item in groups if item.group_id == group_id), "pending"
-                    ),
-                }
-                for group_id, group in materialized.groups.items()
+                manifest_groups[group.id]
+                for group in spec.groups
+                if group.id in manifest_groups
             ],
             "group_summary": summary,
             "group_track_summary": group_track,

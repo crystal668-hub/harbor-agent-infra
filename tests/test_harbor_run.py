@@ -326,6 +326,30 @@ def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path
     ]
     assert not (root / "per-record" / "skills_on").exists()
 
+    skills_root = tmp_path / "skills"
+    for name in ("rdkit", "ase"):
+        (skills_root / name).mkdir(parents=True)
+    manifest = asyncio.run(
+        run_module.run_paired_jobs(
+            spec,
+            _resources(),
+            runtime,
+            output_root=root,
+            skills_root=skills_root,
+            group_id="skills_on",
+            replace_group_task_names=frozenset(
+                {"open_generation_rdkit__rdkit_001_qed_max"}
+            ),
+        )
+    )
+    assert [group["group_id"] for group in manifest["groups"]] == [
+        "skills_on",
+        "skills_off",
+    ]
+    assert manifest["groups"][0]["injected_skills"]
+    results = json.loads((root / "results.json").read_text(encoding="utf-8"))
+    assert [group["id"] for group in results["groups"]] == ["skills_on", "skills_off"]
+
 
 def test_paired_run_rejects_wrong_vgb_runtime_before_materialization(tmp_path: Path) -> None:
     runtime = FakeVgbRuntime()
