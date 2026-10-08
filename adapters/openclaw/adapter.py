@@ -21,8 +21,9 @@ from adapters.openclaw.session import (
 
 # OpenClaw's current model catalog declares this output limit for GPT-5.6 Sol.
 _OPENAI_GPT_56_SOL_MAX_TOKENS = 128_000
-# OpenClaw 2026.9.5 uses this fallback for inline providers without model metadata.
-_UNKNOWN_INLINE_MODEL_MAX_TOKENS = 200_000
+# OpenClaw qwen-provider 2026.9.5 declares these limits for qwen3.8-flash.
+_QWEN_38_FLASH_CONTEXT_WINDOW = 1_000_000
+_QWEN_38_FLASH_MAX_TOKENS = 131_072
 
 
 class OpenClawAgent(HarborOpenClaw):
@@ -140,7 +141,8 @@ class OpenClawAgent(HarborOpenClaw):
                         if provider == "qwen":
                             model["reasoning"] = True
                             model["input"] = ["text"]
-                            model["maxTokens"] = _UNKNOWN_INLINE_MODEL_MAX_TOKENS
+                            model["contextWindow"] = _QWEN_38_FLASH_CONTEXT_WINDOW
+                            model["maxTokens"] = _QWEN_38_FLASH_MAX_TOKENS
                             model["compat"] = {
                                 "supportsReasoningEffort": True,
                                 "supportedReasoningEfforts": [

@@ -147,7 +147,8 @@ def test_qwen_openai_compatible_provider_is_configured_from_qwen_env(
         {
             "id": "qwen3.8-flash",
             "name": "qwen3.8-flash",
-            "maxTokens": 200_000,
+            "contextWindow": 1_000_000,
+            "maxTokens": 131_072,
             "reasoning": True,
             "input": ["text"],
             "compat": {
