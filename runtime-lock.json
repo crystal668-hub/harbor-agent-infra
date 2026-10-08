@@ -44,6 +44,15 @@
     "version": "2026.6.34",
     "node_engine": ">=22.19.0"
   },
+  "hermes": {
+    "adapter": "hermes",
+    "adapter_version": "0.1.0",
+    "package_version": "0.21.6",
+    "source_tag": "v0.21.6",
+    "source_commit": "818c13be1dc4fd28987e1e881a9408224afd4535",
+    "installer_source": "source-commit",
+    "version_command": "hermes --version"
+  },
   "agent_base_image": {
     "reference": "hai-base-env",
     "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",

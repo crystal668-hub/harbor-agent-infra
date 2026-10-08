@@ -8,6 +8,7 @@ from typing import Any
 
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_GIT_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 
 
 @dataclass(frozen=True)
@@ -54,8 +55,17 @@ class OpenClawRuntimeLock:
 
 
 @dataclass(frozen=True)
+class HermesRuntimeLock:
+    package_version: str
+    source_tag: str
+    source_commit: str
+    version_command: str
+
+
+@dataclass(frozen=True)
 class InfraRuntimeLock:
     openclaw: OpenClawRuntimeLock
+    hermes: HermesRuntimeLock
     agent_base_image: AgentBaseImageLock
     agent_python: AgentPythonRuntimeLock
     agent_chemistry: AgentChemistryToolsLock
@@ -64,11 +74,14 @@ class InfraRuntimeLock:
 def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     payload: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     openclaw = payload.get("openclaw")
+    hermes = payload.get("hermes")
     image = payload.get("agent_base_image")
     agent_python = payload.get("agent_python")
     agent_chemistry = payload.get("agent_chemistry")
     if not isinstance(openclaw, dict):
         raise ValueError("runtime lock is missing the openclaw object")
+    if not isinstance(hermes, dict):
+        raise ValueError("runtime lock is missing the hermes object")
     if not isinstance(image, dict):
         raise ValueError("runtime lock is missing the agent_base_image object")
     if not isinstance(agent_python, dict):
@@ -89,6 +102,19 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError(
             "OpenClaw runtime_strategy must be harbor-native-nvm22-openclaw-setup-workspace"
         )
+    hermes_version = hermes.get("package_version")
+    hermes_tag = hermes.get("source_tag")
+    hermes_commit = hermes.get("source_commit")
+    if not isinstance(hermes_version, str) or not _SEMVER.fullmatch(hermes_version):
+        raise ValueError("Hermes package_version must be a complete semver")
+    if hermes_tag != f"v{hermes_version}":
+        raise ValueError("Hermes source_tag must match package_version")
+    if not isinstance(hermes_commit, str) or not _GIT_COMMIT.fullmatch(hermes_commit):
+        raise ValueError("Hermes source_commit must be a full lowercase Git commit")
+    if hermes.get("installer_source") != "source-commit":
+        raise ValueError("Hermes installer_source must be source-commit")
+    if hermes.get("version_command") != "hermes --version":
+        raise ValueError("Hermes version_command must be hermes --version")
     reference = image.get("reference")
     digest = image.get("digest")
     platform = image.get("platform")
@@ -131,6 +157,12 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
             package_integrity=integrity,
             node_engine=node_engine,
             runtime_strategy=strategy,
+        ),
+        hermes=HermesRuntimeLock(
+            package_version=hermes_version,
+            source_tag=hermes_tag,
+            source_commit=hermes_commit,
+            version_command=hermes["version_command"],
         ),
         agent_base_image=AgentBaseImageLock(
             reference=reference, digest=digest, platform=platform
