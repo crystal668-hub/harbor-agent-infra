@@ -72,3 +72,17 @@ uv run --locked hai run \
   --output-dir run-artifacts/openclaw-gpt-5.6-sol-pcb \
   --rerun-failed run-artifacts/openclaw-gpt-5.6-sol-pcb/results.json
 ```
+
+To rerun named tasks that Harbor previously marked completed, keep the existing output
+directory and append a distinct job name. Repeat `--task-name` for each task; this mode
+retains prior artifacts and results. The configuration may contain only the selected
+tasks, but its model, image, resource, retry, and network settings must remain unchanged:
+
+```bash
+uv run --locked hai run \
+  --config configs/experiments/openclaw-vgb-qwen.config.yaml \
+  --group skills_off \
+  --output-dir run-artifacts/openclaw-qwen-3.8-flash-pca \
+  --task-name property_calculation_advanced__property_calculation_advanced_001_free_energy \
+  --job-name-suffix rerun-batch-1
+```

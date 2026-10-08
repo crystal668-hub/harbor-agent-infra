@@ -39,6 +39,21 @@ class GroupRunResult:
     n_cancelled: int
 
 
+def _job_execution_settings(job_config: dict[str, Any]) -> dict[str, Any]:
+    """Return settings that must not change when selecting tasks for a new job."""
+    return {
+        key: job_config.get(key)
+        for key in (
+            "n_attempts",
+            "n_concurrent_trials",
+            "retry",
+            "environment",
+            "agents",
+            "verifier",
+        )
+    }
+
+
 def failed_task_names_from_results(path: Path, *, group_id: str) -> frozenset[str]:
     """Return non-completed task names for one group in a prior results file."""
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -407,6 +422,8 @@ async def run_paired_jobs(
     delete_containers: bool = True,
     group_id: str | None = None,
     replace_group_task_names: frozenset[str] | None = None,
+    job_name_suffix: str = "",
+    allow_task_selection_change: bool = False,
     source_experiment_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
@@ -429,7 +446,7 @@ async def run_paired_jobs(
     previous_results_path = output_root / "results.json"
     previous_results = (
         json.loads(previous_results_path.read_text(encoding="utf-8"))
-        if replace_group_task_names and previous_results_path.exists()
+        if (replace_group_task_names or job_name_suffix) and previous_results_path.exists()
         else None
     )
     started_at = (
@@ -445,7 +462,9 @@ async def run_paired_jobs(
         task_settings=task_settings,
         delete_containers=delete_containers,
         group_id=group_id,
-        job_name_suffix=(f"-rerun-{uuid4().hex[:8]}" if replace_group_task_names else ""),
+        job_name_suffix=(
+            f"-rerun-{uuid4().hex[:8]}" if replace_group_task_names else job_name_suffix
+        ),
     )
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))
@@ -472,8 +491,21 @@ async def run_paired_jobs(
             )
             for current_group_id, skills in requested_group_skills.items()
         )
+        previous_group_configs = {
+            item["group_id"]: item.get("job_config", {})
+            for item in previous_manifest.get("groups", [])
+        }
+        execution_settings_match = all(
+            isinstance(previous_group_configs.get(current_group_id), dict)
+            and _job_execution_settings(previous_group_configs[current_group_id])
+            == _job_execution_settings(group.job_config.model_dump(mode="json"))
+            for current_group_id, group in materialized.groups.items()
+        )
+        source_matches = previous_source_hash == expected_source_hash
         if (
-            previous_source_hash != expected_source_hash
+            (not source_matches and not (
+                allow_task_selection_change and execution_settings_match
+            ))
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
             or skills_mismatch
         ):

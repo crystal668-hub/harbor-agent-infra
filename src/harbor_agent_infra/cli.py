@@ -62,6 +62,17 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="RESULTS_JSON",
         help="rerun failed records for --group and replace their prior artifacts in --output-dir",
     )
+    run.add_argument(
+        "--task-name",
+        action="append",
+        metavar="TRACK__TASK_ID",
+        help="rerun this configured task; repeat for multiple tasks",
+    )
+    run.add_argument(
+        "--job-name-suffix",
+        metavar="SUFFIX",
+        help="append -SUFFIX to the job name when using --task-name",
+    )
     viewer = subparsers.add_parser("view", help="browse native Harbor job results")
     viewer.add_argument("--jobs-dir", type=Path, required=True)
     viewer.add_argument("--port", default="8080-8089")
@@ -191,6 +202,17 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
         source_experiment_sha256 = experiment_sha256(spec)
         replace_group_task_names = None
+        job_name_suffix = ""
+        explicit_task_names = frozenset(args.task_name or ())
+        if args.rerun_failed and explicit_task_names:
+            raise ValueError("--rerun-failed cannot be combined with --task-name")
+        if explicit_task_names or args.job_name_suffix:
+            if args.group is None:
+                raise ValueError("--task-name requires --group")
+            if not explicit_task_names or not args.job_name_suffix:
+                raise ValueError("--task-name and --job-name-suffix must be provided together")
+            job_name_suffix = f"-{args.job_name_suffix}"
+            spec = _with_selected_task_names(spec, explicit_task_names)
         if args.rerun_failed:
             if args.group is None:
                 raise ValueError("--rerun-failed requires --group")
@@ -209,6 +231,8 @@ def main(argv: list[str] | None = None) -> int:
                 delete_containers=delete_containers,
                 group_id=args.group,
                 replace_group_task_names=replace_group_task_names,
+                job_name_suffix=job_name_suffix,
+                allow_task_selection_change=bool(explicit_task_names),
                 source_experiment_sha256=source_experiment_sha256,
             )
         )

@@ -21,6 +21,7 @@ from harbor_agent_infra.harbor.run import (
     failed_task_names_from_results,
     run_group_jobs,
 )
+from harbor_agent_infra.preparation.experiments import experiment_sha256
 
 
 def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
@@ -349,6 +350,78 @@ def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path
     assert manifest["groups"][0]["injected_skills"]
     results = json.loads((root / "results.json").read_text(encoding="utf-8"))
     assert [group["id"] for group in results["groups"]] == ["skills_on", "skills_off"]
+
+
+def test_explicit_task_rerun_uses_named_job_in_existing_output(monkeypatch, tmp_path: Path) -> None:
+    spec = _spec(tmp_path)
+    runtime = FakeVgbRuntime()
+    runtime.python_executable = Path(sys.executable)
+    created = []
+
+    class FakeJob:
+        def __init__(self, config):
+            self.id = config.job_name
+            self.job_dir = config.jobs_dir / config.job_name
+            created.append(config)
+
+        @classmethod
+        async def create(cls, config):
+            return cls(config)
+
+        def on_trial_ended(self, callback):
+            pass
+
+        def on_trial_cancelled(self, callback):
+            pass
+
+        async def run(self):
+            return SimpleNamespace(
+                id=self.id,
+                n_total_trials=0,
+                stats=SimpleNamespace(n_cancelled_trials=0, n_errored_trials=0),
+            )
+
+    monkeypatch.setattr(run_module, "Job", FakeJob)
+    root = tmp_path / "run"
+    skills_root = tmp_path / "skills"
+    for name in ("rdkit", "ase"):
+        (skills_root / name).mkdir(parents=True)
+    asyncio.run(
+        run_module.run_paired_jobs(
+            spec, _resources(), runtime, output_root=root, skills_root=skills_root
+        )
+    )
+    selected = spec.model_copy(
+        update={
+            "benchmark": spec.benchmark.model_copy(
+                update={
+                    "cases": [
+                        spec.benchmark.cases[0].model_copy(
+                            update={"task_ids": ["rdkit_001_qed_max"]}
+                        )
+                    ]
+                }
+            )
+        }
+    )
+
+    manifest = asyncio.run(
+        run_module.run_paired_jobs(
+            selected,
+            _resources(),
+            runtime,
+            output_root=root,
+            group_id="skills_off",
+            job_name_suffix="-rerun-batch-1",
+            allow_task_selection_change=True,
+            source_experiment_sha256=experiment_sha256(selected),
+        )
+    )
+
+    assert created[-1].job_name == "paired-skills_off-rerun-batch-1"
+    assert created[-1].jobs_dir == root / "jobs"
+    assert manifest["resume"]["resumed"] is True
+    assert manifest["source_experiment_sha256"] == experiment_sha256(selected)
 
 
 def test_paired_run_rejects_wrong_vgb_runtime_before_materialization(tmp_path: Path) -> None:

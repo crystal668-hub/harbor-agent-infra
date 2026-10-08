@@ -51,6 +51,28 @@ def test_run_parser_accepts_failed_record_rerun() -> None:
     assert args.rerun_failed.name == "results.json"
 
 
+def test_run_parser_accepts_explicit_task_rerun() -> None:
+    args = build_parser().parse_args(
+        [
+            "run",
+            "--experiment",
+            "experiment.yaml",
+            "--resource-config",
+            "resources.yaml",
+            "--output-dir",
+            "run-artifacts/single",
+            "--group",
+            "skills_off",
+            "--task-name",
+            "open_generation_rdkit__rdkit_001_qed_max",
+            "--job-name-suffix",
+            "rerun-batch-1",
+        ]
+    )
+    assert args.task_name == ["open_generation_rdkit__rdkit_001_qed_max"]
+    assert args.job_name_suffix == "rerun-batch-1"
+
+
 def test_selected_failed_tasks_filter_configured_cases(tmp_path) -> None:
     spec = ExperimentSpecV2.model_validate(
         {
