@@ -51,7 +51,8 @@ class HermesAgent(HarborHermes):
             environment,
             command=(
                 "set -euo pipefail; "
-                f"curl -fsSL {shlex.quote(installer_url)} | bash -s -- "
+                f"curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "
+                f"{shlex.quote(installer_url)} | bash -s -- "
                 f"--skip-setup --branch {shlex.quote(self._version)} "
                 f"--commit {shlex.quote(self._source_commit)} --force-commit && "
                 'export PATH="$HOME/.local/bin:$PATH" && '
