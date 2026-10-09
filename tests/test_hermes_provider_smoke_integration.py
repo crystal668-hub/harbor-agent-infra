@@ -45,6 +45,8 @@ async def _run_provider_smoke() -> None:
     (task_root / "tests/test.sh").write_text(
         "#!/bin/sh\n"
         "set -eu\n"
+        "test ! -e /workspace/BOOTSTRAP.md\n"
+        "test ! -e /workspace/IDENTITY.md\n"
         "test -s /logs/agent/hermes.txt\n"
         f"grep -q '{_MARKER}' /logs/agent/hermes.txt\n"
         "printf '1\\n' > /logs/verifier/reward.txt\n",
