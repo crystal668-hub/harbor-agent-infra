@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import os
 import shlex
 from typing import override
 
+from harbor.agents.installed.base import with_prompt_template
 from harbor.agents.installed.hermes import Hermes as HarborHermes
 from harbor.agents.installed.hermes import HermesOptions as HarborHermesOptions
 from harbor.environments.base import BaseEnvironment
+from harbor.models.agent.context import AgentContext
 from pydantic import Field
 
 
@@ -74,3 +77,92 @@ class HermesAgent(HarborHermes):
                 "hermes --version"
             ),
         )
+
+    @override
+    @with_prompt_template
+    async def run(
+        self,
+        instruction: str,
+        environment: BaseEnvironment,
+        context: AgentContext,
+    ) -> None:
+        provider, separator, model = (self.model_name or "").partition("/")
+        if provider != "qwen" or not separator:
+            await super().run(instruction, environment, context)
+            return
+
+        api_key = os.environ.get("QWEN_API_KEY")
+        base_url = os.environ.get("QWEN_BASE_URL")
+        if not api_key or not base_url:
+            raise ValueError("QWEN_API_KEY and QWEN_BASE_URL are required for qwen models")
+
+        self._last_run_was_resume = self._resume
+        env = {
+            "HERMES_HOME": "/tmp/hermes",
+            "TERMINAL_ENV": "local",
+            "OPENAI_API_KEY": api_key,
+            "OPENAI_BASE_URL": base_url,
+            "HARBOR_INSTRUCTION": instruction,
+        }
+        config_yaml = self._build_config_yaml(model)
+        await self.exec_as_agent(
+            environment,
+            command=(
+                "mkdir -p /tmp/hermes && "
+                f"cat > /tmp/hermes/config.yaml << 'EOF'\n{config_yaml}EOF"
+            ),
+            env=env,
+            timeout_sec=10,
+        )
+        skills_command = self._build_register_skills_command()
+        if skills_command:
+            await self.exec_as_agent(
+                environment, command=skills_command, env=env, timeout_sec=10
+            )
+
+        cli_parts = [
+            'export PATH="$HOME/.local/bin:$PATH"',
+            "hermes --yolo chat",
+        ]
+        if self._resume:
+            native_session_id = getattr(self, "_native_session_id", None)
+            if native_session_id is None and self._version_was_pinned:
+                raise RuntimeError(
+                    "Cannot resume the pinned Hermes version because the previous "
+                    "run did not export a native session ID."
+                )
+            cli_parts.extend(["--resume", shlex.quote(native_session_id or "latest")])
+        cli_parts.extend(
+            [
+                '-q "$HARBOR_INSTRUCTION"',
+                "-Q",
+                f"--model {shlex.quote(model)}",
+                "--provider openai-api",
+            ]
+        )
+        if self.options.toolsets:
+            cli_parts.append(f"--toolsets {shlex.quote(str(self.options.toolsets))}")
+        run_command = (
+            f"{cli_parts[0]} && {' '.join(cli_parts[1:])} "
+            "2>&1 | stdbuf -oL tee /logs/agent/hermes.txt"
+        )
+        try:
+            await self.exec_as_agent(environment, command=run_command, env=env)
+        finally:
+            try:
+                export_result = await self.exec_as_agent(
+                    environment,
+                    command=(
+                        'export PATH="$HOME/.local/bin:$PATH" && '
+                        "hermes sessions export /logs/agent/hermes-session.jsonl "
+                        "--source cli 2>/dev/null && "
+                        "head -n 1 /logs/agent/hermes-session.jsonl || true"
+                    ),
+                    env={"HERMES_HOME": "/tmp/hermes"},
+                    timeout_sec=30,
+                )
+                native_session_id = self._extract_native_session_id(export_result.stdout)
+                if native_session_id:
+                    self._native_session_id = native_session_id
+            except Exception:
+                pass

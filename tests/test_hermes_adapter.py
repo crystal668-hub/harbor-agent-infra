@@ -72,3 +72,17 @@ def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
             source_commit="main",
             install_branch="main",
         )
+
+
+def test_hermes_requires_qwen_credentials(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("QWEN_API_KEY", raising=False)
+    monkeypatch.delenv("QWEN_BASE_URL", raising=False)
+    agent = HermesAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="qwen/qwen3.8-flash",
+        version="v0.21.6",
+        source_commit=SOURCE_COMMIT,
+        install_branch="main",
+    )
+    with pytest.raises(ValueError, match="QWEN_API_KEY"):
+        asyncio.run(agent.run("reply with marker", None, None))
