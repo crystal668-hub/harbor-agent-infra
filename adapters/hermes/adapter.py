@@ -160,8 +160,11 @@ class HermesAgent(HarborHermes):
                     environment,
                     command=(
                         'export PATH="$HOME/.local/bin:$PATH" && '
+                        "(hermes sessions export /logs/agent/hermes-session.jsonl "
+                        "--source oneshot 2>/dev/null; "
+                        "[ -s /logs/agent/hermes-session.jsonl ] || "
                         "hermes sessions export /logs/agent/hermes-session.jsonl "
-                        "--source cli 2>/dev/null && "
+                        "--source cli 2>/dev/null) && "
                         "head -n 1 /logs/agent/hermes-session.jsonl || true"
                     ),
                     env={"HERMES_HOME": "/tmp/hermes"},

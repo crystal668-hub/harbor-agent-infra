@@ -46,8 +46,6 @@ async def _run_provider_smoke() -> None:
         "#!/bin/sh\n"
         "set -eu\n"
         "test -s /logs/agent/hermes.txt\n"
-        "test -s /logs/agent/hermes-session.jsonl\n"
-        "test -s /logs/agent/trajectory.json\n"
         f"grep -q '{_MARKER}' /logs/agent/hermes.txt\n"
         "printf '1\\n' > /logs/verifier/reward.txt\n",
         encoding="utf-8",
@@ -88,6 +86,7 @@ async def _run_provider_smoke() -> None:
     assert trial.agent_info.version == lock.hermes.source_tag
     trial_dir = next((task_root / "jobs").glob("*/task__*"))
     assert _MARKER in (trial_dir / "agent/hermes.txt").read_text(encoding="utf-8")
+    assert (trial_dir / "agent/hermes-session.jsonl").stat().st_size > 0
     assert (trial_dir / "agent/trajectory.json").stat().st_size > 0
 
 
