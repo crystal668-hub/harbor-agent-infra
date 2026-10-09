@@ -207,7 +207,9 @@ Harbor 0.23.0 官方 `ClaudeCode` 当前声明：
 建议改动：
 
 - `AgentSpec.adapter` 扩展到 `openclaw | hermes | codex | claude-code`。
-- 新增可选 `reasoning_effort`，仅 Codex/Claude Code 接受；OpenClaw 保留 `thinking`；Hermes 继续拒绝未支持的 reasoning 字段。
+- 新增可选 `reasoning_effort`，仅 Codex/Claude Code 接受；OpenClaw 保留
+  `thinking`；Hermes 使用已经过 `v0.21.6` 官方 CLI 与 provider 验证的独立
+  `reasoning` 字段。
 - 首版不要把所有 Harbor native options 都暴露进 experiment schema。`reasoning_summary`、web search、Claude budget/tools/max turns 等在实际实验需要前保持默认。
 - `_agent_config()` 新增分支：
   - Codex：`AgentConfig(name="codex", model_name=..., skills=..., kwargs={"version": lock.codex.version, ...validated native options})`；

@@ -14,11 +14,16 @@ class AgentSpec(BaseModel):
     adapter: Literal["openclaw", "hermes"]
     model: str = Field(min_length=1)
     thinking: str | None = Field(default=None, min_length=1)
+    reasoning: Literal[
+        "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"
+    ] | None = None
 
     @model_validator(mode="after")
     def validate_thinking(self) -> AgentSpec:
         if self.adapter == "hermes" and self.thinking is not None:
             raise ValueError("thinking is only supported by the OpenClaw adapter")
+        if self.adapter == "openclaw" and self.reasoning is not None:
+            raise ValueError("reasoning is only supported by the Hermes adapter")
         return self
 
 

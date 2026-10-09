@@ -152,7 +152,11 @@ def test_job_materializer_projects_pinned_hermes_adapter() -> None:
             "experiment_id": "hermes-smoke",
             "domain": "verifier-grounded",
             "tracks": ["open_generation_rdkit"],
-            "agent": {"adapter": "hermes", "model": "openai/fixture-model"},
+            "agent": {
+                "adapter": "hermes",
+                "model": "openai/fixture-model",
+                "reasoning": "high",
+            },
             "image": {
                 "reference": "hai-base-env",
                 "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
@@ -176,6 +180,7 @@ def test_job_materializer_projects_pinned_hermes_adapter() -> None:
         "version": "v0.21.6",
         "source_commit": "818c13be1dc4fd28987e1e881a9408224afd4535",
         "install_branch": "main",
+        "reasoning": "high",
     }
     assert materialized.agent_name == "hermes"
     assert materialized.agent_version == "0.21.6"
@@ -194,6 +199,35 @@ def test_hermes_rejects_openclaw_thinking_setting() -> None:
                     "adapter": "hermes",
                     "model": "openai/fixture-model",
                     "thinking": "high",
+                },
+                "image": {
+                    "reference": "hai-base-env",
+                    "digest": "sha256:" + "a" * 64,
+                    "platform": "linux/arm64",
+                    "pull_policy": "if_missing",
+                },
+                "resources": {"profile": "local", "config_file": "local.yaml"},
+                "vgb": {
+                    "package_lock": "runtime-lock.json",
+                    "track": "open_generation_rdkit",
+                    "task_ids": ["rdkit_001_qed_max"],
+                },
+            }
+        )
+
+
+def test_openclaw_rejects_hermes_reasoning_setting() -> None:
+    with pytest.raises(ValidationError, match="reasoning is only supported"):
+        ExperimentSpec.model_validate(
+            {
+                "schema_version": "experiment.v1",
+                "experiment_id": "invalid-openclaw",
+                "domain": "verifier-grounded",
+                "tracks": ["open_generation_rdkit"],
+                "agent": {
+                    "adapter": "openclaw",
+                    "model": "openai/fixture-model",
+                    "reasoning": "high",
                 },
                 "image": {
                     "reference": "hai-base-env",

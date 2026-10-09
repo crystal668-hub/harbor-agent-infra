@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import shlex
-from typing import override
+from typing import Literal, override
 
 import yaml
 from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_template
@@ -15,6 +15,12 @@ from pydantic import Field
 
 
 class HermesOptions(HarborHermesOptions):
+    reasoning: Literal[
+        "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"
+    ] | None = Field(
+        default=None,
+        description="Hermes reasoning effort for this invocation.",
+    )
     source_commit: str = Field(
         min_length=40,
         max_length=40,
@@ -32,10 +38,11 @@ class HermesAgent(HarborHermes):
 
     options_model = HermesOptions
 
-    @staticmethod
     @override
-    def _build_config_yaml(model: str) -> str:
+    def _build_config_yaml(self, model: str) -> str:
         config = yaml.safe_load(HarborHermes._build_config_yaml(model))
+        if self.options.reasoning is not None:
+            config.setdefault("agent", {})["reasoning_effort"] = self.options.reasoning
         config["onboarding"] = {
             "profile_build": "off",
             "seen": {
@@ -171,6 +178,8 @@ class HermesAgent(HarborHermes):
         )
         if self.options.toolsets:
             cli_parts.append(f"--toolsets {shlex.quote(str(self.options.toolsets))}")
+        if self.options.reasoning is not None:
+            cli_parts.append(f"--reasoning {shlex.quote(self.options.reasoning)}")
         run_command = (
             f"{cli_parts[0]} && {' '.join(cli_parts[1:])} "
             "2>&1 | stdbuf -oL tee /logs/agent/hermes.txt"

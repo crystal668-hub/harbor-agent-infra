@@ -134,14 +134,18 @@ compatibility projection. Paired Trial rewards use the canonical VGB `vgb_score`
 and an equal `reward` alias for the official Viewer.
 See [acceptance](docs/acceptance.md) for the real-run and Viewer build checks.
 
-For repeatable paired-run management, use one of the local provider templates. They keep
-the model, thinking level, immutable image, resources, retry policy and runtime settings
-fixed; edit only `benchmark.cases` and `task_ids` for each run:
+For repeatable run management, choose a harness-specific provider template. The
+OpenClaw contract uses `agent.thinking`; the Hermes contract uses
+`agent.reasoning`. Both keep the model, immutable image, resources, retry policy
+and runtime settings fixed; edit only `benchmark.cases` and `task_ids` for each
+run. See the contract in each harness directory for the exact parameter mapping.
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-gpt.config.yaml
-# Or use configs/experiments/openclaw-vgb-qwen.config.yaml.
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
+  --group skills_off
+# Hermes: configs/experiments/hermes/vgb-gpt.config.yaml
+# Qwen variants use vgb-qwen.config.yaml in the same harness directory.
 ```
 
 Tests and experiments default to the single `skills_off` group. Pass `--group
@@ -150,7 +154,7 @@ requested comparison explicitly requires it:
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
   --group skills_off \
   --output-dir run-artifacts/skills-off
 ```

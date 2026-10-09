@@ -69,16 +69,19 @@ def _agent_config(
     paired: bool = False,
 ):
     if spec.agent.adapter == "hermes":
+        kwargs = {
+            "version": lock.hermes.source_tag,
+            "source_commit": lock.hermes.source_commit,
+            "install_branch": lock.hermes.install_branch,
+        }
+        if spec.agent.reasoning is not None:
+            kwargs["reasoning"] = spec.agent.reasoning
         return AgentConfig(
             import_path="adapters.hermes.adapter:HermesAgent",
             model_name=spec.agent.model,
             skills=list(skills),
             override_setup_timeout_sec=1200,
-            kwargs={
-                "version": lock.hermes.source_tag,
-                "source_commit": lock.hermes.source_commit,
-                "install_branch": lock.hermes.install_branch,
-            },
+            kwargs=kwargs,
         )
     kwargs = {"version": lock.openclaw.version}
     if paired:

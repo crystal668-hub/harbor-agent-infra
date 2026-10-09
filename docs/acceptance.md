@@ -103,7 +103,7 @@ benchmark cases/task IDs before running:
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
   --output-dir run-artifacts/paired-live
 
 uv run --locked python scripts/verify_acceptance.py \

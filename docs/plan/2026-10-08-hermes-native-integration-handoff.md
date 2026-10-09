@@ -124,7 +124,10 @@ agents:
 - 输出 manifest 可增加通用 `agent.name` / `agent.version` / `agent.source_commit` 元数据；不要把 Hermes 填进名为 `openclaw_version` 的字段，也不要破坏现存 OpenClaw materialization 读取契约。
 - `tests/test_contracts.py`、`tests/test_cli.py`、`tests/test_task_materializer.py`：分别覆盖旧配置不变与 Hermes 输出为 native `name`。
 
-注意：当前 `AgentSpec.thinking` 是 OpenClaw 配置约定。Hermes 分支不得静默把它当作 Hermes reasoning setting；除非 Harbor 0.23.0 之外的选定官方版本明确定义对应原生参数，否则保持仅 OpenClaw 使用，并通过验证避免无意义字段误导。
+注意：`AgentSpec.thinking` 保持为 OpenClaw 配置约定，不得静默复用于
+Hermes。当前锁定的 Hermes `v0.21.6` 已验证原生 `--reasoning` 参数，因此
+Hermes 使用独立的 `AgentSpec.reasoning` 字段，并映射到
+`agent.reasoning_effort`；Qwen 自定义执行路径同时传递原生 CLI flag。
 
 验收：
 

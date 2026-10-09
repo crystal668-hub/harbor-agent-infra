@@ -52,6 +52,21 @@ def test_hermes_config_disables_onboarding(tmp_path: Path) -> None:
     assert all(config["onboarding"]["seen"].values())
 
 
+def test_hermes_config_projects_reasoning_effort(tmp_path: Path) -> None:
+    agent = HermesAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="openai/fixture-model",
+        version="v0.21.6",
+        source_commit=SOURCE_COMMIT,
+        install_branch="main",
+        reasoning="high",
+    )
+
+    config = yaml.safe_load(agent._build_config_yaml("fixture-model"))
+
+    assert config["agent"]["reasoning_effort"] == "high"
+
+
 def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch) -> None:
     agent = _agent(tmp_path)
     dependencies = AsyncMock()
@@ -96,6 +111,7 @@ def test_hermes_qwen_export_prefers_oneshot_sessions(tmp_path: Path, monkeypatch
         version="v0.21.6",
         source_commit=SOURCE_COMMIT,
         install_branch="main",
+        reasoning="high",
     )
     execute = AsyncMock(
         side_effect=[
@@ -110,6 +126,8 @@ def test_hermes_qwen_export_prefers_oneshot_sessions(tmp_path: Path, monkeypatch
 
     config_command = execute.await_args_list[0].kwargs["command"]
     assert "rm -f /workspace/BOOTSTRAP.md /workspace/IDENTITY.md" in config_command
+    run_command = execute.await_args_list[1].kwargs["command"]
+    assert "--reasoning high" in run_command
     export_command = execute.await_args_list[-1].kwargs["command"]
     assert "--source oneshot" in export_command
     assert "--source cli" in export_command

@@ -201,7 +201,11 @@ def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path)
 def test_group_job_config_projects_hermes_skills_through_agent_config(tmp_path: Path) -> None:
     openclaw_spec = _spec(tmp_path)
     payload = openclaw_spec.model_dump(mode="json")
-    payload["agent"] = {"adapter": "hermes", "model": "openai/fixture-model"}
+    payload["agent"] = {
+        "adapter": "hermes",
+        "model": "openai/fixture-model",
+        "reasoning": "high",
+    }
     spec = ExperimentSpecV2.model_validate(payload)
     skills_root = tmp_path / "skills"
     (skills_root / "rdkit").mkdir(parents=True)
@@ -226,6 +230,7 @@ def test_group_job_config_projects_hermes_skills_through_agent_config(tmp_path: 
         "version": "v0.21.6",
         "source_commit": "818c13be1dc4fd28987e1e881a9408224afd4535",
         "install_branch": "main",
+        "reasoning": "high",
     }
 
 

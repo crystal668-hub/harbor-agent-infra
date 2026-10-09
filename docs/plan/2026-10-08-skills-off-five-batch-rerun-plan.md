@@ -44,11 +44,11 @@
 
 | 批次 | 运行目录 | 配置 | 目标数 | 新 job 名称 |
 |---|---|---|---:|---|
-| 1 | `openclaw-qwen-3.8-flash-pca` | `openclaw-vgb-qwen.config.yaml` | 4 | `openclaw-vgb-qwen-skills_off-rerun-batch-1` |
-| 2 | `openclaw-qwen-3.8-flash-pcb` | `openclaw-vgb-qwen.config.yaml` | 3 | `openclaw-vgb-qwen-skills_off-rerun-batch-2` |
-| 3 | `openclaw-qwen-3.8-flash-og` | `openclaw-vgb-qwen.config.yaml` | 3 | `openclaw-vgb-qwen-skills_off-rerun-batch-3` |
-| 4 | `openclaw-gpt-5.6-sol-pca` | `openclaw-vgb-gpt.config.yaml` | 3 | `openclaw-vgb-gpt-skills_off-rerun-batch-4` |
-| 5 | `openclaw-gpt-5.6-sol-pcb` | `openclaw-vgb-gpt.config.yaml` | 18 | `openclaw-vgb-gpt-skills_off-rerun-batch-5` |
+| 1 | `openclaw-qwen-3.8-flash-pca` | `openclaw/vgb-qwen.config.yaml` | 4 | `openclaw-vgb-qwen-skills_off-rerun-batch-1` |
+| 2 | `openclaw-qwen-3.8-flash-pcb` | `openclaw/vgb-qwen.config.yaml` | 3 | `openclaw-vgb-qwen-skills_off-rerun-batch-2` |
+| 3 | `openclaw-qwen-3.8-flash-og` | `openclaw/vgb-qwen.config.yaml` | 3 | `openclaw-vgb-qwen-skills_off-rerun-batch-3` |
+| 4 | `openclaw-gpt-5.6-sol-pca` | `openclaw/vgb-gpt.config.yaml` | 3 | `openclaw-vgb-gpt-skills_off-rerun-batch-4` |
+| 5 | `openclaw-gpt-5.6-sol-pcb` | `openclaw/vgb-gpt.config.yaml` | 18 | `openclaw-vgb-gpt-skills_off-rerun-batch-5` |
 
 每批完成验收前，不启动下一批。
 
@@ -67,7 +67,7 @@
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-qwen.config.yaml \
+  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
   --group skills_off \
   --output-dir run-artifacts/openclaw-qwen-3.8-flash-pca \
   --task-name property_calculation_advanced__property_calculation_advanced_001_free_energy \
@@ -89,7 +89,7 @@ uv run --locked hai run \
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-qwen.config.yaml \
+  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
   --group skills_off \
   --output-dir run-artifacts/openclaw-qwen-3.8-flash-pcb \
   --task-name property_calculation_basic__property_calculation_basic_017_benzene_polarizability \
@@ -109,7 +109,7 @@ uv run --locked hai run \
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-qwen.config.yaml \
+  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
   --group skills_off \
   --output-dir run-artifacts/openclaw-qwen-3.8-flash-og \
   --task-name open_generation_rdkit__rdkit_012_sa_logp_target \
@@ -130,7 +130,7 @@ uv run --locked hai run \
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
   --group skills_off \
   --output-dir run-artifacts/openclaw-gpt-5.6-sol-pca \
   --task-name property_calculation_advanced__property_calculation_advanced_001_free_energy \
@@ -166,7 +166,7 @@ uv run --locked hai run \
 
 ```bash
 uv run --locked hai run \
-  --config configs/experiments/openclaw-vgb-gpt.config.yaml \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
   --group skills_off \
   --output-dir run-artifacts/openclaw-gpt-5.6-sol-pcb \
   --task-name property_calculation_basic__property_calculation_basic_001_toluene_aqueous_solvation_free_energy \
