@@ -6,8 +6,81 @@ from pathlib import Path
 from typing import Any
 
 
+def _audit_atif_trajectory(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        trajectory = json.loads(path.read_text(encoding="utf-8"))
+        steps = trajectory.get("steps") if isinstance(trajectory, dict) else None
+        if not isinstance(steps, list):
+            raise ValueError("trajectory does not contain steps")
+        names: list[str] = []
+        skill_calls = 0
+        failures = 0
+        for step in steps:
+            if not isinstance(step, dict) or step.get("source") != "agent":
+                continue
+            for call in step.get("tool_calls") or []:
+                if not isinstance(call, dict):
+                    continue
+                name = str(call.get("function_name") or "")
+                names.append(name)
+                arguments = call.get("arguments") or {}
+                arguments_text = json.dumps(arguments, sort_keys=True)
+                skill_calls += "skill" in name.lower() or (
+                    "SKILL.md" in arguments_text or "/skills/" in arguments_text
+                )
+            observation = step.get("observation")
+            results = observation.get("results") if isinstance(observation, dict) else []
+            for result in results or []:
+                if not isinstance(result, dict):
+                    continue
+                content = result.get("content")
+                if not isinstance(content, str):
+                    continue
+                try:
+                    payload = json.loads(content)
+                except json.JSONDecodeError:
+                    payload = {}
+                if isinstance(payload, dict) and (
+                    payload.get("status") in {"failed", "error"}
+                    or isinstance(payload.get("exit_code"), int)
+                    and payload["exit_code"] != 0
+                ):
+                    failures += 1
+        lower_names = [name.lower() for name in names]
+        return {
+            "tool_audit_status": "available",
+            "tool_counts": {
+                "total": len(names),
+                "failures": failures,
+                "network_search": sum(
+                    any(word in name for word in ("search", "web", "browser", "network", "http"))
+                    for name in lower_names
+                ),
+                "skill_related": skill_calls,
+            },
+            "no_tool_calls": not names,
+            "model_declared_skip": False,
+            "source": str(path),
+        }
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return {
+            "tool_audit_status": "unavailable",
+            "tool_counts": None,
+            "no_tool_calls": None,
+            "model_declared_skip": None,
+            "source": str(path),
+            "reason": "trajectory_parse_error",
+        }
+
+
 def audit_tool_calls(agent_dir: Path) -> dict[str, Any]:
     path = agent_dir / "openclaw.session.jsonl"
+    if not path.is_file():
+        trajectory_audit = _audit_atif_trajectory(agent_dir / "trajectory.json")
+        if trajectory_audit is not None:
+            return trajectory_audit
     unavailable = {"tool_audit_status": "unavailable", "tool_counts": None,
                    "no_tool_calls": None, "model_declared_skip": None, "source": str(path)}
     if not path.is_file():

@@ -59,6 +59,13 @@ state, trajectory, timing, tokens, rewards, config, lock and artifact views. Inf
 `results.json` remains the paired experiment compatibility aggregate. Pass
 `--artifacts-dir <path>` when the run root is located elsewhere.
 
+All harnesses project lifecycle timing, token totals, cost when reported, model
+usage, verifier rewards and artifacts through Harbor's native `TrialResult`.
+Hermes reads its cumulative session-level input, cache, output, reasoning, API-call
+and cost fields; resumed sessions emit only the delta for the current Trial. A cost
+marked unknown by Hermes remains `null`. Per-record `runner` values are derived as
+`harbor_<agent_name>` from the materialized agent rather than fixed to one harness.
+
 Tests and experiments default to the single `skills_off` group. Use `--group
 skills_off` for routine runs; use a paired `skills_on`/`skills_off` run only when the
 requested comparison explicitly requires it. The selected single group is the only

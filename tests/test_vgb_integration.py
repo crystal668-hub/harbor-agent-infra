@@ -121,6 +121,7 @@ def test_vgb_domain_result_has_explicit_schema_v5_projection() -> None:
         domain,
         group_id="openclaw-vgb",
         record_id="rdkit_001_qed_max",
+        runner="harbor_openclaw",
         prompt="prompt",
         answer_text="CCO",
     )

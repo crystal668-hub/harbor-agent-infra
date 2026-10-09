@@ -135,6 +135,7 @@ def test_job_materializer_projects_native_harbor_fields() -> None:
     assert config.environment.override_memory_mb == 512
     assert config.environment.cpu_enforcement_policy.value == "limit"
     assert config.agents[0].import_path == "adapters.openclaw.adapter:OpenClawAgent"
+    assert materialized.runner_id == "harbor_openclaw"
     assert materialized.preflight.provider == "docker"
 
 
@@ -183,6 +184,7 @@ def test_job_materializer_projects_pinned_hermes_adapter() -> None:
         "reasoning": "high",
     }
     assert materialized.agent_name == "hermes"
+    assert materialized.runner_id == "harbor_hermes"
     assert materialized.agent_version == "0.21.6"
     assert materialized.openclaw_version is None
 

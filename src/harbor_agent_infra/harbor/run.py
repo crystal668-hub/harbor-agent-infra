@@ -22,7 +22,7 @@ from harbor_agent_infra.harbor.job_config import (
     materialize_paired_job_configs,
 )
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
-from integrations.vgb.agent_output import response_from_openclaw_log
+from harbor_agent_infra.harness_runner import HarnessRunner, harness_runner_for
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.result_projection import project_schema_v5
 from integrations.vgb.runtime import VgbRuntime
@@ -203,7 +203,17 @@ def _evaluate_record_file(path: Path, runtime: VgbRuntime) -> dict[str, Any]:
         return record
     track, task_id = _task_identity(record)
     trial_result_path = Path(str(record["trial_result_path"]))
-    response = response_from_openclaw_log(trial_result_path.parent / "agent" / "openclaw.txt")
+    agent_name = record.get("agent_name")
+    if not isinstance(agent_name, str) or not agent_name:
+        runner_id = record.get("runner")
+        if not isinstance(runner_id, str) or not runner_id.startswith("harbor_"):
+            raise ValueError("record does not identify its agent harness")
+        agent_name = runner_id.removeprefix("harbor_")
+    harness_runner = harness_runner_for(agent_name)
+    record_runner_id = record.get("runner")
+    if record_runner_id is not None and record_runner_id != harness_runner.runner_id:
+        raise ValueError("record runner does not match its agent harness")
+    response = harness_runner.response_from_artifacts(trial_result_path.parent / "agent")
     artifact_path = trial_result_path.parent / "verifier" / "vgb-evaluation.json"
     if artifact_path.exists():
         artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
@@ -251,6 +261,7 @@ def _evaluate_record_file(path: Path, runtime: VgbRuntime) -> dict[str, Any]:
         domain,
         group_id=str(record["group_id"]),
         record_id=record_id,
+        runner=harness_runner.runner_id,
         answer_text=response,
         skills_enabled=bool(record.get("skills_enabled")),
         elapsed_seconds=record.get("elapsed_seconds"),
@@ -293,10 +304,15 @@ class RunEventSink:
         path: Path,
         *,
         run_id: str,
+        harnesses: dict[str, str] | None = None,
         network_policies: dict[str, dict[str, dict[str, object]]] | None = None,
     ):
         self.path = path
         self.run_id = run_id
+        self.harness_runners: dict[str, HarnessRunner] = {
+            group_id: harness_runner_for(agent_name)
+            for group_id, agent_name in (harnesses or {}).items()
+        }
         self.network_policies = network_policies or {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -335,13 +351,23 @@ class RunEventSink:
         trial_dir = _trial_dir(result.trial_uri)
         tool_audit = audit_tool_calls(trial_dir / "agent")
         classified_failure = failure_mode(result.exception_info, trial_dir / "agent")
+        harness_runner = self.harness_runners.get(group_id)
+        agent_name = harness_runner.agent_name if harness_runner else None
+        runner = harness_runner.runner_id if harness_runner else "harbor"
+        agent_result = getattr(result, "agent_result", None)
+        agent_metadata = getattr(agent_result, "metadata", None)
+        usage_metadata = (
+            agent_metadata.get("usage") if isinstance(agent_metadata, dict) else None
+        )
+        usage_metadata = usage_metadata if isinstance(usage_metadata, dict) else {}
         record_payload = {
             "schema_version": 5,
             "run_id": self.run_id,
             "group_id": group_id,
             "group_label": group_id,
             "skills_enabled": group_id == "skills_on",
-            "runner": "harbor_openclaw",
+            "runner": runner,
+            "agent_name": agent_name,
             "websearch": False,
             "record_id": event.trial_name,
             "trial_name": event.trial_name,
@@ -377,9 +403,12 @@ class RunEventSink:
                         "input": token_totals[0],
                         "cache": token_totals[1],
                         "output": token_totals[2],
+                        "reasoning": usage_metadata.get("reasoning_tokens"),
                         "cost_usd": token_totals[3],
                     },
+                    "api_calls": usage_metadata.get("api_call_count"),
                 },
+                "provider_usage": usage_metadata,
             },
             "raw": {"harbor_trial_result": trial_dump},
         }
@@ -538,6 +567,10 @@ async def run_paired_jobs(
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
+        harnesses={
+            group_id: group.agent_name
+            for group_id, group in materialized.groups.items()
+        },
         network_policies={
             group_id: {
                 str(policy["task_name"]): policy
@@ -684,6 +717,8 @@ async def run_paired_jobs(
                     "skill_allowlist_file_sha256": group.skill_allowlist_file_sha256,
                     "skills_root": group.skills_root,
                     "injected_skills": group.injected_skills,
+                    "agent_name": group.agent_name,
+                    "runner_id": group.runner_id,
                     "job_config": group.job_config.model_dump(mode="json"),
                     "network_policies": group.network_policies,
                     "job_id": next(
@@ -758,8 +793,8 @@ async def run_paired_jobs(
             "group_summary": summary,
             "group_track_summary": group_track,
             "audit_sources": {
-                "tool_calls": "agent/openclaw.session.jsonl",
-                "failures": "Harbor exception_info and agent/openclaw-evidence.json",
+                "tool_calls": "agent trajectory or native session artifacts",
+                "failures": "Harbor exception_info and agent evidence artifacts",
                 "tool_audit_available": sum(
                     record.get("tool_audit_status") == "available" for record in records
                 ),

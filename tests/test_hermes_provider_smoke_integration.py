@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import tempfile
@@ -8,7 +9,9 @@ from pathlib import Path
 
 import pytest
 import yaml
+from fastapi.testclient import TestClient
 from harbor import Job, JobConfig
+from harbor.viewer import create_app
 
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 
@@ -77,15 +80,30 @@ async def _run_provider_smoke() -> None:
                         "version": lock.hermes.source_tag,
                         "source_commit": lock.hermes.source_commit,
                         "install_branch": lock.hermes.install_branch,
+                        "reasoning": "high",
                     },
                 }
             ],
         }
     )
-    result = await (await Job.create(JobConfig.model_validate(raw))).run()
+    config = JobConfig.model_validate(raw)
+    result = await (await Job.create(config)).run()
     trial = result.trial_results[0]
     assert trial.exception_info is None
     assert trial.agent_info.version == lock.hermes.source_tag
+    assert trial.agent_result is not None
+    assert trial.agent_result.n_input_tokens is not None
+    assert trial.agent_result.n_input_tokens > 0
+    assert trial.agent_result.n_cache_tokens is not None
+    assert trial.agent_result.n_cache_tokens >= 0
+    assert trial.agent_result.n_output_tokens is not None
+    assert trial.agent_result.n_output_tokens > 0
+    assert trial.agent_result.model_usage is not None
+    assert model in trial.agent_result.model_usage
+    assert trial.agent_result.metadata is not None
+    usage = trial.agent_result.metadata["usage"]
+    assert isinstance(usage["reasoning_tokens"], int)
+    assert usage["api_call_count"] >= 1
     trial_dir = next(
         result_path.parent
         for result_path in (task_root / "jobs").rglob("result.json")
@@ -94,6 +112,27 @@ async def _run_provider_smoke() -> None:
     assert _MARKER in (trial_dir / "agent/hermes.txt").read_text(encoding="utf-8")
     assert (trial_dir / "agent/hermes-session.jsonl").stat().st_size > 0
     assert (trial_dir / "agent/trajectory.json").stat().st_size > 0
+    trajectory = json.loads((trial_dir / "agent/trajectory.json").read_text())
+    assert trajectory["final_metrics"]["total_prompt_tokens"] == (
+        trial.agent_result.n_input_tokens
+    )
+    assert trajectory["final_metrics"]["total_cached_tokens"] == (
+        trial.agent_result.n_cache_tokens
+    )
+    assert trajectory["final_metrics"]["total_completion_tokens"] == (
+        trial.agent_result.n_output_tokens
+    )
+
+    viewer = TestClient(create_app(config.jobs_dir, mode="jobs"))
+    job_summary = viewer.get("/api/jobs").json()["items"][0]
+    assert job_summary["total_input_tokens"] == trial.agent_result.n_input_tokens
+    assert job_summary["total_cached_input_tokens"] == trial.agent_result.n_cache_tokens
+    assert job_summary["total_output_tokens"] == trial.agent_result.n_output_tokens
+    task_summary = viewer.get(f"/api/jobs/{config.job_name}/tasks").json()["items"][0]
+    assert task_summary["avg_reward"] == 1.0
+    assert task_summary["avg_input_tokens"] == trial.agent_result.n_input_tokens
+    assert task_summary["avg_cached_input_tokens"] == trial.agent_result.n_cache_tokens
+    assert task_summary["avg_output_tokens"] == trial.agent_result.n_output_tokens
 
 
 def test_hermes_provider_smoke() -> None:

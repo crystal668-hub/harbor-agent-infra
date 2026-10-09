@@ -159,6 +159,7 @@ async def _run_track(
         domain,
         group_id="openclaw-vgb",
         record_id=task_id,
+        runner="harbor_openclaw",
         prompt=prompt_record["prompt"],
         answer_text=response,
     )

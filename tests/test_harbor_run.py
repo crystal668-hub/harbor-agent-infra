@@ -30,6 +30,10 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
         trial_name="task__abc",
         exception_info=None,
         trial_uri=str(tmp_path / "jobs" / "task__abc"),
+        agent_result=SimpleNamespace(
+            metadata={"usage": {"reasoning_tokens": 34, "api_call_count": 1}}
+        ),
+        compute_token_cost_totals=lambda: (12_454, 10_757, 47, 0.42),
     )
     event = SimpleNamespace(
         result=result,
@@ -39,7 +43,11 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
         task_name="task",
         timestamp=SimpleNamespace(isoformat=lambda: "2026-09-27T00:00:00+00:00"),
     )
-    sink = RunEventSink(tmp_path / "events" / "trials.jsonl", run_id="run-1")
+    sink = RunEventSink(
+        tmp_path / "events" / "trials.jsonl",
+        run_id="run-1",
+        harnesses={"skills_on": "hermes"},
+    )
     asyncio.run(sink(event, group_id="skills_on"))
     payload = json.loads((tmp_path / "events" / "trials.jsonl").read_text())
     assert payload["run_id"] == "run-1"
@@ -52,6 +60,19 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     assert record["trial_name"] == "task__abc"
     assert record["schema_version"] == 5
     assert record["skills_enabled"] is True
+    assert record["agent_name"] == "hermes"
+    assert record["runner"] == "harbor_hermes"
+    assert record["observability"]["totals"] == {
+        "timing": {"elapsed_seconds": None},
+        "tokens": {
+            "input": 12_454,
+            "cache": 10_757,
+            "output": 47,
+            "reasoning": 34,
+            "cost_usd": 0.42,
+        },
+        "api_calls": 1,
+    }
     assert record["raw"]["harbor_trial_result"] == {}
     assert record["trial_result_path"] == payload["trial_result_path"]
 
@@ -260,6 +281,8 @@ def test_evaluate_record_file_adds_vgb_result_and_preserves_harbor_raw(tmp_path:
                 "run_id": "run-1",
                 "group_id": "skills_on",
                 "skills_enabled": True,
+                "agent_name": "openclaw",
+                "runner": "harbor_openclaw",
                 "record_id": "task__trial",
                 "task_name": "open_generation_rdkit__rdkit_001_qed_max",
                 "trial_result_path": str(trial_dir / "results.json"),
@@ -279,6 +302,58 @@ def test_evaluate_record_file_adds_vgb_result_and_preserves_harbor_raw(tmp_path:
     assert evaluated["raw"]["harbor_trial_result"]["id"] == "trial"
     assert evaluated["raw"]["vgb_domain_result"]["status"] == "scored"
     assert evaluated["runner_meta"]["vgb_evaluation"]["track"] == "open_generation_rdkit"
+
+
+def test_evaluate_record_file_uses_configured_hermes_parser(tmp_path: Path) -> None:
+    trial_dir = tmp_path / "jobs" / "trial"
+    (trial_dir / "agent").mkdir(parents=True)
+    (trial_dir / "verifier").mkdir()
+    (trial_dir / "agent" / "trajectory.json").write_text(
+        json.dumps(
+            {
+                "steps": [
+                    {"source": "user", "message": "prompt"},
+                    {"source": "agent", "message": "FINAL ANSWER: CCO"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    domain = {
+        "track": "open_generation_rdkit",
+        "task_id": "rdkit_001_qed_max",
+        "status": "scored",
+        "scores": {"score": 0.75},
+        "raw_evaluation": {"scores": {"score": 0.75}},
+    }
+    (trial_dir / "verifier" / "vgb-evaluation.json").write_text(
+        json.dumps({"vgb_status": "scored", "domain_result": domain}),
+        encoding="utf-8",
+    )
+    record_path = tmp_path / "record.json"
+    record_path.write_text(
+        json.dumps(
+            {
+                "group_id": "skills_off",
+                "skills_enabled": False,
+                "agent_name": "hermes",
+                "runner": "harbor_hermes",
+                "task_name": "open_generation_rdkit__rdkit_001_qed_max",
+                "trial_result_path": str(trial_dir / "result.json"),
+                "run_lifecycle_status": "completed",
+                "trial_result": {
+                    "verifier_result": {"rewards": {"vgb_score": 0.75}}
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    evaluated = _evaluate_record_file(record_path, object())
+
+    assert evaluated["answer_text"] == "FINAL ANSWER: CCO"
+    assert evaluated["agent_name"] == "hermes"
+    assert evaluated["runner"] == "harbor_hermes"
 
 
 def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: Path) -> None:

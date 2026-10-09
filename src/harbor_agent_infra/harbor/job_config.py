@@ -7,7 +7,7 @@ from harbor import JobConfig, RetryConfig
 from harbor.models.environment_type import EnvironmentType
 from harbor.models.task.config import TaskConfig as HarborTaskConfig
 from harbor.models.task.verifier_mode import resolve_task_verifier_mode
-from harbor.models.trial.config import AgentConfig, EnvironmentConfig, TaskConfig, VerifierConfig
+from harbor.models.trial.config import EnvironmentConfig, TaskConfig, VerifierConfig
 from harbor.trial.network_policy import resolve_trial_network_plan
 
 from harbor_agent_infra.contracts.experiment import (
@@ -21,6 +21,7 @@ from harbor_agent_infra.harbor.task_materializer import (
     TaskRuntimeSettings,
     materialize_vgb_tasks,
 )
+from harbor_agent_infra.harness_runner import harness_runner_for
 from harbor_agent_infra.preparation.experiments import experiment_sha256
 from harbor_agent_infra.preparation.resource_profiles import config_sha256, select_profile
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
@@ -41,6 +42,7 @@ class MaterializedJob:
     preflight: CapabilityPreflight
     openclaw_version: str | None
     agent_base_image: str
+    runner_id: str = "harbor"
     agent_name: str = "openclaw"
     agent_version: str | None = None
     agent_source_commit: str | None = None
@@ -68,34 +70,11 @@ def _agent_config(
     skills=(),
     paired: bool = False,
 ):
-    if spec.agent.adapter == "hermes":
-        kwargs = {
-            "version": lock.hermes.source_tag,
-            "source_commit": lock.hermes.source_commit,
-            "install_branch": lock.hermes.install_branch,
-        }
-        if spec.agent.reasoning is not None:
-            kwargs["reasoning"] = spec.agent.reasoning
-        return AgentConfig(
-            import_path="adapters.hermes.adapter:HermesAgent",
-            model_name=spec.agent.model,
-            skills=list(skills),
-            override_setup_timeout_sec=1200,
-            kwargs=kwargs,
-        )
-    kwargs = {"version": lock.openclaw.version}
-    if paired:
-        kwargs.update(
-            {
-                "thinking": spec.agent.thinking or "medium",
-                "session_to_trajectory": True,
-            }
-        )
-    return AgentConfig(
-        import_path="adapters.openclaw.adapter:OpenClawAgent",
-        model_name=spec.agent.model,
-        skills=list(skills),
-        kwargs=kwargs,
+    return harness_runner_for(spec.agent.adapter).build_agent_config(
+        spec.agent,
+        lock,
+        skills=skills,
+        paired=paired,
     )
 
 
@@ -123,6 +102,7 @@ def materialize_job_config(
     """Project one validated experiment into Harbor's native JobConfig."""
     profile = select_profile(resource_config, spec.resources.profile)
     lock = _locked_image(spec)
+    harness_runner = harness_runner_for(spec.agent.adapter)
     preflight = preflight_docker_resources(profile)
     job_config = JobConfig(
         job_name=spec.experiment_id,
@@ -147,6 +127,7 @@ def materialize_job_config(
         preflight=preflight,
         openclaw_version=(lock.openclaw.version if spec.agent.adapter == "openclaw" else None),
         agent_base_image=lock.agent_base_image.immutable_reference,
+        runner_id=harness_runner.runner_id,
         agent_name=spec.agent.adapter,
         agent_version=(
             lock.openclaw.version
@@ -200,6 +181,7 @@ def materialize_group_job_config(
         raise ValueError("paired group requires at least one Harbor task")
     profile = select_profile(resource_config, spec.resources.profile)
     lock = _locked_image(spec)
+    harness_runner = harness_runner_for(spec.agent.adapter)
     preflight = preflight_docker_resources(profile)
 
     skills: list[str] = []
@@ -285,6 +267,7 @@ def materialize_group_job_config(
         preflight=preflight,
         openclaw_version=(lock.openclaw.version if spec.agent.adapter == "openclaw" else None),
         agent_base_image=lock.agent_base_image.immutable_reference,
+        runner_id=harness_runner.runner_id,
         agent_name=spec.agent.adapter,
         agent_version=(
             lock.openclaw.version

@@ -8,7 +8,7 @@ from typing import Any
 from harbor.models.verifier.result import VerifierResult
 from harbor.verifier.base import BaseVerifier
 
-from integrations.vgb.agent_output import response_from_agent_artifacts
+from harbor_agent_infra.harness_runner import harness_runner_for
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.runtime import VgbRuntime
 
@@ -27,8 +27,8 @@ class VgbVerifier(BaseVerifier):
             track, task_id = self.task.name.split("__", 1)
             verifier_context = {**self.override_env, **(self.verifier_env or {})}
             agent_name = verifier_context.get("VGB_AGENT_NAME", "openclaw")
-            response = response_from_agent_artifacts(
-                self.trial_paths.agent_dir, agent_name=agent_name
+            response = harness_runner_for(agent_name).response_from_artifacts(
+                self.trial_paths.agent_dir
             )
             configured_python = verifier_context.get("VGB_PYTHON")
             runtime = (

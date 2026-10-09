@@ -3,11 +3,17 @@
 The control flow is:
 
 ```text
-experiment config -> infra materializer -> Harbor Job/Trial -> agent adapter
-                                                     |
-                                                     +-> Harbor trial result
+experiment config -> harness runner registry -> infra materializer -> Harbor Job/Trial
+                            |                                  |
+                            +-> agent config/artifact parser    +-> Harbor trial result
 host-side VGB integration -> prompt/evaluation -> domain result projection
 ```
+
+`agent.adapter` is validated by the experiment schema and then resolved through
+the harness runner registry. Each registered harness owns only its native
+`AgentConfig`, artifact parser and runner identity. An unknown adapter fails
+before Harbor creates a Job. Scheduling, retries, cancellation, Docker lifecycle,
+cleanup, result projection and Viewer routing remain shared control-plane logic.
 
 The Phase 1 materializer validates the external resource profile and immutable agent image
 digest, locks Harbor's native OpenClaw npm version, records the agent Python/pip toolchain,

@@ -40,6 +40,48 @@ def test_tool_audit_distinguishes_missing_and_empty_session(tmp_path: Path) -> N
     assert empty["no_tool_calls"] is True
 
 
+def test_tool_audit_reads_agent_neutral_atif_trajectory(tmp_path: Path) -> None:
+    (tmp_path / "trajectory.json").write_text(
+        json.dumps(
+            {
+                "steps": [
+                    {
+                        "source": "agent",
+                        "message": "checking",
+                        "tool_calls": [
+                            {
+                                "function_name": "web_search",
+                                "arguments": {"query": "example"},
+                            },
+                            {
+                                "function_name": "terminal",
+                                "arguments": {"command": "cat /skills/a/SKILL.md"},
+                            },
+                        ],
+                        "observation": {
+                            "results": [
+                                {"content": json.dumps({"status": "error", "exit_code": 1})}
+                            ]
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    audit = audit_tool_calls(tmp_path)
+
+    assert audit["tool_audit_status"] == "available"
+    assert audit["tool_counts"] == {
+        "total": 2,
+        "failures": 1,
+        "network_search": 1,
+        "skill_related": 1,
+    }
+    assert audit["source"].endswith("trajectory.json")
+
+
 def test_failure_mode_uses_typed_openclaw_evidence(tmp_path: Path) -> None:
     exception = SimpleNamespace(exception_type="RuntimeError")
     (tmp_path / "openclaw-evidence.json").write_text(

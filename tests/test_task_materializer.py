@@ -225,6 +225,7 @@ def test_group_job_config_projects_hermes_skills_through_agent_config(tmp_path: 
 
     agent = materialized.job_config.agents[0]
     assert agent.import_path == "adapters.hermes.adapter:HermesAgent"
+    assert materialized.runner_id == "harbor_hermes"
     assert agent.skills == [str(skills_root / "rdkit"), str(skills_root / "ase")]
     assert agent.kwargs == {
         "version": "v0.21.6",

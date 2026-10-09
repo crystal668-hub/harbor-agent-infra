@@ -160,6 +160,7 @@ def test_record_uses_harbor_verifier_artifact(tmp_path: Path) -> None:
     record_path.write_text(
         json.dumps({
             "group_id": "skills_on", "skills_enabled": True,
+            "agent_name": "openclaw", "runner": "harbor_openclaw",
             "task_name": "open_generation_rdkit__rdkit_001_qed_max",
             "trial_result_path": str(trial / "results.json"),
             "run_lifecycle_status": "completed",
@@ -186,7 +187,9 @@ def test_record_rejects_missing_harbor_verifier_artifact(tmp_path: Path) -> None
     record = tmp_path / "record.json"
     record.write_text(
         json.dumps({
-            "group_id": "skills_on", "task_name": "open_generation_rdkit__rdkit_001_qed_max",
+            "group_id": "skills_on", "agent_name": "openclaw",
+            "runner": "harbor_openclaw",
+            "task_name": "open_generation_rdkit__rdkit_001_qed_max",
             "trial_result_path": str(trial / "results.json"),
             "run_lifecycle_status": "completed",
             "trial_result": {"config": {"verifier": {

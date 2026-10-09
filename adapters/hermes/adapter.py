@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shlex
 from typing import Literal, override
@@ -10,7 +11,7 @@ from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_
 from harbor.agents.installed.hermes import Hermes as HarborHermes
 from harbor.agents.installed.hermes import HermesOptions as HarborHermesOptions
 from harbor.environments.base import BaseEnvironment
-from harbor.models.agent.context import AgentContext
+from harbor.models.agent.context import AgentContext, ModelUsage
 from pydantic import Field
 
 
@@ -64,6 +65,7 @@ class HermesAgent(HarborHermes):
             raise ValueError("Hermes install_branch must be main")
         self._source_commit = source_commit
         self._install_branch = install_branch
+        self._reported_session_usage: dict[str, int | float | str | None] | None = None
         super().__init__(
             *args,
             source_commit=source_commit,
@@ -207,3 +209,163 @@ class HermesAgent(HarborHermes):
                     self._native_session_id = native_session_id
             except Exception:
                 pass
+
+    @staticmethod
+    def _session_usage(jsonl_text: str) -> dict[str, int | float | str | None] | None:
+        for line in jsonl_text.splitlines():
+            try:
+                record = json.loads(line)
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(record, dict) or not isinstance(record.get("messages"), list):
+                continue
+
+            def integer(name: str) -> int | None:
+                value = record.get(name)
+                return value if type(value) is int and value >= 0 else None
+
+            def number(name: str) -> float | None:
+                value = record.get(name)
+                if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+                    return None
+                return float(value)
+
+            input_tokens = integer("input_tokens")
+            cache_read_tokens = integer("cache_read_tokens")
+            cache_write_tokens = integer("cache_write_tokens")
+            cached_tokens = (
+                (cache_read_tokens or 0) + (cache_write_tokens or 0)
+                if cache_read_tokens is not None or cache_write_tokens is not None
+                else None
+            )
+            total_input_tokens = (
+                (input_tokens or 0) + (cached_tokens or 0)
+                if input_tokens is not None or cached_tokens is not None
+                else None
+            )
+            actual_cost = number("actual_cost_usd")
+            estimated_cost = number("estimated_cost_usd")
+            cost_source = record.get("cost_source")
+            cost_status = record.get("cost_status")
+            cost_usd = actual_cost
+            if (
+                cost_usd is None
+                and estimated_cost is not None
+                and cost_source not in (None, "none")
+                and cost_status not in (None, "unknown")
+            ):
+                cost_usd = estimated_cost
+            return {
+                "session_id": record.get("id") if isinstance(record.get("id"), str) else None,
+                "input_tokens": input_tokens,
+                "total_input_tokens": total_input_tokens,
+                "cache_read_tokens": cache_read_tokens,
+                "cache_write_tokens": cache_write_tokens,
+                "cached_tokens": cached_tokens,
+                "output_tokens": integer("output_tokens"),
+                "reasoning_tokens": integer("reasoning_tokens"),
+                "api_call_count": integer("api_call_count"),
+                "cost_usd": cost_usd,
+                "actual_cost_usd": actual_cost,
+                "estimated_cost_usd": estimated_cost,
+                "cost_source": cost_source if isinstance(cost_source, str) else None,
+                "cost_status": cost_status if isinstance(cost_status, str) else None,
+            }
+        return None
+
+    @override
+    def _convert_hermes_session_to_atif(self, jsonl_text: str, session_id: str):
+        trajectory = super()._convert_hermes_session_to_atif(jsonl_text, session_id)
+        usage = self._session_usage(jsonl_text)
+        if trajectory is None or usage is None or trajectory.final_metrics is None:
+            return trajectory
+        trajectory.final_metrics.total_prompt_tokens = usage["total_input_tokens"]
+        trajectory.final_metrics.total_completion_tokens = usage["output_tokens"]
+        trajectory.final_metrics.total_cached_tokens = usage["cached_tokens"]
+        trajectory.final_metrics.total_cost_usd = usage["cost_usd"]
+        trajectory.final_metrics.extra = {
+            key: usage[key]
+            for key in (
+                "input_tokens",
+                "cache_read_tokens",
+                "cache_write_tokens",
+                "reasoning_tokens",
+                "api_call_count",
+                "actual_cost_usd",
+                "estimated_cost_usd",
+                "cost_source",
+                "cost_status",
+            )
+            if usage[key] is not None
+        } or None
+        return trajectory
+
+    @override
+    def populate_context_post_run(self, context: AgentContext) -> None:
+        super().populate_context_post_run(context)
+        session_path = self.logs_dir / "hermes-session.jsonl"
+        if not session_path.is_file():
+            return
+        usage = self._session_usage(session_path.read_text(encoding="utf-8"))
+        if usage is None:
+            return
+
+        previous = self._reported_session_usage
+        same_resumed_session = (
+            self._last_run_was_resume
+            and previous is not None
+            and (
+                usage["session_id"] is None
+                or previous["session_id"] is None
+                or usage["session_id"] == previous["session_id"]
+            )
+        )
+
+        def delta(name: str):
+            current = usage[name]
+            prior = previous[name] if same_resumed_session and previous is not None else None
+            if (
+                isinstance(current, int | float)
+                and not isinstance(current, bool)
+                and isinstance(prior, int | float)
+                and not isinstance(prior, bool)
+                and current >= prior
+            ):
+                return current - prior
+            return current
+
+        cached_tokens = delta("cached_tokens")
+        cost_usd = delta("cost_usd")
+        context.n_cache_tokens = cached_tokens if isinstance(cached_tokens, int) else None
+        context.cost_usd = float(cost_usd) if isinstance(cost_usd, int | float) else None
+        model_name = self.model_name or "unknown"
+        context.model_usage = {
+            model_name: ModelUsage(
+                n_input_tokens=context.n_input_tokens or 0,
+                n_cache_tokens=context.n_cache_tokens or 0,
+                n_output_tokens=context.n_output_tokens or 0,
+                cost_usd=context.cost_usd,
+            )
+        }
+        context.metadata = {
+            **(context.metadata or {}),
+            "usage": {
+                key: delta(key)
+                for key in (
+                    "input_tokens",
+                    "cache_read_tokens",
+                    "cache_write_tokens",
+                    "reasoning_tokens",
+                    "api_call_count",
+                    "actual_cost_usd",
+                    "estimated_cost_usd",
+                )
+                if delta(key) is not None
+            }
+            | {
+                key: usage[key]
+                for key in ("cost_source", "cost_status")
+                if usage[key] is not None
+            },
+        }
+        self._reported_session_usage = usage

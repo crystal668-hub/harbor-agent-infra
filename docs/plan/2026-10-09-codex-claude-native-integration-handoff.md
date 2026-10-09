@@ -56,7 +56,8 @@ agents:
 - `MaterializedJob` 已有通用 `agent_name`、`agent_version`、`agent_source_commit`，但 npm/binary agent 还缺通用 package source/integrity 元数据。
 - VGB verifier 已通过 `VGB_AGENT_NAME` 选择输出 parser；当前 parser 只支持 OpenClaw 和 Hermes。
 - VGB task `tests/test.sh` 仍硬编码要求 `openclaw.txt`、`trajectory.json`、`openclaw-evidence.json`，会直接阻断 Codex/Claude Code E2E。
-- tool audit 仍只读 `openclaw.session.jsonl`，runner 字段仍写死 `harbor_openclaw`。
+- tool audit 已优先使用原生 session，并可回退到 agent-neutral ATIF
+  `trajectory.json`；runner 从 materialized agent name 生成。
 - 当前 base image 为 `hai-base-env@sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68`、`linux/arm64`；已含 Node/npm、curl、git、ripgrep，但不预装 `codex` 或 `claude`。
 - 当前 `.env` 仅确认存在 `OPENAI_API_KEY` 与 `OPENAI_BASE_URL`；没有确认 Anthropic、Claude OAuth、Bedrock 或 OpenRouter 凭据。只检查 key 名，不得输出 value。
 - 本计划文档编写后的 provider-free 实测基线为 `104 passed, 23 deselected`；新会话仍须重新运行，不能把该历史数字当作接入后的验收结果。
