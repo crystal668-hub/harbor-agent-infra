@@ -54,11 +54,13 @@ state, trajectory, timing, tokens, rewards, config, lock and artifact views. Inf
 `results.json` remains the paired experiment compatibility aggregate. Pass
 `--artifacts-dir <path>` when the run root is located elsewhere.
 
-To run one group in isolation, add `--group skills_on` or `--group skills_off` to
-`hai run`. The selected group is the only group materialized and executed; the other
-group is absent from `jobs/`, `per-record/`, `results.json` and the manifests. The
-single-group result carries `run_mode: single_group` and `selected_group`, and its
-canonical manifest uses schema `harbor-single-group-runtime-manifest.v1`.
+Tests and experiments default to the single `skills_off` group. Use `--group
+skills_off` for routine runs; use a paired `skills_on`/`skills_off` run only when the
+requested comparison explicitly requires it. The selected single group is the only
+group materialized and executed; the other group is absent from `jobs/`,
+`per-record/`, `results.json` and the manifests. The single-group result carries
+`run_mode: single_group` and `selected_group`, and its canonical manifest uses schema
+`harbor-single-group-runtime-manifest.v1`.
 
 To replace failed records in an existing output directory, pass that directory's
 `results.json` to `--rerun-failed` together with the group. The command schedules
