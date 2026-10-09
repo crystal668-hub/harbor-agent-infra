@@ -247,7 +247,10 @@ def materialize_group_job_config(
         agents=[_agent_config(spec, lock, skills=skills, paired=True)],
         verifier=VerifierConfig(
             import_path="adapters.vgb_verifier:VgbVerifier",
-            env={"VGB_PYTHON": str(vgb_python)} if vgb_python else {},
+            env={
+                **({"VGB_PYTHON": str(vgb_python)} if vgb_python else {}),
+                "VGB_AGENT_NAME": spec.agent.adapter,
+            },
         ),
         tasks=list(tasks),
     )

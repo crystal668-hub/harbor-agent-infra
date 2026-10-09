@@ -8,7 +8,7 @@ from typing import Any
 from harbor.models.verifier.result import VerifierResult
 from harbor.verifier.base import BaseVerifier
 
-from integrations.vgb.agent_output import response_from_openclaw_log
+from integrations.vgb.agent_output import response_from_agent_artifacts
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.runtime import VgbRuntime
 
@@ -25,7 +25,10 @@ class VgbVerifier(BaseVerifier):
         artifact.parent.mkdir(parents=True, exist_ok=True)
         try:
             track, task_id = self.task.name.split("__", 1)
-            response = response_from_openclaw_log(self.trial_paths.agent_dir / "openclaw.txt")
+            agent_name = (self.verifier_env or {}).get("VGB_AGENT_NAME", "openclaw")
+            response = response_from_agent_artifacts(
+                self.trial_paths.agent_dir, agent_name=agent_name
+            )
             configured_python = (self.verifier_env or {}).get("VGB_PYTHON")
             runtime = (
                 VgbRuntime.from_executable(configured_python)
