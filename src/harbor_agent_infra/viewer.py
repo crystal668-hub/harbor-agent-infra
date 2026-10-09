@@ -14,6 +14,10 @@ from starlette.routing import Mount, Route
 from starlette.types import Receive, Scope, Send
 
 _RUN_COOKIE = "hai_view_run"
+_NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, max-age=0",
+    "Pragma": "no-cache",
+}
 
 
 def _selected_run_name(request: Request) -> str:
@@ -105,11 +109,19 @@ def create_multi_run_viewer(
         if selected_name is not None:
             run = dispatcher.find_run(selected_name)
             if run is None:
-                return HTMLResponse(_not_found_page(selected_name), status_code=404)
+                return HTMLResponse(
+                    _not_found_page(selected_name),
+                    status_code=404,
+                    headers=_NO_STORE_HEADERS,
+                )
             if static_dir is None or not (static_dir / "index.html").is_file():
-                response = HTMLResponse(_missing_viewer_page(), status_code=503)
+                response = HTMLResponse(
+                    _missing_viewer_page(), status_code=503, headers=_NO_STORE_HEADERS
+                )
             else:
-                response = HTMLResponse(_viewer_page(static_dir, run.name))
+                response = HTMLResponse(
+                    _viewer_page(static_dir, run.name), headers=_NO_STORE_HEADERS
+                )
             response.set_cookie(
                 _RUN_COOKIE,
                 run.name,
@@ -118,7 +130,10 @@ def create_multi_run_viewer(
                 path="/",
             )
             return response
-        return HTMLResponse(_directory_page(discover_artifact_runs(artifacts_dir)))
+        return HTMLResponse(
+            _directory_page(discover_artifact_runs(artifacts_dir)),
+            headers=_NO_STORE_HEADERS,
+        )
 
     async def page_or_delegate(scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope)
@@ -128,12 +143,16 @@ def create_multi_run_viewer(
         run_name = _selected_run_name(request)
         run = dispatcher.find_run(run_name)
         if run is None:
-            response = RedirectResponse("/", status_code=303)
+            response = RedirectResponse("/", status_code=303, headers=_NO_STORE_HEADERS)
             response.delete_cookie(_RUN_COOKIE, path="/")
         elif static_dir is None or not (static_dir / "index.html").is_file():
-            response = HTMLResponse(_missing_viewer_page(), status_code=503)
+            response = HTMLResponse(
+                _missing_viewer_page(), status_code=503, headers=_NO_STORE_HEADERS
+            )
         else:
-            response = HTMLResponse(_viewer_page(static_dir, run.name))
+            response = HTMLResponse(
+                _viewer_page(static_dir, run.name), headers=_NO_STORE_HEADERS
+            )
         await response(scope, receive, send)
 
     return Starlette(routes=[Route("/", index), Mount("/", app=page_or_delegate)])

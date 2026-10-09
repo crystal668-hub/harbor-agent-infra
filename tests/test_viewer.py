@@ -32,6 +32,8 @@ def test_index_lists_runs_and_escapes_names(tmp_path) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store, max-age=0"
+    assert response.headers["pragma"] == "no-cache"
     assert "alpha &amp; beta" in response.text
     assert "1 job" in response.text
     assert '/?run=alpha+%26+beta' in response.text
@@ -51,6 +53,7 @@ def test_selecting_run_serves_official_viewer_and_dispatches_api(tmp_path) -> No
     config = client.get("/api/config")
 
     assert selected.status_code == 200
+    assert selected.headers["cache-control"] == "no-store, max-age=0"
     assert "official viewer" in selected.text
     assert "new MutationObserver(mountNav)" in selected.text
     assert "searchParams.set('hai_run', run)" in selected.text
