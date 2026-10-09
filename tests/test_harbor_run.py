@@ -176,6 +176,40 @@ def test_job_execution_settings_ignores_retry_exception_order() -> None:
     assert _job_execution_settings(previous) == _job_execution_settings(current)
 
 
+def test_job_execution_settings_normalizes_legacy_manifest_defaults() -> None:
+    legacy = {
+        "job_name": "openclaw-vgb-gpt-skills_off",
+        "jobs_dir": "run-artifacts/old/jobs",
+        "n_concurrent_trials": 2,
+        "retry": {"max_retries": 2},
+        "environment": {
+            "type": "docker",
+            "cpu_enforcement_policy": "limit",
+            "memory_enforcement_policy": "limit",
+            "override_cpus": 4,
+            "override_memory_mb": 6144,
+        },
+        "agents": [
+            {
+                "import_path": "adapters.openclaw.adapter:OpenClawAgent",
+                "model_name": "openai/gpt-5.6-sol",
+                "kwargs": {
+                    "version": "2026.6.34",
+                    "thinking": "high",
+                    "session_to_trajectory": True,
+                },
+            }
+        ],
+        "verifier": {
+            "import_path": "adapters.vgb_verifier:VgbVerifier",
+            "env": {"VGB_PYTHON": "/runtime/python"},
+        },
+    }
+    current = run_module.JobConfig.model_validate(legacy).model_dump(mode="json")
+
+    assert _job_execution_settings(legacy) == _job_execution_settings(current)
+
+
 class _FakeEvaluationRuntime:
     def metadata(self) -> dict[str, object]:
         return {"tracks": ["open_generation_rdkit"]}

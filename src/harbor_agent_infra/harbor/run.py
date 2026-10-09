@@ -41,8 +41,9 @@ class GroupRunResult:
 
 def _job_execution_settings(job_config: dict[str, Any]) -> dict[str, Any]:
     """Return settings that must not change when selecting tasks for a new job."""
+    normalized_config = JobConfig.model_validate(job_config).model_dump(mode="json")
     settings = {
-        key: job_config.get(key)
+        key: normalized_config.get(key)
         for key in (
             "n_attempts",
             "n_concurrent_trials",
