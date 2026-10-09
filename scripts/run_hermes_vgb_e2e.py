@@ -28,7 +28,7 @@ def _write_task(task_dir: Path, *, image: str, prompt: str) -> None:
         "[verifier]\n"
         "timeout_sec = 120.0\n\n"
         "[agent]\n"
-        "timeout_sec = 900.0\n\n"
+        "timeout_sec = 1800.0\n\n"
         "[environment]\n"
         f'docker_image = "{image}"\n'
         "os = \"linux\"\n",
