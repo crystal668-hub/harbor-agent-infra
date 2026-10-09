@@ -1,18 +1,31 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import FastAPI
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.routing import Mount, Route
 from starlette.types import Receive, Scope, Send
 
 _RUN_COOKIE = "hai_view_run"
+
+
+def _selected_run_name(request: Request) -> str:
+    explicit = request.query_params.get("hai_run") or request.query_params.get("run")
+    if explicit:
+        return explicit
+    referer = request.headers.get("referer", "")
+    referer_query = parse_qs(urlsplit(referer).query)
+    referenced = referer_query.get("hai_run") or referer_query.get("run")
+    if referenced:
+        return referenced[0]
+    return request.cookies.get(_RUN_COOKIE, "")
 
 
 @dataclass(frozen=True)
@@ -66,7 +79,7 @@ class _RunDispatcher:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         request = Request(scope)
-        run_name = request.cookies.get(_RUN_COOKIE, "")
+        run_name = _selected_run_name(request)
         run = self.find_run(run_name)
         if run is None:
             if scope["path"].startswith("/api/"):
@@ -88,7 +101,7 @@ def create_multi_run_viewer(
     dispatcher = _RunDispatcher(artifacts_dir, static_dir)
 
     async def index(request: Request) -> HTMLResponse:
-        selected_name = request.query_params.get("run")
+        selected_name = request.query_params.get("run") or request.query_params.get("hai_run")
         if selected_name is not None:
             run = dispatcher.find_run(selected_name)
             if run is None:
@@ -96,7 +109,7 @@ def create_multi_run_viewer(
             if static_dir is None or not (static_dir / "index.html").is_file():
                 response = HTMLResponse(_missing_viewer_page(), status_code=503)
             else:
-                response = FileResponse(static_dir / "index.html")
+                response = HTMLResponse(_viewer_page(static_dir, run.name))
             response.set_cookie(
                 _RUN_COOKIE,
                 run.name,
@@ -107,7 +120,23 @@ def create_multi_run_viewer(
             return response
         return HTMLResponse(_directory_page(discover_artifact_runs(artifacts_dir)))
 
-    return Starlette(routes=[Route("/", index), Mount("/", app=dispatcher)])
+    async def page_or_delegate(scope: Scope, receive: Receive, send: Send) -> None:
+        request = Request(scope)
+        if scope["path"].startswith(("/api/", "/assets/", "/fonts/", "/favicon")):
+            await dispatcher(scope, receive, send)
+            return
+        run_name = _selected_run_name(request)
+        run = dispatcher.find_run(run_name)
+        if run is None:
+            response = RedirectResponse("/", status_code=303)
+            response.delete_cookie(_RUN_COOKIE, path="/")
+        elif static_dir is None or not (static_dir / "index.html").is_file():
+            response = HTMLResponse(_missing_viewer_page(), status_code=503)
+        else:
+            response = HTMLResponse(_viewer_page(static_dir, run.name))
+        await response(scope, receive, send)
+
+    return Starlette(routes=[Route("/", index), Mount("/", app=page_or_delegate)])
 
 
 def run_multi_run_viewer(artifacts_dir: Path, *, host: str, port: int) -> None:
@@ -268,3 +297,79 @@ def _message_page(title: str, message: str) -> str:
   </main>
 </body>
 </html>"""
+
+
+def _viewer_page(static_dir: Path, run_name: str) -> str:
+    document = (static_dir / "index.html").read_text(encoding="utf-8")
+    javascript_name = json.dumps(run_name).replace("<", "\\u003c")
+    script = f"""
+<style>
+  #hai-run-nav {{
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 48px;
+    padding: 8px 20px;
+    background: #17201b;
+    color: #f4f7f4;
+    font: 600 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }}
+  #hai-run-nav a {{ color: #9be2b4; text-decoration: none; }}
+  #hai-run-nav a:hover, #hai-run-nav a:focus-visible {{ text-decoration: underline; }}
+  #hai-run-name {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+  body {{ padding-top: 48px !important; }}
+</style>
+<script>
+  (() => {{
+    const run = {javascript_name};
+    window.__haiRun = run;
+    const mountNav = () => {{
+      if (document.getElementById('hai-run-nav')) return;
+      const nav = document.createElement('nav');
+      nav.id = 'hai-run-nav';
+      nav.setAttribute('aria-label', 'Harbor run navigation');
+      const back = document.createElement('a');
+      back.href = '/';
+      back.textContent = '\u2190 All runs';
+      const label = document.createElement('span');
+      label.id = 'hai-run-name';
+      label.title = run;
+      label.textContent = `Run: ${{run}}`;
+      nav.append(back, label);
+      document.body.prepend(nav);
+    }};
+    const keepNavMounted = () => {{
+      mountNav();
+      new MutationObserver(mountNav).observe(document.body, {{childList: true}});
+    }};
+    if (document.readyState === 'complete') keepNavMounted();
+    else window.addEventListener('load', keepNavMounted);
+    const withRun = (value) => {{
+      const url = new URL(value, window.location.origin);
+      if (url.origin !== window.location.origin) return value;
+      if (url.pathname.startsWith('/api/')) url.searchParams.set('hai_run', run);
+      else if (!url.pathname.startsWith('/assets/') && !url.pathname.startsWith('/fonts/'))
+        url.searchParams.set('hai_run', run);
+      return url.pathname + url.search + url.hash;
+    }};
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {{
+      const request = input instanceof Request
+        ? new Request(withRun(input.url), input)
+        : withRun(input);
+      return originalFetch(request, init);
+    }};
+    for (const method of ['pushState', 'replaceState']) {{
+      const original = history[method].bind(history);
+      history[method] = (state, title, url) => original(state, title, url ? withRun(url) : url);
+    }}
+  }})();
+</script>
+"""
+    return document.replace("</head>", script + "</head>")

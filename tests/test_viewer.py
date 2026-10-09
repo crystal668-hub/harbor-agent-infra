@@ -42,14 +42,21 @@ def test_selecting_run_serves_official_viewer_and_dispatches_api(tmp_path) -> No
     other_jobs_dir = _make_run(tmp_path, "beta")
     static_dir = tmp_path / "static"
     static_dir.mkdir()
-    (static_dir / "index.html").write_text("official viewer", encoding="utf-8")
+    (static_dir / "index.html").write_text(
+        "<html><head></head><body>official viewer</body></html>", encoding="utf-8"
+    )
     client = TestClient(create_multi_run_viewer(tmp_path, static_dir=static_dir))
 
     selected = client.get("/?run=alpha")
     config = client.get("/api/config")
 
     assert selected.status_code == 200
-    assert selected.text == "official viewer"
+    assert "official viewer" in selected.text
+    assert "new MutationObserver(mountNav)" in selected.text
+    assert "searchParams.set('hai_run', run)" in selected.text
+    assert "All runs" in selected.text
+    assert 'const run = "alpha"' in selected.text
+    assert "window.fetch = (input, init)" in selected.text
     assert client.cookies["hai_view_run"] == "alpha"
     assert config.status_code == 200
     assert config.json()["folder"] == str(jobs_dir)
@@ -57,6 +64,45 @@ def test_selecting_run_serves_official_viewer_and_dispatches_api(tmp_path) -> No
 
     client.get("/?run=beta")
     assert client.get("/api/config").json()["folder"] == str(other_jobs_dir)
+
+
+def test_run_query_routes_api_without_shared_cookie(tmp_path) -> None:
+    alpha_jobs = _make_run(tmp_path, "alpha")
+    beta_jobs = _make_run(tmp_path, "beta")
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text(
+        "<html><head></head><body>official viewer</body></html>", encoding="utf-8"
+    )
+    client = TestClient(create_multi_run_viewer(tmp_path, static_dir=static_dir))
+
+    client.get("/?run=alpha")
+    alpha = client.get("/api/config?hai_run=alpha")
+    beta = client.get("/api/config?hai_run=beta")
+
+    assert alpha.json()["folder"] == str(alpha_jobs)
+    assert beta.json()["folder"] == str(beta_jobs)
+
+    landing = client.get("/?hai_run=beta")
+    assert 'const run = "beta"' in landing.text
+
+
+def test_referer_routes_each_tab_independently_of_shared_cookie(tmp_path) -> None:
+    alpha_jobs = _make_run(tmp_path, "alpha")
+    beta_jobs = _make_run(tmp_path, "beta")
+    client = TestClient(create_multi_run_viewer(tmp_path))
+
+    client.get("/?run=alpha")
+    client.get("/?run=beta")
+    alpha = client.get(
+        "/api/config", headers={"referer": "http://testserver/jobs/example?hai_run=alpha"}
+    )
+    beta = client.get(
+        "/api/config", headers={"referer": "http://testserver/jobs/example?hai_run=beta"}
+    )
+
+    assert alpha.json()["folder"] == str(alpha_jobs)
+    assert beta.json()["folder"] == str(beta_jobs)
 
 
 def test_unknown_or_unselected_run_cannot_reach_viewer(tmp_path) -> None:
