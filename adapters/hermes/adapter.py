@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import shlex
 from typing import override
 
-from harbor.agents.installed.base import with_prompt_template
+from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_template
 from harbor.agents.installed.hermes import Hermes as HarborHermes
 from harbor.agents.installed.hermes import HermesOptions as HarborHermesOptions
 from harbor.environments.base import BaseEnvironment
@@ -62,21 +63,26 @@ class HermesAgent(HarborHermes):
             "https://raw.githubusercontent.com/NousResearch/hermes-agent/"
             f"{self._source_commit}/scripts/install.sh"
         )
-        await self.exec_as_agent(
-            environment,
-            command=(
-                "set -euo pipefail; "
-                'export HERMES_HOME="${HERMES_HOME:-/tmp/hermes}"; '
-                'mkdir -p "$HERMES_HOME" "$HERMES_HOME/sessions" '
-                '"$HERMES_HOME/skills" "$HERMES_HOME/memories"; '
-                f"curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "
-                f"{shlex.quote(installer_url)} | bash -s -- "
-                f"--skip-setup --branch {shlex.quote(self._install_branch)} "
-                f"--commit {shlex.quote(self._source_commit)} && "
-                'export PATH="$HOME/.local/bin:$PATH" && '
-                "hermes --version"
-            ),
+        command = (
+            "set -euo pipefail; "
+            'export HERMES_HOME="${HERMES_HOME:-/tmp/hermes}"; '
+            'mkdir -p "$HERMES_HOME" "$HERMES_HOME/sessions" '
+            '"$HERMES_HOME/skills" "$HERMES_HOME/memories"; '
+            f"curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "
+            f"{shlex.quote(installer_url)} | bash -s -- "
+            f"--skip-setup --branch {shlex.quote(self._install_branch)} "
+            f"--commit {shlex.quote(self._source_commit)} && "
+            'export PATH="$HOME/.local/bin:$PATH" && '
+            "hermes --version"
         )
+        for attempt in range(3):
+            try:
+                await self.exec_as_agent(environment, command=command)
+                return
+            except NonZeroAgentExitCodeError as exc:
+                if "pm install failed" not in str(exc) or attempt == 2:
+                    raise
+                await asyncio.sleep(2**attempt)
 
     @override
     @with_prompt_template

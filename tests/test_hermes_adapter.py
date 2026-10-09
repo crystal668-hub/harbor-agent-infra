@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from harbor.agents.factory import AgentFactory
+from harbor.agents.installed.base import NonZeroAgentExitCodeError
 from harbor.models.trial.config import AgentConfig
 
 from adapters.hermes.adapter import HermesAgent
@@ -61,6 +62,21 @@ def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch)
     assert command.endswith("hermes --version")
     assert "hermes version" not in command
     assert command.index("export HERMES_HOME") < command.index("curl --retry")
+
+
+def test_hermes_retries_package_manager_install_failures(tmp_path: Path, monkeypatch) -> None:
+    agent = _agent(tmp_path)
+    dependencies = AsyncMock()
+    execute = AsyncMock(side_effect=[NonZeroAgentExitCodeError("pm install failed"), None])
+    sleep = AsyncMock()
+    monkeypatch.setattr(agent, "ensure_system_dependencies", dependencies)
+    monkeypatch.setattr(agent, "exec_as_agent", execute)
+    monkeypatch.setattr("adapters.hermes.adapter.asyncio.sleep", sleep)
+
+    asyncio.run(agent.install(None))
+
+    assert execute.await_count == 2
+    sleep.assert_awaited_once_with(1)
 
 
 def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
