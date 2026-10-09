@@ -21,10 +21,10 @@ from harbor_agent_infra.preparation.run_config import load_run_config
 from integrations.vgb.runtime import VgbRuntime
 
 
-def _run_harbor_viewer(jobs_dir: Path, *, port: str, host: str) -> None:
-    from harbor.cli.view import view_command
+def _run_harbor_viewer(artifacts_dir: Path, *, port: int, host: str) -> None:
+    from harbor_agent_infra.viewer import run_multi_run_viewer
 
-    view_command(folder=jobs_dir, port=port, host=host, jobs=True)
+    run_multi_run_viewer(artifacts_dir, port=port, host=host)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,9 +73,9 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SUFFIX",
         help="append -SUFFIX to the job name when using --task-name",
     )
-    viewer = subparsers.add_parser("view", help="browse native Harbor job results")
-    viewer.add_argument("--jobs-dir", type=Path, required=True)
-    viewer.add_argument("--port", default="8080-8089")
+    viewer = subparsers.add_parser("view", help="browse all Harbor runs on one port")
+    viewer.add_argument("--artifacts-dir", type=Path, default=Path("run-artifacts"))
+    viewer.add_argument("--port", type=int, default=8080)
     viewer.add_argument("--host", default="127.0.0.1")
     image = subparsers.add_parser("image", help="inspect or pull an immutable Docker image")
     image_subparsers = image.add_subparsers(dest="image_command", required=True)
@@ -245,9 +245,9 @@ def main(argv: list[str] | None = None) -> int:
         print(output_dir)
         return 0
     if args.command == "view":
-        if not args.jobs_dir.is_dir():
-            raise ValueError(f"Harbor jobs directory does not exist: {args.jobs_dir}")
-        _run_harbor_viewer(args.jobs_dir, port=args.port, host=args.host)
+        if not args.artifacts_dir.is_dir():
+            raise ValueError(f"run artifacts directory does not exist: {args.artifacts_dir}")
+        _run_harbor_viewer(args.artifacts_dir, port=args.port, host=args.host)
         return 0
     if args.command == "image":
         reference = args.reference

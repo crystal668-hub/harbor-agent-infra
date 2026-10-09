@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from harbor_agent_infra.cli import _with_selected_task_names, build_parser, main
 from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
@@ -269,13 +270,27 @@ profiles:
     assert off["agents"][0]["skills"] == []
 
 
-def test_view_command_delegates_to_harbor_viewer(monkeypatch, tmp_path) -> None:
-    jobs_dir = tmp_path / "jobs"
-    jobs_dir.mkdir()
+def test_view_command_delegates_to_multi_run_viewer(monkeypatch, tmp_path) -> None:
+    artifacts_dir = tmp_path / "run-artifacts"
+    artifacts_dir.mkdir()
     calls = []
     monkeypatch.setattr(
         "harbor_agent_infra.cli._run_harbor_viewer",
         lambda path, *, port, host: calls.append((path, port, host)),
     )
-    assert main(["view", "--jobs-dir", str(jobs_dir), "--port", "8123"]) == 0
-    assert calls == [(jobs_dir, "8123", "127.0.0.1")]
+    assert main(["view", "--artifacts-dir", str(artifacts_dir), "--port", "8123"]) == 0
+    assert calls == [(artifacts_dir, 8123, "127.0.0.1")]
+
+
+def test_view_command_defaults_to_run_artifacts_and_port_8080(monkeypatch, tmp_path) -> None:
+    artifacts_dir = tmp_path / "run-artifacts"
+    artifacts_dir.mkdir()
+    monkeypatch.chdir(tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        "harbor_agent_infra.cli._run_harbor_viewer",
+        lambda path, *, port, host: calls.append((path, port, host)),
+    )
+
+    assert main(["view"]) == 0
+    assert calls == [(Path("run-artifacts"), 8080, "127.0.0.1")]

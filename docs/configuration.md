@@ -42,17 +42,17 @@ Those packages are ephemeral Trial state and are not added to `runtime-lock.json
 Python/pip and chemistry tool versions plus the immutable image digest are locked.
 
 For an `experiment.v2` paired run, both native Harbor jobs are placed below one
-directory so the official Harbor viewer can discover them together:
+directory. One local Viewer instance discovers all run directories:
 
 ```bash
-uv run hai view \
-  --jobs-dir run-artifacts/<run-id>/jobs \
-  --port 8080
+uv run --locked hai view
 ```
 
-This delegates to Harbor's official viewer for trial state, trajectory, timing, tokens,
-rewards, config, lock and artifact views. Infra's `results.json` remains the paired
-experiment compatibility aggregate.
+Open `http://127.0.0.1:8080`, select a direct child of `run-artifacts/`, and then select
+a job. The job, task and Trial pages still delegate to Harbor's official viewer for
+state, trajectory, timing, tokens, rewards, config, lock and artifact views. Infra's
+`results.json` remains the paired experiment compatibility aggregate. Pass
+`--artifacts-dir <path>` when the run root is located elsewhere.
 
 To run one group in isolation, add `--group skills_on` or `--group skills_off` to
 `hai run`. The selected group is the only group materialized and executed; the other

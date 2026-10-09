@@ -115,12 +115,17 @@ provider and optional Registry prerequisites.
 ## Paired run results and Viewer
 
 `experiment.v2` runs create two native Harbor jobs, `skills_on` and `skills_off`, below
-the same `run-artifacts/<run-id>/jobs/` directory. Browse them with Harbor's official
-viewer through the thin Infra wrapper:
+the same `run-artifacts/<run-id>/jobs/` directory. Browse every run from one local
+Viewer instance:
 
 ```bash
-uv run hai view --jobs-dir run-artifacts/<run-id>/jobs --port 8080
+uv run --locked hai view
 ```
+
+The directory index at `http://127.0.0.1:8080` discovers every direct child of
+`run-artifacts/` that contains a `jobs/` directory. Select a directory there, then use
+Harbor's official job, task and Trial views as before. Use `--artifacts-dir` only when
+the run root is located elsewhere.
 
 The Viewer is the source for Harbor execution evidence such as trial state, trajectory,
 timing, tokens, rewards, config, lock and artifacts. Infra's `per-record/`,
