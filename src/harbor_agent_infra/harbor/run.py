@@ -60,6 +60,13 @@ def _job_execution_settings(job_config: dict[str, Any]) -> dict[str, Any]:
             if isinstance(retry.get(key), list):
                 retry[key] = sorted(retry[key])
         settings["retry"] = retry
+    verifier = settings.get("verifier")
+    if isinstance(verifier, dict) and isinstance(verifier.get("env"), dict):
+        verifier = dict(verifier)
+        verifier_env = dict(verifier["env"])
+        verifier_env.pop("VGB_AGENT_NAME", None)
+        verifier["env"] = verifier_env
+        settings["verifier"] = verifier
     return settings
 
 

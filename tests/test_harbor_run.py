@@ -176,6 +176,26 @@ def test_job_execution_settings_ignores_retry_exception_order() -> None:
     assert _job_execution_settings(previous) == _job_execution_settings(current)
 
 
+def test_job_execution_settings_ignores_vgb_agent_name_metadata() -> None:
+    previous = {
+        "verifier": {
+            "import_path": "adapters.vgb_verifier:VgbVerifier",
+            "env": {"VGB_PYTHON": "/runtime/python"},
+        }
+    }
+    current = {
+        "verifier": {
+            "import_path": "adapters.vgb_verifier:VgbVerifier",
+            "env": {
+                "VGB_PYTHON": "/runtime/python",
+                "VGB_AGENT_NAME": "openclaw",
+            },
+        }
+    }
+
+    assert _job_execution_settings(previous) == _job_execution_settings(current)
+
+
 def test_job_execution_settings_normalizes_legacy_manifest_defaults() -> None:
     legacy = {
         "job_name": "openclaw-vgb-gpt-skills_off",
