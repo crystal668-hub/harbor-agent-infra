@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+import yaml
 from harbor.agents.factory import AgentFactory
 from harbor.agents.installed.base import NonZeroAgentExitCodeError
 from harbor.models.trial.config import AgentConfig
@@ -43,6 +44,12 @@ def test_hermes_adapter_is_discoverable_through_harbor_factory() -> None:
 
 def test_hermes_uses_current_version_command(tmp_path: Path) -> None:
     assert _agent(tmp_path).get_version_command().endswith("hermes --version")
+
+
+def test_hermes_config_disables_onboarding(tmp_path: Path) -> None:
+    config = yaml.safe_load(_agent(tmp_path)._build_config_yaml("qwen3.8-flash"))
+    assert config["onboarding"]["profile_build"] == "off"
+    assert all(config["onboarding"]["seen"].values())
 
 
 def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch) -> None:
@@ -101,6 +108,8 @@ def test_hermes_qwen_export_prefers_oneshot_sessions(tmp_path: Path, monkeypatch
 
     asyncio.run(agent.run("reply with marker", None, None))
 
+    config_command = execute.await_args_list[0].kwargs["command"]
+    assert "rm -f /workspace/BOOTSTRAP.md /workspace/IDENTITY.md" in config_command
     export_command = execute.await_args_list[-1].kwargs["command"]
     assert "--source oneshot" in export_command
     assert "--source cli" in export_command

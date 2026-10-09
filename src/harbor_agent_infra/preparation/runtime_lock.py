@@ -60,6 +60,7 @@ class HermesRuntimeLock:
     source_tag: str
     source_commit: str
     install_branch: str
+    bootstrap_mode: str
     version_command: str
 
 
@@ -116,6 +117,8 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError("Hermes install_branch must be main")
     if hermes.get("installer_source") != "source-commit":
         raise ValueError("Hermes installer_source must be source-commit")
+    if hermes.get("bootstrap_mode") != "skip-setup-and-onboarding":
+        raise ValueError("Hermes bootstrap_mode must skip setup and onboarding")
     if hermes.get("version_command") != "hermes --version":
         raise ValueError("Hermes version_command must be hermes --version")
     reference = image.get("reference")
@@ -166,6 +169,7 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
             source_tag=hermes_tag,
             source_commit=hermes_commit,
             install_branch=hermes["install_branch"],
+            bootstrap_mode=hermes["bootstrap_mode"],
             version_command=hermes["version_command"],
         ),
         agent_base_image=AgentBaseImageLock(

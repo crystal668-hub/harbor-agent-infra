@@ -52,6 +52,7 @@
     "source_commit": "818c13be1dc4fd28987e1e881a9408224afd4535",
     "install_branch": "main",
     "installer_source": "source-commit",
+    "bootstrap_mode": "skip-setup-and-onboarding",
     "version_command": "hermes --version"
   },
   "agent_base_image": {

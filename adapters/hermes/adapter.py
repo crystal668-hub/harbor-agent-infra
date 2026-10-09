@@ -5,6 +5,7 @@ import os
 import shlex
 from typing import override
 
+import yaml
 from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_template
 from harbor.agents.installed.hermes import Hermes as HarborHermes
 from harbor.agents.installed.hermes import HermesOptions as HarborHermesOptions
@@ -30,6 +31,21 @@ class HermesAgent(HarborHermes):
     """Harbor Hermes adapter with an immutable installer and current version probe."""
 
     options_model = HermesOptions
+
+    @staticmethod
+    @override
+    def _build_config_yaml(model: str) -> str:
+        config = yaml.safe_load(HarborHermes._build_config_yaml(model))
+        config["onboarding"] = {
+            "profile_build": "off",
+            "seen": {
+                "busy_input_prompt": True,
+                "tool_progress_prompt": True,
+                "openclaw_residue_cleanup": True,
+                "profile_build_offered": True,
+            },
+        }
+        return yaml.safe_dump(config, default_flow_style=False)
 
     def __init__(self, *args, source_commit: str, install_branch: str, **kwargs):
         invalid_commit = len(source_commit) != 40 or any(
@@ -94,6 +110,12 @@ class HermesAgent(HarborHermes):
     ) -> None:
         provider, separator, model = (self.model_name or "").partition("/")
         if provider != "qwen" or not separator:
+            await self.exec_as_agent(
+                environment,
+                command="rm -f /workspace/BOOTSTRAP.md /workspace/IDENTITY.md",
+                env={"HERMES_HOME": "/tmp/hermes"},
+                timeout_sec=10,
+            )
             await super().run(instruction, environment, context)
             return
 
@@ -114,6 +136,7 @@ class HermesAgent(HarborHermes):
         await self.exec_as_agent(
             environment,
             command=(
+                "rm -f /workspace/BOOTSTRAP.md /workspace/IDENTITY.md && "
                 "mkdir -p /tmp/hermes && "
                 f"cat > /tmp/hermes/config.yaml << 'EOF'\n{config_yaml}EOF"
             ),
