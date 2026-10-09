@@ -84,7 +84,11 @@ async def _run_provider_smoke() -> None:
     trial = result.trial_results[0]
     assert trial.exception_info is None
     assert trial.agent_info.version == lock.hermes.source_tag
-    trial_dir = next((task_root / "jobs").glob("*/task__*"))
+    trial_dir = next(
+        result_path.parent
+        for result_path in (task_root / "jobs").rglob("result.json")
+        if (result_path.parent / "agent/hermes.txt").is_file()
+    )
     assert _MARKER in (trial_dir / "agent/hermes.txt").read_text(encoding="utf-8")
     assert (trial_dir / "agent/hermes-session.jsonl").stat().st_size > 0
     assert (trial_dir / "agent/trajectory.json").stat().st_size > 0
