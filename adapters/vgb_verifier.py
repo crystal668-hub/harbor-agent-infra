@@ -25,11 +25,12 @@ class VgbVerifier(BaseVerifier):
         artifact.parent.mkdir(parents=True, exist_ok=True)
         try:
             track, task_id = self.task.name.split("__", 1)
-            agent_name = (self.verifier_env or {}).get("VGB_AGENT_NAME", "openclaw")
+            verifier_context = {**self.override_env, **(self.verifier_env or {})}
+            agent_name = verifier_context.get("VGB_AGENT_NAME", "openclaw")
             response = response_from_agent_artifacts(
                 self.trial_paths.agent_dir, agent_name=agent_name
             )
-            configured_python = (self.verifier_env or {}).get("VGB_PYTHON")
+            configured_python = verifier_context.get("VGB_PYTHON")
             runtime = (
                 VgbRuntime.from_executable(configured_python)
                 if configured_python

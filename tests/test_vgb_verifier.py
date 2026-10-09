@@ -114,6 +114,34 @@ def test_vgb_verifier_reads_hermes_final_atif_message(monkeypatch, tmp_path: Pat
     assert result.rewards == {"vgb_score": 1.0, "reward": 1.0}
 
 
+def test_vgb_verifier_reads_agent_name_from_job_verifier_env(monkeypatch, tmp_path: Path) -> None:
+    class Runtime:
+        def metadata(self):
+            return {"tracks": ["open_generation_rdkit"]}
+
+        def evaluate(self, track, answer):
+            assert answer["response"] == "CCO"
+            return {"task_id": answer["task_id"], "status": "scored", "scores": {"score": 1.0}}
+
+    agent = tmp_path / "agent"
+    agent.mkdir()
+    (agent / "trajectory.json").write_text(
+        json.dumps({"steps": [{"source": "agent", "message": "CCO"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "adapters.vgb_verifier.VgbRuntime.from_environment", lambda: Runtime()
+    )
+    verifier = VgbVerifier(
+        task=SimpleNamespace(name="open_generation_rdkit__rdkit_001_qed_max"),
+        trial_paths=SimpleNamespace(agent_dir=agent, verifier_dir=tmp_path / "verifier"),
+        environment=SimpleNamespace(),
+        override_env={"VGB_AGENT_NAME": "hermes"},
+    )
+    result = asyncio.run(verifier.verify())
+    assert result.rewards == {"vgb_score": 1.0, "reward": 1.0}
+
+
 def test_record_uses_harbor_verifier_artifact(tmp_path: Path) -> None:
     trial = tmp_path / "trial"
     (trial / "agent").mkdir(parents=True)
