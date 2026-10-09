@@ -193,7 +193,7 @@ def _rebuild_job_result(job_dir: Path) -> None:
 def _rebuild_aggregate(root: Path, job_names: dict[str, str]) -> None:
     results_path = root / "results.json"
     results = _read_json(results_path)
-    records: list[dict[str, Any]] = []
+    attempt_records: list[dict[str, Any]] = []
     for group_id, job_name in job_names.items():
         record_root = root / "per-record" / group_id
         for path in sorted(record_root.glob("*.json")):
@@ -201,7 +201,24 @@ def _rebuild_aggregate(root: Path, job_names: dict[str, str]) -> None:
             trial_path = Path(str(record.get("trial_result_path", ""))).parent
             if trial_path.parent.name != job_name:
                 continue
-            records.append(record)
+            attempt_records.append(record)
+    attempts_by_trial: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for record in attempt_records:
+        attempts_by_trial[(str(record["group_id"]), str(record["trial_name"]))].append(record)
+    records = []
+    for attempts in attempts_by_trial.values():
+        attempts.sort(key=lambda record: str(record["event_timestamp"]))
+        final = json.loads(json.dumps(attempts[-1]))
+        final["attempts"] = [
+            {
+                "status": attempt["run_lifecycle_status"],
+                "trial_id": (attempt.get("trial_result") or {}).get("id"),
+                "trial_result_path": attempt["trial_result_path"],
+            }
+            for attempt in attempts
+        ]
+        final["final_attempt"] = final["attempts"][-1]
+        records.append(final)
     records.sort(key=lambda record: (str(record["group_id"]), str(record["trial_name"])))
     summaries: dict[str, dict[str, Any]] = {}
     group_tracks: dict[str, dict[str, dict[str, Any]]] = {}
@@ -427,10 +444,32 @@ def _merge_run(root: Path, task_names: tuple[str, ...], stamp: str, apply: bool)
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--rebuild-only", action="store_true")
     args = parser.parse_args()
+    if args.apply and args.rebuild_only:
+        parser.error("--apply and --rebuild-only cannot be combined")
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     for run_name, task_names in RUN_TASKS.items():
-        _merge_run(Path("run-artifacts") / run_name, task_names, stamp, args.apply)
+        root = Path("run-artifacts") / run_name
+        if args.rebuild_only:
+            jobs_root = root / "jobs"
+            original_off = next(
+                path
+                for path in jobs_root.glob("*-skills_off")
+                if "-rerun-" not in path.name
+            )
+            original_on = next(
+                path
+                for path in jobs_root.glob("*-skills_on")
+                if "-rerun-" not in path.name
+            )
+            _rebuild_job_result(original_off)
+            _rebuild_aggregate(
+                root,
+                {"skills_on": original_on.name, "skills_off": original_off.name},
+            )
+        else:
+            _merge_run(root, task_names, stamp, args.apply)
     return 0
 
 
