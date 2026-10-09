@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -89,7 +90,13 @@ def test_hermes_qwen_export_prefers_oneshot_sessions(tmp_path: Path, monkeypatch
         source_commit=SOURCE_COMMIT,
         install_branch="main",
     )
-    execute = AsyncMock()
+    execute = AsyncMock(
+        side_effect=[
+            SimpleNamespace(stdout=""),
+            SimpleNamespace(stdout=""),
+            SimpleNamespace(stdout=""),
+        ]
+    )
     monkeypatch.setattr(agent, "exec_as_agent", execute)
 
     asyncio.run(agent.run("reply with marker", None, None))
