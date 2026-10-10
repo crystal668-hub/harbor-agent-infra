@@ -28,6 +28,7 @@ def _write_task(
     image: str,
     prompt: str,
     settings: TaskRuntimeSettings,
+    agent_name: str,
 ) -> None:
     task_dir.mkdir(parents=True, exist_ok=True)
     (task_dir / "environment").mkdir(exist_ok=True)
@@ -35,9 +36,9 @@ def _write_task(
     (task_dir / "tests").mkdir(exist_ok=True)
     (task_dir / "instruction.md").write_text(prompt, encoding="utf-8")
     (task_dir / "task.toml").write_text(
-        "schema_version = \"1.4\"\n\n"
+        'schema_version = "1.4"\n\n'
         "[metadata]\n"
-        "description = \"Harbor VGB task\"\n\n"
+        'description = "Harbor VGB task"\n\n'
         "[verifier]\n"
         f"timeout_sec = {settings.verifier_timeout_sec}\n"
         f"network_mode = {json.dumps(settings.verifier_network_mode)}\n"
@@ -47,18 +48,35 @@ def _write_task(
         f"network_mode = {json.dumps(settings.agent_network_mode)}\n"
         f"allowed_hosts = {json.dumps(list(settings.agent_allowed_hosts))}\n\n"
         "[environment]\n"
-        f'docker_image = {json.dumps(image)}\n'
+        f"docker_image = {json.dumps(image)}\n"
         'os = "linux"\n',
         encoding="utf-8",
     )
     test_script = task_dir / "tests" / "test.sh"
+    artifact_checks = {
+        "openclaw": (
+            "test -s /logs/agent/openclaw.txt\n"
+            "test -s /logs/agent/trajectory.json\n"
+            "test -s /logs/agent/openclaw-evidence.json\n"
+        ),
+        "hermes": (
+            "test -s /logs/agent/hermes.txt\n"
+            "test -s /logs/agent/trajectory.json\n"
+            "test -s /logs/agent/hermes-session.jsonl\n"
+        ),
+        "codex": (
+            "test -s /logs/agent/codex.txt\n"
+            "test -s /logs/agent/trajectory.json\n"
+            "find /logs/agent/sessions -type f -name '*.jsonl' -print -quit | grep -q .\n"
+        ),
+        "claude-code": (
+            "test -s /logs/agent/claude-code.txt\n"
+            "test -s /logs/agent/trajectory.json\n"
+            "find /logs/agent/sessions -type f -name '*.jsonl' -print -quit | grep -q .\n"
+        ),
+    }[agent_name]
     test_script.write_text(
-        "#!/bin/sh\n"
-        "set -eu\n"
-        "test -s /logs/agent/openclaw.txt\n"
-        "test -s /logs/agent/trajectory.json\n"
-        "test -s /logs/agent/openclaw-evidence.json\n"
-        "printf '1\\n' > /logs/verifier/reward.txt\n",
+        "#!/bin/sh\nset -eu\n" + artifact_checks + "printf '1\\n' > /logs/verifier/reward.txt\n",
         encoding="utf-8",
     )
     test_script.chmod(0o755)
@@ -94,6 +112,7 @@ def materialize_vgb_tasks(
                 image=image,
                 prompt=prompt_record["prompt"],
                 settings=settings,
+                agent_name=spec.agent.adapter,
             )
             task_configs.append(TaskConfig(path=task_dir))
     return tuple(task_configs)

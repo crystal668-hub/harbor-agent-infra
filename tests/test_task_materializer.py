@@ -25,8 +25,10 @@ class FakeVgbRuntime:
             "package": "verifier-grounded-benchmark",
             "version": "0.10.0",
             "tracks": [
-                "open_generation_rdkit", "open_generation_xtb",
-                "property_calculation_advanced", "property_calculation_basic",
+                "open_generation_rdkit",
+                "open_generation_xtb",
+                "property_calculation_advanced",
+                "property_calculation_basic",
             ],
         }
 
@@ -292,3 +294,33 @@ def test_paired_materializer_builds_two_native_jobs(tmp_path: Path) -> None:
             materialized.job_config.model_dump(mode="json")
         )
         assert reloaded.job_name == materialized.job_config.job_name
+
+
+@pytest.mark.parametrize(
+    "agent_name,log_file",
+    [
+        ("openclaw", "openclaw.txt"),
+        ("hermes", "hermes.txt"),
+        ("codex", "codex.txt"),
+        ("claude-code", "claude-code.txt"),
+    ],
+)
+def test_task_artifact_checks_follow_agent(agent_name, log_file, tmp_path):
+    base = _spec(tmp_path)
+    payload = base.model_dump(mode="json")
+    payload["agent"] = {"adapter": agent_name, "model": "fixture-model"}
+    spec = ExperimentSpecV2.model_validate(payload)
+    tasks = materialize_vgb_tasks(
+        FakeVgbRuntime(), spec, output_root=tmp_path / "run", image="hai-base-env"
+    )
+    script = (Path(tasks[0].path) / "tests/test.sh").read_text()
+    assert f"test -s /logs/agent/{log_file}" in script
+    assert "test -s /logs/agent/trajectory.json" in script
+    if agent_name == "openclaw":
+        assert "openclaw-evidence.json" in script
+    elif agent_name == "hermes":
+        assert "hermes-session.jsonl" in script
+        assert "openclaw-evidence.json" not in script
+    else:
+        assert "find /logs/agent/sessions -type f -name '*.jsonl'" in script
+        assert "openclaw-evidence.json" not in script
