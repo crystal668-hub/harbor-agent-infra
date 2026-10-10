@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
 from harbor_agent_infra.contracts.resource_profile import ResourceConfig
 from harbor_agent_infra.harbor.audit import audit_tool_calls
-from harbor_agent_infra.harbor.run import run_group_jobs
+from harbor_agent_infra.harbor.run import run_paired_jobs
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 from integrations.vgb.runtime import VgbRuntime
@@ -80,7 +80,12 @@ def _inputs(
 
 
 async def run(
-    agent_name: str, model: str, output: Path, reasoning_effort: str = "high"
+    agent_name: str,
+    model: str,
+    output: Path,
+    reasoning_effort: str = "high",
+    *,
+    paired: bool = False,
 ) -> dict[str, object]:
     load_dotenv(Path.cwd() / ".env", override=False)
     runtime = VgbRuntime.from_environment()
@@ -96,7 +101,6 @@ async def run(
     if any(not os.environ.get(name) for name in required):
         raise RuntimeError(f"{agent_name} VGB E2E needs configured provider credentials")
 
-    paired = output.name.endswith("-paired-pilot")
     skills_root = output / "skills" if paired else None
     if paired:
         skill_dir = skills_root / "native-pilot"
@@ -111,7 +115,7 @@ async def run(
             encoding="utf-8",
         )
     spec, resources = _inputs(agent_name, model, reasoning_effort, output=output)
-    manifest = await run_group_jobs(
+    manifest = await run_paired_jobs(
         spec,
         resources,
         runtime,
@@ -186,6 +190,11 @@ def main() -> int:
     parser.add_argument("--model", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
+        "--paired-pilot",
+        action="store_true",
+        help="Run both skill groups only for an explicitly requested comparison",
+    )
+    parser.add_argument(
         "--reasoning-effort",
         default="high",
         choices=("low", "medium", "high", "xhigh", "max"),
@@ -193,7 +202,15 @@ def main() -> int:
     args = parser.parse_args()
     print(
         json.dumps(
-            asyncio.run(run(args.agent, args.model, args.output, args.reasoning_effort)),
+            asyncio.run(
+                run(
+                    args.agent,
+                    args.model,
+                    args.output,
+                    args.reasoning_effort,
+                    paired=args.paired_pilot,
+                )
+            ),
             indent=2,
         )
     )
