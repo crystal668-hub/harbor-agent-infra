@@ -21,7 +21,7 @@ TASK_ID = "rdkit_001_qed_max"
 
 
 def _inputs(
-    agent_name: str, model: str, *, output: Path
+    agent_name: str, model: str, reasoning_effort: str, *, output: Path
 ) -> tuple[ExperimentSpecV2, ResourceConfig]:
     lock = load_runtime_lock(Path("runtime-lock.json"))
     spec = ExperimentSpecV2.model_validate(
@@ -47,7 +47,11 @@ def _inputs(
                     "skill_allowlist_ref": None,
                 },
             ],
-            "agent": {"adapter": agent_name, "model": model},
+            "agent": {
+                "adapter": agent_name,
+                "model": model,
+                "reasoning_effort": reasoning_effort,
+            },
             "image": {
                 "reference": lock.agent_base_image.reference,
                 "digest": lock.agent_base_image.digest,
@@ -75,7 +79,9 @@ def _inputs(
     return spec, resources
 
 
-async def run(agent_name: str, model: str, output: Path) -> dict[str, object]:
+async def run(
+    agent_name: str, model: str, output: Path, reasoning_effort: str = "high"
+) -> dict[str, object]:
     load_dotenv(Path.cwd() / ".env", override=False)
     runtime = VgbRuntime.from_environment()
     metadata = runtime.metadata()
@@ -104,7 +110,7 @@ async def run(agent_name: str, model: str, output: Path) -> dict[str, object]:
             '{"schema_version":"skill-allowlist.v1","skills":["native-pilot"]}\n',
             encoding="utf-8",
         )
-    spec, resources = _inputs(agent_name, model, output=output)
+    spec, resources = _inputs(agent_name, model, reasoning_effort, output=output)
     manifest = await run_group_jobs(
         spec,
         resources,
@@ -141,6 +147,7 @@ async def run(agent_name: str, model: str, output: Path) -> dict[str, object]:
         "agent_name": agent_name,
         "agent_version": raw.get("agent_info", {}).get("version"),
         "model": model,
+        "requested_reasoning_effort": reasoning_effort,
         "group": "skills_off",
         "track": TRACK,
         "task_id": TASK_ID,
@@ -178,8 +185,18 @@ def main() -> int:
     parser.add_argument("--agent", choices=("codex", "claude-code"), required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--reasoning-effort",
+        default="high",
+        choices=("low", "medium", "high", "xhigh", "max"),
+    )
     args = parser.parse_args()
-    print(json.dumps(asyncio.run(run(args.agent, args.model, args.output)), indent=2))
+    print(
+        json.dumps(
+            asyncio.run(run(args.agent, args.model, args.output, args.reasoning_effort)),
+            indent=2,
+        )
+    )
     return 0
 
 

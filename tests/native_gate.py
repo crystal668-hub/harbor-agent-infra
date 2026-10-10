@@ -94,10 +94,11 @@ def run_provider_smoke_gate(agent_name: str, gate: str) -> None:
         raise RuntimeError(f"provider smoke is missing credential variables: {missing}")
     if not model:
         raise RuntimeError(f"set {agent_name.upper()}_SMOKE_MODEL for the provider smoke")
-    asyncio.run(_provider_smoke(agent_name, model))
+    effort = os.environ.get("NATIVE_AGENT_REASONING_EFFORT", "high")
+    asyncio.run(_provider_smoke(agent_name, model, effort))
 
 
-async def _provider_smoke(agent_name: str, model: str) -> None:
+async def _provider_smoke(agent_name: str, model: str, effort: str) -> None:
     lock = load_runtime_lock(Path("runtime-lock.json"))
     version = lock.codex.version if agent_name == "codex" else lock.claude_code.version
     marker = f"HARBOR_{agent_name.upper().replace('-', '_')}_SMOKE_OK"
@@ -144,13 +145,14 @@ async def _provider_smoke(agent_name: str, model: str) -> None:
                     "model_name": model,
                     "override_setup_timeout_sec": 1200,
                     "override_timeout_sec": 300,
-                    "kwargs": {"version": version},
+                    "kwargs": {"version": version, "reasoning_effort": effort},
                 }
             ],
             "tasks": [{"path": str(task)}],
         }
     )
     assert config.agents[0].import_path is None
+    assert config.agents[0].kwargs["reasoning_effort"] == effort
     result = await (await Job.create(config)).run()
     trial = result.trial_results[0]
     assert trial.exception_info is None, f"Provider Trial failed; inspect {root}"
@@ -164,6 +166,17 @@ async def _provider_smoke(agent_name: str, model: str) -> None:
     ]
     assert any(isinstance(message, str) and marker in message for message in messages)
     assert list(trial_dir.rglob("*.jsonl")), f"Native session missing; inspect {root}"
+    (root / "report.json").write_text(
+        json.dumps(
+            {
+                "agent": agent_name,
+                "model": model,
+                "version": version,
+                "requested_reasoning_effort": effort,
+                "status": "pass",
+            }
+        )
+    )
 
 
 def run_vgb_e2e_gate(agent_name: str, gate: str, output: Path) -> None:
@@ -190,6 +203,8 @@ def run_vgb_e2e_gate(agent_name: str, gate: str, output: Path) -> None:
             model,
             "--output",
             str(output),
+            "--reasoning-effort",
+            os.environ.get("NATIVE_AGENT_REASONING_EFFORT", "high"),
         ],
         capture_output=True,
         text=True,
