@@ -77,6 +77,34 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     assert record["trial_result_path"] == payload["trial_result_path"]
 
 
+def test_run_event_sink_projects_reasoning_tokens_from_atif(tmp_path: Path) -> None:
+    trial_dir = tmp_path / "jobs" / "task__reasoning"
+    agent_dir = trial_dir / "agent"
+    agent_dir.mkdir(parents=True)
+    (agent_dir / "trajectory.json").write_text(
+        json.dumps({"final_metrics": {"extra": {"reasoning_output_tokens": 7}}})
+    )
+    result = SimpleNamespace(
+        trial_name="task__reasoning",
+        exception_info=None,
+        trial_uri=str(trial_dir),
+        agent_result=SimpleNamespace(metadata=None),
+        compute_token_cost_totals=lambda: (10, 0, 3, 0.1),
+    )
+    event = SimpleNamespace(
+        result=result,
+        event=SimpleNamespace(value="end"),
+        trial_id="trial-reasoning",
+        trial_name="task__reasoning",
+        task_name="task",
+        timestamp=SimpleNamespace(isoformat=lambda: "2026-10-10T00:00:00+00:00"),
+    )
+    sink = RunEventSink(tmp_path / "events" / "trials.jsonl", run_id="run-1")
+    asyncio.run(sink(event, group_id="skills_off"))
+    record = json.loads(next((tmp_path / "per-record" / "skills_off").glob("*.json")).read_text())
+    assert record["observability"]["totals"]["tokens"]["reasoning"] == 7
+
+
 def test_run_event_sink_persists_cancelled_trial_event(tmp_path: Path) -> None:
     exception = SimpleNamespace(
         exception_type="CancelledError",
@@ -108,12 +136,21 @@ def test_failed_task_names_selects_non_completed_group_records(tmp_path: Path) -
         json.dumps(
             {
                 "results": [
-                    {"group_id": "skills_off", "task_name": "track__failed",
-                     "run_lifecycle_status": "failed"},
-                    {"group_id": "skills_off", "task_name": "track__passed",
-                     "run_lifecycle_status": "completed"},
-                    {"group_id": "skills_on", "task_name": "track__other",
-                     "run_lifecycle_status": "failed"},
+                    {
+                        "group_id": "skills_off",
+                        "task_name": "track__failed",
+                        "run_lifecycle_status": "failed",
+                    },
+                    {
+                        "group_id": "skills_off",
+                        "task_name": "track__passed",
+                        "run_lifecycle_status": "completed",
+                    },
+                    {
+                        "group_id": "skills_on",
+                        "task_name": "track__other",
+                        "run_lifecycle_status": "failed",
+                    },
                 ]
             }
         ),
@@ -163,8 +200,7 @@ def test_event_result_path_migration_only_repairs_existing_harbor_file(tmp_path:
     (trial / "result.json").write_text("{}", encoding="utf-8")
     events = tmp_path / "trials.jsonl"
     events.write_text(
-        json.dumps({"trial_result_path": str(trial / "results.json"), "event": "end"})
-        + "\n",
+        json.dumps({"trial_result_path": str(trial / "results.json"), "event": "end"}) + "\n",
         encoding="utf-8",
     )
     assert _repair_event_result_paths(events) == 1
@@ -178,9 +214,7 @@ def test_score_summary_counts_zero_and_keeps_missing_distinct() -> None:
         {"scored": True, "vgb_domain_result": {"scores": {"score": 0.8}}},
         {"scored": False},
     ]
-    assert _score_summary(records) == {
-        "records": 3, "scored": 2, "mean_vgb_score": 0.4
-    }
+    assert _score_summary(records) == {"records": 3, "scored": 2, "mean_vgb_score": 0.4}
     assert _score_summary([{"scored": False}])["mean_vgb_score"] is None
 
 
@@ -341,9 +375,7 @@ def test_evaluate_record_file_uses_configured_hermes_parser(tmp_path: Path) -> N
                 "task_name": "open_generation_rdkit__rdkit_001_qed_max",
                 "trial_result_path": str(trial_dir / "result.json"),
                 "run_lifecycle_status": "completed",
-                "trial_result": {
-                    "verifier_result": {"rewards": {"vgb_score": 0.75}}
-                },
+                "trial_result": {"verifier_result": {"rewards": {"vgb_score": 0.75}}},
             }
         ),
         encoding="utf-8",
@@ -409,9 +441,7 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
         )
     )
     assert resumed["started_at"] == manifest["started_at"]
-    assert resumed["resume"] == {
-        "supported": True, "resumed": True, "previous_status": "completed"
-    }
+    assert resumed["resume"] == {"supported": True, "resumed": True, "previous_status": "completed"}
 
 
 def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path) -> None:
@@ -481,9 +511,7 @@ def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path
             output_root=root,
             skills_root=skills_root,
             group_id="skills_on",
-            replace_group_task_names=frozenset(
-                {"open_generation_rdkit__rdkit_001_qed_max"}
-            ),
+            replace_group_task_names=frozenset({"open_generation_rdkit__rdkit_001_qed_max"}),
         )
     )
     assert [group["group_id"] for group in manifest["groups"]] == [
@@ -569,9 +597,7 @@ def test_explicit_task_rerun_uses_named_job_in_existing_output(monkeypatch, tmp_
 
 def test_paired_run_rejects_wrong_vgb_runtime_before_materialization(tmp_path: Path) -> None:
     runtime = FakeVgbRuntime()
-    runtime.metadata = lambda: {
-        **FakeVgbRuntime.metadata(runtime), "version": "0.9.0"
-    }
+    runtime.metadata = lambda: {**FakeVgbRuntime.metadata(runtime), "version": "0.9.0"}
     with pytest.raises(ValueError, match="metadata does not match"):
         asyncio.run(
             run_module.run_paired_jobs(
@@ -700,6 +726,7 @@ def test_paired_run_keeps_retry_evidence_and_selects_final_attempt(
     assert final["final_attempt"]["trial_id"] == "a-final"
     assert [item["trial_id"] for item in final["attempts"]] == ["z-first", "a-final"]
     assert final["failure_mode"] == "retry_exhausted"
-    assert json.loads(Path(final["record_path"]).read_text())["final_attempt"] == (
-        final["final_attempt"]
+    assert (
+        json.loads(Path(final["record_path"]).read_text())["final_attempt"]
+        == (final["final_attempt"])
     )

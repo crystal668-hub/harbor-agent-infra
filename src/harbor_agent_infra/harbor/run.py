@@ -16,7 +16,11 @@ from harbor.trial.hooks import TrialHookEvent
 
 from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
 from harbor_agent_infra.contracts.resource_profile import ResourceConfig
-from harbor_agent_infra.harbor.audit import audit_tool_calls, failure_mode
+from harbor_agent_infra.harbor.audit import (
+    audit_tool_calls,
+    failure_mode,
+    reasoning_tokens_from_atif,
+)
 from harbor_agent_infra.harbor.job_config import (
     MaterializedPairedJobs,
     materialize_paired_job_configs,
@@ -319,21 +323,11 @@ class RunEventSink:
     async def __call__(self, event: TrialHookEvent, *, group_id: str) -> None:
         result = event.result
         record_name = f"{event.trial_name}__{event.trial_id}"
-        record_path = (
-            self.path.parent.parent
-            / "per-record"
-            / group_id
-            / f"{record_name}.json"
-        )
-        trial_dump = (
-            result.model_dump(mode="json")
-            if hasattr(result, "model_dump")
-            else {}
-        )
+        record_path = self.path.parent.parent / "per-record" / group_id / f"{record_name}.json"
+        trial_dump = result.model_dump(mode="json") if hasattr(result, "model_dump") else {}
         status = (
             "cancelled"
-            if result.exception_info
-            and result.exception_info.exception_type == "CancelledError"
+            if result.exception_info and result.exception_info.exception_type == "CancelledError"
             else "failed"
             if result.exception_info
             else "completed"
@@ -356,10 +350,14 @@ class RunEventSink:
         runner = harness_runner.runner_id if harness_runner else "harbor"
         agent_result = getattr(result, "agent_result", None)
         agent_metadata = getattr(agent_result, "metadata", None)
-        usage_metadata = (
-            agent_metadata.get("usage") if isinstance(agent_metadata, dict) else None
-        )
+        usage_metadata = agent_metadata.get("usage") if isinstance(agent_metadata, dict) else None
         usage_metadata = usage_metadata if isinstance(usage_metadata, dict) else {}
+        metadata_reasoning = usage_metadata.get("reasoning_tokens")
+        reasoning_tokens = (
+            metadata_reasoning
+            if isinstance(metadata_reasoning, int)
+            else reasoning_tokens_from_atif(trial_dir / "agent" / "trajectory.json")
+        )
         record_payload = {
             "schema_version": 5,
             "run_id": self.run_id,
@@ -403,7 +401,7 @@ class RunEventSink:
                         "input": token_totals[0],
                         "cache": token_totals[1],
                         "output": token_totals[2],
-                        "reasoning": usage_metadata.get("reasoning_tokens"),
+                        "reasoning": reasoning_tokens,
                         "cost_usd": token_totals[3],
                     },
                     "api_calls": usage_metadata.get("api_call_count"),
@@ -423,9 +421,7 @@ class RunEventSink:
             "timestamp": event.timestamp.isoformat(),
             "status": status,
             "exception": (
-                result.exception_info.model_dump(mode="json")
-                if result.exception_info
-                else None
+                result.exception_info.model_dump(mode="json") if result.exception_info else None
             ),
             "trial_result_path": str(trial_dir / "result.json"),
         }
@@ -486,7 +482,8 @@ async def run_paired_jobs(
     previous_manifest_path = output_root / "runtime-manifest.json"
     previous_manifest = (
         json.loads(previous_manifest_path.read_text(encoding="utf-8"))
-        if previous_manifest_path.exists() else None
+        if previous_manifest_path.exists()
+        else None
     )
     previous_results_path = output_root / "results.json"
     previous_results = (
@@ -530,10 +527,7 @@ async def run_paired_jobs(
                 current_group_id in previous_group_skills
                 and previous_group_skills[current_group_id] != skills
             )
-            or (
-                current_group_id not in previous_group_skills
-                and replace_group_task_names is None
-            )
+            or (current_group_id not in previous_group_skills and replace_group_task_names is None)
             for current_group_id, skills in requested_group_skills.items()
         )
         previous_group_configs = {
@@ -548,9 +542,7 @@ async def run_paired_jobs(
         )
         source_matches = previous_source_hash == expected_source_hash
         if (
-            (not source_matches and not (
-                allow_task_selection_change and execution_settings_match
-            ))
+            (not source_matches and not (allow_task_selection_change and execution_settings_match))
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
             or skills_mismatch
         ):
@@ -567,15 +559,9 @@ async def run_paired_jobs(
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
-        harnesses={
-            group_id: group.agent_name
-            for group_id, group in materialized.groups.items()
-        },
+        harnesses={group_id: group.agent_name for group_id, group in materialized.groups.items()},
         network_policies={
-            group_id: {
-                str(policy["task_name"]): policy
-                for policy in group.network_policies
-            }
+            group_id: {str(policy["task_name"]): policy for policy in group.network_policies}
             for group_id, group in materialized.groups.items()
         },
     )
@@ -620,9 +606,11 @@ async def run_paired_jobs(
             attempts.sort(key=lambda item: item["event_timestamp"])
             final = attempts[-1]
             final["attempts"] = [
-                {"trial_id": item.get("trial_result", {}).get("id"),
-                 "trial_result_path": item["trial_result_path"],
-                 "status": item["run_lifecycle_status"]}
+                {
+                    "trial_id": item.get("trial_result", {}).get("id"),
+                    "trial_result_path": item["trial_result_path"],
+                    "status": item["run_lifecycle_status"],
+                }
                 for item in attempts
             ]
             final["final_attempt"] = final["attempts"][-1]
@@ -641,8 +629,7 @@ async def run_paired_jobs(
             )
         records.sort(key=lambda item: (item["group_id"], item["trial_name"]))
         if status == "completed" and any(
-            record.get("evaluation_error") or record.get("failure_mode")
-            for record in records
+            record.get("evaluation_error") or record.get("failure_mode") for record in records
         ):
             status = "partial"
         summary = {}
@@ -657,9 +644,7 @@ async def run_paired_jobs(
         available_group_ids = {*historical_groups, *materialized.groups}
         ordered_group_ids = [item.id for item in spec.groups if item.id in available_group_ids]
         for current_group_id in ordered_group_ids:
-            group_records = [
-                record for record in records if record["group_id"] == current_group_id
-            ]
+            group_records = [record for record in records if record["group_id"] == current_group_id]
             active = active_groups.get(current_group_id)
             historical = historical_summary.get(current_group_id, {})
             summary[current_group_id] = {
@@ -670,13 +655,18 @@ async def run_paired_jobs(
             }
             group_track[current_group_id] = {
                 track: _score_summary(
-                    [record for record in group_records
-                     if str(record.get("task_name") or "").split("__", 1)[0] == track]
+                    [
+                        record
+                        for record in group_records
+                        if str(record.get("task_name") or "").split("__", 1)[0] == track
+                    ]
                 )
-                for track in sorted({
-                    str(record.get("task_name") or "").split("__", 1)[0]
-                    for record in group_records
-                })
+                for track in sorted(
+                    {
+                        str(record.get("task_name") or "").split("__", 1)[0]
+                        for record in group_records
+                    }
+                )
             }
         results_payload = {
             "schema_version": 5,
@@ -704,8 +694,7 @@ async def run_paired_jobs(
             json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         manifest_groups = {
-            item["group_id"]: item
-            for item in (previous_manifest or {}).get("groups", [])
+            item["group_id"]: item for item in (previous_manifest or {}).get("groups", [])
         }
         manifest_groups.update(
             {
@@ -790,9 +779,7 @@ async def run_paired_jobs(
                 "viewer_jobs": str(output_root / "jobs"),
             },
             "groups": [
-                manifest_groups[group.id]
-                for group in spec.groups
-                if group.id in manifest_groups
+                manifest_groups[group.id] for group in spec.groups if group.id in manifest_groups
             ],
             "group_summary": summary,
             "group_track_summary": group_track,
@@ -807,8 +794,9 @@ async def run_paired_jobs(
                 ),
                 "failure_modes": {
                     mode: sum(record.get("failure_mode") == mode for record in records)
-                    for mode in sorted({record["failure_mode"] for record in records
-                                        if record.get("failure_mode")})
+                    for mode in sorted(
+                        {record["failure_mode"] for record in records if record.get("failure_mode")}
+                    )
                 },
             },
             "errors": errors,
@@ -835,10 +823,15 @@ async def run_paired_jobs(
             "per_record_root": str(output_root / "per-record"),
             "errors": errors,
             "groups": [
-                {"group_id": item.group_id, "job_id": item.job_id,
-                 "job_dir": str(item.job_dir), "status": item.status,
-                 "n_trials": item.n_trials, "n_errors": item.n_errors,
-                 "n_cancelled": item.n_cancelled}
+                {
+                    "group_id": item.group_id,
+                    "job_id": item.job_id,
+                    "job_dir": str(item.job_dir),
+                    "status": item.status,
+                    "n_trials": item.n_trials,
+                    "n_errors": item.n_errors,
+                    "n_cancelled": item.n_cancelled,
+                }
                 for item in groups
             ],
         }
@@ -861,9 +854,15 @@ async def run_paired_jobs(
             status = "cancelled"
             cancelled = True
             groups.append(
-                GroupRunResult(current_group_id, str(job.id) if job else "",
-                               job.job_dir if job else config.jobs_dir / config.job_name,
-                               status, len(job) if job else 0, 0, 1)
+                GroupRunResult(
+                    current_group_id,
+                    str(job.id) if job else "",
+                    job.job_dir if job else config.jobs_dir / config.job_name,
+                    status,
+                    len(job) if job else 0,
+                    0,
+                    1,
+                )
             )
             write_outputs()
             raise

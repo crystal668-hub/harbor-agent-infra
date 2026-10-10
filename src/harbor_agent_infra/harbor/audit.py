@@ -82,6 +82,39 @@ def _audit_atif_trajectory(path: Path) -> dict[str, Any] | None:
         }
 
 
+def reasoning_tokens_from_atif(path: Path) -> int | None:
+    """Return reasoning tokens when Harbor's ATIF trajectory exposes them."""
+    try:
+        trajectory = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(trajectory, dict):
+        return None
+    final_metrics = trajectory.get("final_metrics")
+    final_extra = final_metrics.get("extra") if isinstance(final_metrics, dict) else None
+    final_reasoning = (
+        final_extra.get("reasoning_output_tokens") if isinstance(final_extra, dict) else None
+    )
+    if isinstance(final_reasoning, int) and final_reasoning >= 0:
+        return final_reasoning
+
+    total = 0
+    found = False
+    for step in trajectory.get("steps") or []:
+        metrics = step.get("metrics") if isinstance(step, dict) else None
+        extra = metrics.get("extra") if isinstance(metrics, dict) else None
+        if not isinstance(extra, dict):
+            continue
+        reasoning = extra.get("reasoning_output_tokens")
+        details = extra.get("output_tokens_details")
+        if reasoning is None and isinstance(details, dict):
+            reasoning = details.get("thinking_tokens")
+        if isinstance(reasoning, int) and reasoning >= 0:
+            total += reasoning
+            found = True
+    return total if found else None
+
+
 def audit_tool_calls(agent_dir: Path) -> dict[str, Any]:
     path = agent_dir / "openclaw.session.jsonl"
     trajectory_audit = _audit_atif_trajectory(agent_dir / "trajectory.json")

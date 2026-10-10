@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from harbor_agent_infra.harbor.audit import audit_tool_calls, failure_mode
+from harbor_agent_infra.harbor.audit import (
+    audit_tool_calls,
+    failure_mode,
+    reasoning_tokens_from_atif,
+)
 
 
 def test_tool_audit_counts_actual_session_events(tmp_path: Path) -> None:
@@ -151,3 +155,30 @@ def test_native_failure_categories(tmp_path):
         ),
         tmp_path,
     ) == ("provider_auth_error")
+
+
+def test_reasoning_tokens_prefers_final_metrics_then_claude_step_metrics(tmp_path):
+    path = tmp_path / "trajectory.json"
+    path.write_text(
+        json.dumps(
+            {
+                "final_metrics": {"extra": {"reasoning_output_tokens": 12}},
+                "steps": [{"metrics": {"extra": {"reasoning_output_tokens": 4}}}],
+            }
+        )
+    )
+    assert reasoning_tokens_from_atif(path) == 12
+
+    path.write_text(
+        json.dumps(
+            {
+                "steps": [
+                    {"metrics": {"extra": {"output_tokens_details": {"thinking_tokens": 3}}}},
+                    {"metrics": {"extra": {"output_tokens_details": {"thinking_tokens": 5}}}},
+                ]
+            }
+        )
+    )
+    assert reasoning_tokens_from_atif(path) == 8
+    path.write_text("not json")
+    assert reasoning_tokens_from_atif(path) is None
