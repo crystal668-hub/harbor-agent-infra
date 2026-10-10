@@ -1,0 +1,62 @@
+# Validated native codex configuration. Run from the repository root.
+# Credentials: OPENAI_API_KEY / OPENAI_BASE_URL in .env; never add values here.
+# Routine runs: hai run --config <this-file> --group skills_off
+# experiment.v2 stores both group definitions; only the selected group runs.
+schema_version: harbor-run.v1
+run:
+  output_dir: run-artifacts/codex-vgb-high
+  skills_root: ${OPENCLAW_SKILLS_ROOT}
+  vgb_python: ${VGB_PYTHON}
+docker:
+  delete_containers: true
+task:
+  agent_timeout_sec: 1800
+  verifier_timeout_sec: 120
+  agent_network_mode: public
+  agent_allowed_hosts: []
+  verifier_network_mode: public
+  verifier_allowed_hosts: []
+resources:
+  schema_version: resource-profiles.v1
+  capacity:
+    source: harbor-job
+    max_concurrent_trials: 1
+  profiles:
+    codex:
+      cpus: 4
+      memory_mb: 4096
+      cpu_enforcement_policy: limit
+      memory_enforcement_policy: limit
+experiment:
+  schema_version: experiment.v2
+  experiment_id: codex-vgb-high
+  domain: verifier-grounded
+  benchmark:
+    package_lock: runtime-lock.json
+    cases:
+    - track: open_generation_rdkit
+      task_ids:
+      - rdkit_001_qed_max
+  groups:
+  - id: skills_on
+    label: benchmark skills enabled
+    skills_enabled: true
+    skill_allowlist_ref: configs/skills/benchmark-allowlist.v1.json
+  - id: skills_off
+    label: benchmark skills disabled
+    skills_enabled: false
+  agent:
+    adapter: codex
+    model: gpt-5.6-sol
+    reasoning_effort: high
+  image:
+    reference: hai-base-env
+    digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
+    platform: linux/arm64
+    pull_policy: if_missing
+  resources:
+    profile: codex
+    config_file: embedded
+  retry:
+    n_attempts: 1
+    max_retries: 0
