@@ -46,6 +46,8 @@ class MaterializedJob:
     agent_name: str = "openclaw"
     agent_version: str | None = None
     agent_source_commit: str | None = None
+    agent_source_ref: str | None = None
+    agent_package_integrity: str | None = None
     group_id: str | None = None
     skill_allowlist_sha256: str | None = None
     skill_allowlist_path: str | None = None
@@ -80,9 +82,7 @@ def _agent_config(
 
 def _locked_image(spec: ExperimentSpec | ExperimentSpecV2):
     package_lock = (
-        spec.benchmark.package_lock
-        if isinstance(spec, ExperimentSpecV2)
-        else spec.vgb.package_lock
+        spec.benchmark.package_lock if isinstance(spec, ExperimentSpecV2) else spec.vgb.package_lock
     )
     lock = load_runtime_lock(Path(package_lock))
     image_reference = spec.image.reference.split("@", 1)[0]
@@ -129,13 +129,22 @@ def materialize_job_config(
         agent_base_image=lock.agent_base_image.immutable_reference,
         runner_id=harness_runner.runner_id,
         agent_name=spec.agent.adapter,
-        agent_version=(
-            lock.openclaw.version
-            if spec.agent.adapter == "openclaw"
-            else lock.hermes.package_version
+        agent_version={
+            "openclaw": lock.openclaw.version,
+            "hermes": lock.hermes.package_version,
+            "codex": lock.codex.version,
+            "claude-code": lock.claude_code.version,
+        }[spec.agent.adapter],
+        agent_source_commit=(lock.hermes.source_commit if spec.agent.adapter == "hermes" else None),
+        agent_source_ref=(
+            lock.codex.package_tarball
+            if spec.agent.adapter == "codex"
+            else lock.claude_code.bootstrap_url
+            if spec.agent.adapter == "claude-code"
+            else None
         ),
-        agent_source_commit=(
-            lock.hermes.source_commit if spec.agent.adapter == "hermes" else None
+        agent_package_integrity=(
+            lock.codex.package_integrity if spec.agent.adapter == "codex" else None
         ),
         agent_python={
             "python": {
@@ -269,13 +278,22 @@ def materialize_group_job_config(
         agent_base_image=lock.agent_base_image.immutable_reference,
         runner_id=harness_runner.runner_id,
         agent_name=spec.agent.adapter,
-        agent_version=(
-            lock.openclaw.version
-            if spec.agent.adapter == "openclaw"
-            else lock.hermes.package_version
+        agent_version={
+            "openclaw": lock.openclaw.version,
+            "hermes": lock.hermes.package_version,
+            "codex": lock.codex.version,
+            "claude-code": lock.claude_code.version,
+        }[spec.agent.adapter],
+        agent_source_commit=(lock.hermes.source_commit if spec.agent.adapter == "hermes" else None),
+        agent_source_ref=(
+            lock.codex.package_tarball
+            if spec.agent.adapter == "codex"
+            else lock.claude_code.bootstrap_url
+            if spec.agent.adapter == "claude-code"
+            else None
         ),
-        agent_source_commit=(
-            lock.hermes.source_commit if spec.agent.adapter == "hermes" else None
+        agent_package_integrity=(
+            lock.codex.package_integrity if spec.agent.adapter == "codex" else None
         ),
         group_id=group.id,
         skill_allowlist_sha256=allowlist_digest,

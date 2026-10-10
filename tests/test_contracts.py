@@ -264,3 +264,71 @@ def test_docker_preflight_rejects_fractional_cpu_override() -> None:
     )
     with pytest.raises(ValueError, match="integer CPU"):
         preflight_docker_resources(resources.profiles["fractional"])
+
+
+@pytest.mark.parametrize("agent_name", ["codex", "claude-code"])
+def test_native_agents_materialize_official_harbor_config(agent_name):
+    resources = ResourceConfig.model_validate(
+        {
+            "schema_version": "resource-profiles.v1",
+            "capacity": {"source": "harbor-job", "max_concurrent_trials": 1},
+            "profiles": {"local": {"cpus": 2, "memory_mb": 4096}},
+        }
+    )
+    spec = ExperimentSpec.model_validate(
+        {
+            "schema_version": "experiment.v1",
+            "experiment_id": "native-smoke",
+            "domain": "verifier-grounded",
+            "tracks": ["open_generation_rdkit"],
+            "agent": {"adapter": agent_name, "model": "fixture-model", "reasoning_effort": "high"},
+            "image": {
+                "reference": "hai-base-env",
+                "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",
+                "platform": "linux/arm64",
+                "pull_policy": "if_missing",
+            },
+            "resources": {"profile": "local", "config_file": "local.yaml"},
+            "vgb": {
+                "package_lock": "runtime-lock.json",
+                "track": "open_generation_rdkit",
+                "task_ids": ["rdkit_001_qed_max"],
+            },
+        }
+    )
+    job = materialize_job_config(spec, resources)
+    agent = job.job_config.agents[0]
+    assert agent.name == agent_name
+    assert agent.import_path is None
+    assert agent.kwargs == {"version": job.agent_version, "reasoning_effort": "high"}
+    assert job.agent_source_ref is not None
+    assert job.agent_source_commit is None
+    if agent_name == "codex":
+        assert job.agent_package_integrity.startswith("sha512-")
+    else:
+        assert job.agent_package_integrity is None
+
+
+@pytest.mark.parametrize("agent_name", ["openclaw", "hermes"])
+def test_legacy_agents_reject_native_reasoning_effort(agent_name):
+    with pytest.raises(ValidationError, match="reasoning_effort"):
+        ExperimentSpec.model_validate(
+            {
+                "schema_version": "experiment.v1",
+                "experiment_id": "invalid",
+                "domain": "verifier-grounded",
+                "tracks": ["open_generation_rdkit"],
+                "agent": {"adapter": agent_name, "model": "fixture", "reasoning_effort": "high"},
+                "image": {
+                    "reference": "x",
+                    "digest": "sha256:" + "0" * 64,
+                    "platform": "linux/arm64",
+                },
+                "resources": {"profile": "local", "config_file": "local.yaml"},
+                "vgb": {
+                    "package_lock": "runtime-lock.json",
+                    "track": "open_generation_rdkit",
+                    "task_ids": ["x"],
+                },
+            }
+        )

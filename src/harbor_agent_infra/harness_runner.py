@@ -96,9 +96,39 @@ class HermesHarnessRunner(HarnessRunner):
         )
 
 
+class NativeHarnessRunner(HarnessRunner):
+    def __init__(self, agent_name: str) -> None:
+        super().__init__(agent_name=agent_name, import_path="")
+
+    def build_agent_config(
+        self,
+        spec: AgentSpec,
+        lock: InfraRuntimeLock,
+        *,
+        skills: Sequence[str] = (),
+        paired: bool = False,
+    ) -> AgentConfig:
+        version = lock.codex.version if self.agent_name == "codex" else lock.claude_code.version
+        kwargs: dict[str, object] = {"version": version}
+        if spec.reasoning_effort is not None:
+            kwargs["reasoning_effort"] = spec.reasoning_effort
+        return AgentConfig(
+            name=self.agent_name,
+            model_name=spec.model,
+            skills=list(skills),
+            override_setup_timeout_sec=1200,
+            kwargs=kwargs,
+        )
+
+
 _HARNESS_RUNNERS: dict[str, HarnessRunner] = {
     runner.agent_name: runner
-    for runner in (OpenClawHarnessRunner(), HermesHarnessRunner())
+    for runner in (
+        OpenClawHarnessRunner(),
+        HermesHarnessRunner(),
+        NativeHarnessRunner("codex"),
+        NativeHarnessRunner("claude-code"),
+    )
 }
 
 

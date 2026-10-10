@@ -147,6 +147,8 @@ def main(argv: list[str] | None = None) -> int:
                         "runner_id": materialized.runner_id,
                         "agent_version": materialized.agent_version,
                         "agent_source_commit": materialized.agent_source_commit,
+                        "agent_source_ref": materialized.agent_source_ref,
+                        "agent_package_integrity": materialized.agent_package_integrity,
                         "agent_base_image": materialized.agent_base_image,
                         "job_config": materialized.job_config.model_dump(mode="json"),
                     }
@@ -171,6 +173,8 @@ def main(argv: list[str] | None = None) -> int:
             "runner_id": materialized.runner_id,
             "agent_version": materialized.agent_version,
             "agent_source_commit": materialized.agent_source_commit,
+            "agent_source_ref": materialized.agent_source_ref,
+            "agent_package_integrity": materialized.agent_package_integrity,
             "agent_base_image": materialized.agent_base_image,
             "agent_python": materialized.agent_python,
             "agent_chemistry": materialized.agent_chemistry,

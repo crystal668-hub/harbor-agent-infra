@@ -11,19 +11,22 @@ from integrations.vgb.release_lock import TRACKS
 class AgentSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    adapter: Literal["openclaw", "hermes"]
+    adapter: Literal["openclaw", "hermes", "codex", "claude-code"]
     model: str = Field(min_length=1)
     thinking: str | None = Field(default=None, min_length=1)
-    reasoning: Literal[
-        "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"
-    ] | None = None
+    reasoning: (
+        Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None
+    ) = None
+    reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
 
     @model_validator(mode="after")
     def validate_thinking(self) -> AgentSpec:
-        if self.adapter == "hermes" and self.thinking is not None:
+        if self.adapter != "openclaw" and self.thinking is not None:
             raise ValueError("thinking is only supported by the OpenClaw adapter")
-        if self.adapter == "openclaw" and self.reasoning is not None:
+        if self.adapter != "hermes" and self.reasoning is not None:
             raise ValueError("reasoning is only supported by the Hermes adapter")
+        if self.adapter not in {"codex", "claude-code"} and self.reasoning_effort is not None:
+            raise ValueError("reasoning_effort is only supported by Codex and Claude Code")
         return self
 
 
