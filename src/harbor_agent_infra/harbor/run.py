@@ -352,6 +352,10 @@ class RunEventSink:
         agent_metadata = getattr(agent_result, "metadata", None)
         usage_metadata = agent_metadata.get("usage") if isinstance(agent_metadata, dict) else None
         usage_metadata = usage_metadata if isinstance(usage_metadata, dict) else {}
+        model_usage = getattr(agent_result, "model_usage", None)
+        provider_usage = dict(usage_metadata)
+        if isinstance(model_usage, dict):
+            provider_usage["model_usage"] = model_usage
         metadata_reasoning = usage_metadata.get("reasoning_tokens")
         reasoning_tokens = (
             metadata_reasoning
@@ -406,7 +410,7 @@ class RunEventSink:
                     },
                     "api_calls": usage_metadata.get("api_call_count"),
                 },
-                "provider_usage": usage_metadata,
+                "provider_usage": provider_usage,
             },
             "raw": {"harbor_trial_result": trial_dump},
         }
