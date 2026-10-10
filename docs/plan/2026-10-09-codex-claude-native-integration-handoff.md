@@ -1,7 +1,7 @@
 # Codex 与 Claude Code 接入实施计划
 
 日期：2026-10-09  
-状态：交接计划；尚未执行本计划中的接入代码  
+状态：已完成 native 接入与本轮 smoke/E2E 验证；结果见执行记录
 目标仓库：`harbor-agent-infra`  
 参考仓库：`/Users/xutao/harbor-agent-framework/`（只读成熟实现参考）  
 执行对象：从本计划开始工作的全新 Codex 会话
@@ -401,6 +401,31 @@ RUN_CLAUDE_CODE_REAL_E2E=1 \
 - 现有 agents 无回归。
 
 两者可独立交付。Codex 完成不代表 Claude Code 完成；Claude install-only 通过也不代表 provider 接入完成。
+
+## 2026-10-10 执行记录
+
+### 已验证版本与路径
+
+- Codex：`@openai/codex 0.162.1`，npm tarball `https://registry.npmjs.org/@openai/codex/-/codex-0.162.1.tgz`，integrity `sha512-NWZdi/kxyjv/8EUGFupziGU38YyleugZRM4JXgY5XFH7FUmaFA33NZS2Bmq0HPazf7S3jJQQWsZ/jAK9jsrV3Q==`。Harbor 官方 `name: codex` 安装、provider smoke、VGB E2E 均通过。
+- Claude Code：`2.1.296`，使用 Harbor 官方 Debian bootstrap binary，URL `https://downloads.claude.ai/claude-code-releases/bootstrap.sh`，稳定 channel；bootstrap 没有提供可记录的 binary checksum，因此没有使用 npm integrity 冒充其安装来源。Harbor 官方 `name: claude-code` 安装、provider smoke、VGB E2E 均通过。
+- 两者均无项目 adapter。Harbor 版本仍为 `0.23.0`；运行时镜像 digest 未更改。
+- Claude provider model 为 `claude-opus-5.5`；Codex provider model 为 `gpt-5.6-sol`。密钥不写入锁、仓库或 agent task。
+
+### 验证证据
+
+- 起始 provider-free 基线：`116 passed, 23 deselected`；集成改动后的最终 provider-free 套件：`138 passed, 29 deselected`。pytest collect-only 为 `167 tests collected`。
+- Codex 和 Claude Code native install-only：各自成功，Trial 无异常，报告版本与 lock 相符。
+- Codex 和 Claude Code provider smoke：均成功。固定 marker、原生 session、ATIF 和正数 token usage 均通过；Codex 运行曾出现 Responses websocket 404，随后使用 HTTPS transport 并正常完成。
+- Codex one-task VGB：`open_generation_rdkit/rdkit_001_qed_max`，`skills_off`，VGB score `0.789891`，schema-v5、trajectory 与 session 完整。
+- Claude Code 同一 VGB task/model/image/version，`skills_off`，VGB score `0.544873`，schema-v5、trajectory 与 session 完整；token/cache/cost 投影有值。
+- 两者各完成一组 `skills_on`/`skills_off` pilot。Codex 分数分别为 `0.920907` / `0.938375`；Claude Code 分数分别为 `0.903237` / `0.744314`。两种 agent 的 skills-on ATIF tool audit 均记录一个与 skill 相关的调用。此单任务 pilot 仅确认 Harbor skills 注入可发现，不用于推断能力提升。
+- 原生安装和 provider smoke 集成门禁通过；Codex、Claude Code VGB E2E 集成门禁各通过。Codex smoke 门禁首次失败于不必要的 Viewer Job 总计数与 Trial token 严格相等断言；删除该断言后，保留 Trial token 检查的门禁复跑通过。
+
+### 配置观察与提交
+
+- Claude Code 首次用 `claude-opus-5.5` 得到 404；检查到当前本地 `.env` 的 `ANTHROPIC_BASE_URL` 路径带有 `/v1`，而 Claude Code 自己会追加该 API 路径。去掉尾部 `/v1` 后，原模型 ID 的 smoke 成功。`.env` 已忽略且未提交；`OPENAI_BASE_URL` 保持不变。
+- 分模块提交了 runtime lock/install gates、native JobConfig materialization、agent artifact checks、ATIF output/audit、provider smoke/E2E gates、skills paired pilot。未提交运行产物。
+- 最终代码无需自定义 Codex 或 Claude Code adapter。
 
 ## 新会话启动指令
 
