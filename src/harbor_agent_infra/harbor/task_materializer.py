@@ -20,6 +20,7 @@ class TaskRuntimeSettings:
     agent_allowed_hosts: tuple[str, ...] = ()
     verifier_network_mode: Literal["no-network", "allowlist", "public"] = "public"
     verifier_allowed_hosts: tuple[str, ...] = ()
+    instruction_prefix: str = ""
 
 
 def _write_task(
@@ -34,7 +35,9 @@ def _write_task(
     (task_dir / "environment").mkdir(exist_ok=True)
     (task_dir / "solution").mkdir(exist_ok=True)
     (task_dir / "tests").mkdir(exist_ok=True)
-    (task_dir / "instruction.md").write_text(prompt, encoding="utf-8")
+    (task_dir / "instruction.md").write_text(
+        f"{settings.instruction_prefix}{prompt}", encoding="utf-8"
+    )
     (task_dir / "task.toml").write_text(
         'schema_version = "1.4"\n\n'
         "[metadata]\n"

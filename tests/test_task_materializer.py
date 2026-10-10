@@ -131,6 +131,7 @@ def test_materialize_vgb_tasks_applies_runtime_task_settings(tmp_path: Path) -> 
             agent_network_mode="allowlist",
             agent_allowed_hosts=("api.example.test",),
             verifier_network_mode="no-network",
+            instruction_prefix="Use the available skill first.\n\n",
         ),
     )
     parsed = HarborTaskConfig.model_validate_toml(
@@ -141,6 +142,11 @@ def test_materialize_vgb_tasks_applies_runtime_task_settings(tmp_path: Path) -> 
     assert parsed.agent.allowed_hosts == ["api.example.test"]
     assert parsed.verifier.timeout_sec == 30
     assert parsed.verifier.network_mode.value == "no-network"
+    assert (
+        (Path(tasks[0].path) / "instruction.md")
+        .read_text()
+        .startswith("Use the available skill first.\n\n")
+    )
 
 
 def test_group_job_configs_share_tasks_and_differ_only_by_skills(tmp_path: Path) -> None:
