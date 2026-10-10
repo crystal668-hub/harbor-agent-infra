@@ -35,6 +35,13 @@ def _audit_atif_trajectory(path: Path) -> dict[str, Any] | None:
             for result in results or []:
                 if not isinstance(result, dict):
                     continue
+                extra = result.get("extra") or {}
+                if isinstance(extra, dict) and (
+                    extra.get("tool_result_is_error") is True
+                    or (extra.get("tool_result_metadata") or {}).get("is_error") is True
+                ):
+                    failures += 1
+                    continue
                 content = result.get("content")
                 if not isinstance(content, str):
                     continue
@@ -77,17 +84,26 @@ def _audit_atif_trajectory(path: Path) -> dict[str, Any] | None:
 
 def audit_tool_calls(agent_dir: Path) -> dict[str, Any]:
     path = agent_dir / "openclaw.session.jsonl"
-    if not path.is_file():
-        trajectory_audit = _audit_atif_trajectory(agent_dir / "trajectory.json")
-        if trajectory_audit is not None:
-            return trajectory_audit
-    unavailable = {"tool_audit_status": "unavailable", "tool_counts": None,
-                   "no_tool_calls": None, "model_declared_skip": None, "source": str(path)}
+    trajectory_audit = _audit_atif_trajectory(agent_dir / "trajectory.json")
+    if trajectory_audit is not None and (
+        trajectory_audit["tool_audit_status"] == "available" or not path.is_file()
+    ):
+        return trajectory_audit
+    unavailable = {
+        "tool_audit_status": "unavailable",
+        "tool_counts": None,
+        "no_tool_calls": None,
+        "model_declared_skip": None,
+        "source": str(path),
+    }
     if not path.is_file():
         return {**unavailable, "reason": "session_log_missing"}
     try:
-        messages = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
-                    if line.strip()]
+        messages = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
         if not messages or any(not isinstance(item, dict) for item in messages):
             raise ValueError("session log contains no valid messages")
         names: list[str] = []
@@ -106,19 +122,23 @@ def audit_tool_calls(agent_dir: Path) -> dict[str, Any]:
                         name = str(content.get("name") or "")
                         names.append(name)
                         arguments = content.get("arguments") or {}
-                        command = str(arguments.get("command") or "") if isinstance(
-                            arguments, dict
-                        ) else ""
+                        command = (
+                            str(arguments.get("command") or "")
+                            if isinstance(arguments, dict)
+                            else ""
+                        )
                         skill_calls += "skill" in name.lower() or (
                             "SKILL.md" in command or "/skills/" in command
                         )
                     elif content.get("type") == "text" and isinstance(content.get("text"), str):
-                        skip |= bool(re.search(r"\b(?:skip|avoid) (?:using )?tools\b",
-                                               content["text"], re.I))
+                        skip |= bool(
+                            re.search(r"\b(?:skip|avoid) (?:using )?tools\b", content["text"], re.I)
+                        )
             elif message.get("role") == "toolResult":
                 details = message.get("details") or {}
                 if message.get("isError") is True or (
-                    isinstance(details, dict) and (
+                    isinstance(details, dict)
+                    and (
                         details.get("status") in {"failed", "error"}
                         or isinstance(details.get("exitCode"), int)
                         and details["exitCode"] != 0
@@ -166,4 +186,28 @@ def failure_mode(exception: Any, agent_dir: Path) -> str | None:
                 return "openclaw_session_error"
         except (OSError, ValueError, TypeError):
             pass
+    message = str(getattr(exception, "exception_message", "")).lower()
+    if exception_type in {"AgentSetupTimeoutError", "EnvironmentStartTimeoutError"}:
+        return "agent_setup_error"
+    if exception_type in {"AgentAuthenticationError", "ModelNotFoundError"} or any(
+        marker in message
+        for marker in ("model_not_found", "authentication_error", "invalid_api_key")
+    ):
+        return "provider_auth_error"
+    if exception_type in {
+        "NetworkConnectionError",
+        "ApiConnectionClosedError",
+        "ApiResponseStalledError",
+    }:
+        return "provider_network_error"
+    if exception_type.startswith("Api") or exception_type == "UnknownApiError":
+        return "provider_error"
+    if exception_type == "AgentTimeoutError":
+        return "agent_timeout"
+    if exception_type == "NonZeroAgentExitCodeError":
+        return "agent_execution_error"
+    if exception_type == "FileNotFoundError" and any(
+        name in message for name in ("trajectory.json", "codex.txt", "claude-code.txt")
+    ):
+        return "agent_output_missing"
     return "harbor_trial_error"

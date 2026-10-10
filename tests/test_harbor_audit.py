@@ -10,19 +10,35 @@ from harbor_agent_infra.harbor.audit import audit_tool_calls, failure_mode
 def test_tool_audit_counts_actual_session_events(tmp_path: Path) -> None:
     path = tmp_path / "openclaw.session.jsonl"
     rows = [
-        {"message": {"role": "assistant", "content": [
-            {"type": "toolCall", "name": "exec",
-             "arguments": {"command": "cat /skills/a/SKILL.md"}},
-            {"type": "toolCall", "name": "web_search", "arguments": {"query": "x"}},
-        ]}},
-        {"message": {"role": "toolResult", "isError": True,
-                     "details": {"status": "failed", "exitCode": 1}}},
+        {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "toolCall",
+                        "name": "exec",
+                        "arguments": {"command": "cat /skills/a/SKILL.md"},
+                    },
+                    {"type": "toolCall", "name": "web_search", "arguments": {"query": "x"}},
+                ],
+            }
+        },
+        {
+            "message": {
+                "role": "toolResult",
+                "isError": True,
+                "details": {"status": "failed", "exitCode": 1},
+            }
+        },
     ]
     path.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
     audit = audit_tool_calls(tmp_path)
     assert audit["tool_audit_status"] == "available"
     assert audit["tool_counts"] == {
-        "total": 2, "failures": 1, "network_search": 1, "skill_related": 1
+        "total": 2,
+        "failures": 1,
+        "network_search": 1,
+        "skill_related": 1,
     }
     assert audit["no_tool_calls"] is False
 
@@ -92,3 +108,46 @@ def test_failure_mode_uses_typed_openclaw_evidence(tmp_path: Path) -> None:
     assert failure_mode(SimpleNamespace(exception_type="VgbVerifierError"), tmp_path) == (
         "vgb_evaluation_error"
     )
+
+
+def test_atif_preferred_and_failed_tool_metadata_counted(tmp_path):
+    (tmp_path / "openclaw.session.jsonl").write_text("invalid")
+    (tmp_path / "trajectory.json").write_text(
+        json.dumps(
+            {
+                "steps": [
+                    {
+                        "source": "agent",
+                        "tool_calls": [{"function_name": "Bash"}],
+                        "observation": {
+                            "results": [
+                                {"content": "failure", "extra": {"tool_result_is_error": True}}
+                            ]
+                        },
+                    },
+                ]
+            }
+        )
+    )
+    audit = audit_tool_calls(tmp_path)
+    assert audit["source"].endswith("trajectory.json")
+    assert audit["tool_counts"]["failures"] == 1
+
+
+def test_native_failure_categories(tmp_path):
+    for kind, category in {
+        "AgentSetupTimeoutError": "agent_setup_error",
+        "AgentAuthenticationError": "provider_auth_error",
+        "ModelNotFoundError": "provider_auth_error",
+        "NetworkConnectionError": "provider_network_error",
+        "ApiRateLimitError": "provider_error",
+        "NonZeroAgentExitCodeError": "agent_execution_error",
+        "AgentTimeoutError": "agent_timeout",
+    }.items():
+        assert failure_mode(SimpleNamespace(exception_type=kind), tmp_path) == category
+    assert failure_mode(
+        SimpleNamespace(
+            exception_type="NonZeroAgentExitCodeError", exception_message="model_not_found"
+        ),
+        tmp_path,
+    ) == ("provider_auth_error")
