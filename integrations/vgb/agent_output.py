@@ -32,26 +32,43 @@ def response_from_openclaw_log(path: Path) -> str:
     raise ValueError("OpenClaw output did not contain a complete assistant response")
 
 
-def response_from_hermes_trajectory(path: Path) -> str:
+def response_from_atif_trajectory(path: Path, *, agent_name: str | None = None) -> str:
     try:
         trajectory = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise ValueError("Hermes trajectory is not valid JSON") from exc
+        raise ValueError("ATIF trajectory is not valid JSON") from exc
     steps = trajectory.get("steps") if isinstance(trajectory, dict) else None
     if not isinstance(steps, list):
-        raise ValueError("Hermes trajectory does not contain steps")
+        raise ValueError("ATIF trajectory does not contain steps")
+    recorded_agent = trajectory.get("agent")
+    if agent_name and isinstance(recorded_agent, dict):
+        name = recorded_agent.get("name")
+        if name and name != agent_name:
+            raise ValueError(f"ATIF agent name mismatch: expected {agent_name}, got {name}")
     for step in reversed(steps):
         if not isinstance(step, dict) or step.get("source") != "agent":
             continue
         message = step.get("message")
-        if isinstance(message, str) and message.strip() and message != "[tool call]":
+        if isinstance(message, list):
+            message = "\n".join(
+                part["text"]
+                for part in message
+                if isinstance(part, dict)
+                and part.get("type") == "text"
+                and isinstance(part.get("text"), str)
+            )
+        if isinstance(message, str) and message.strip() and message.strip() != "[tool call]":
             return message
-    raise ValueError("Hermes trajectory does not contain a final visible agent response")
+    raise ValueError("ATIF trajectory does not contain a final visible agent response")
+
+
+def response_from_hermes_trajectory(path: Path) -> str:
+    return response_from_atif_trajectory(path, agent_name="hermes")
 
 
 def response_from_agent_artifacts(agent_dir: Path, *, agent_name: str) -> str:
     if agent_name == "openclaw":
         return response_from_openclaw_log(agent_dir / "openclaw.txt")
-    if agent_name == "hermes":
-        return response_from_hermes_trajectory(agent_dir / "trajectory.json")
+    if agent_name in {"hermes", "codex", "claude-code"}:
+        return response_from_atif_trajectory(agent_dir / "trajectory.json", agent_name=agent_name)
     raise ValueError(f"unsupported agent output parser: {agent_name}")
