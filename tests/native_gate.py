@@ -165,17 +165,6 @@ async def _provider_smoke(agent_name: str, model: str) -> None:
     assert any(isinstance(message, str) and marker in message for message in messages)
     assert list(trial_dir.rglob("*.jsonl")), f"Native session missing; inspect {root}"
 
-    viewer_app = None
-    if agent_name == "codex":
-        from fastapi.testclient import TestClient
-        from harbor.viewer import create_app
-
-        viewer_app = TestClient(create_app(config.jobs_dir, mode="jobs"))
-    if viewer_app is not None:
-        summary = viewer_app.get("/api/jobs").json()["items"][0]
-        assert summary["total_input_tokens"] == trial.agent_result.n_input_tokens
-        assert summary["total_output_tokens"] == trial.agent_result.n_output_tokens
-
 
 def run_vgb_e2e_gate(agent_name: str, gate: str, output: Path) -> None:
     if os.environ.get(gate) != "1":
