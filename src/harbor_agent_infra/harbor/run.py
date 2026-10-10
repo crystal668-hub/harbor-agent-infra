@@ -25,6 +25,7 @@ from harbor_agent_infra.harbor.job_config import (
     MaterializedPairedJobs,
     materialize_paired_job_configs,
 )
+from harbor_agent_infra.harbor.observability import artifact_observability
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.harness_runner import HarnessRunner, harness_runner_for
 from integrations.vgb.evaluator import project_agent_output
@@ -372,6 +373,28 @@ class RunEventSink:
             if isinstance(metadata_reasoning, int)
             else reasoning_tokens_from_atif(trial_dir / "agent" / "trajectory.json")
         )
+        trial_config = getattr(result, "config", None)
+        agent_config = getattr(trial_config, "agent", None)
+        evidence = artifact_observability(
+            trial_dir / "agent",
+            agent_name=agent_name,
+            requested_effort=(getattr(agent_config, "kwargs", None) or {}).get("reasoning_effort"),
+            cost_usd=token_totals[3],
+            usage=usage_metadata,
+        )
+        evidence["phases"] = {}
+        for phase_name in ("environment_setup", "agent_setup", "agent_execution", "verifier"):
+            timing = getattr(result, phase_name, None)
+            start, end = getattr(timing, "started_at", None), getattr(timing, "finished_at", None)
+            evidence["phases"][phase_name] = {
+                "elapsed_seconds": (end - start).total_seconds() if start and end else None,
+                "source": f"harbor.trial_result.{phase_name}",
+                "status": "completed"
+                if start and end
+                else "incomplete"
+                if start
+                else "unavailable",
+            }
         record_payload = {
             "schema_version": 5,
             "run_id": self.run_id,
@@ -421,6 +444,7 @@ class RunEventSink:
                     "api_calls": usage_metadata.get("api_call_count"),
                 },
                 "provider_usage": provider_usage,
+                "evidence": evidence,
             },
             "raw": {"harbor_trial_result": trial_dump},
         }
