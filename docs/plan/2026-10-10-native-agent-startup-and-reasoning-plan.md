@@ -2,7 +2,7 @@
 
 日期：2026-10-10（Asia/Shanghai）
 
-状态：计划已制定；基础接入通过，模型逐档思考强度验证待执行。
+状态：基础接入与 high 等级验证已完成；其余模型等级仍按计划待执行。
 
 基线：Harbor 0.23.0；Codex 0.162.1；Claude Code 2.1.296；代码基线 53ed34d。
 
@@ -27,7 +27,17 @@
 | 每个模型的每个 effort 实际生效 | 未执行 | 上轮 E2E 未显式设置 reasoning_effort，不能代表逐档验证 |
 | 全部 29 个 integration 用例 | 未全量复跑 | 目标 harness 的六项门禁通过，不等于整个仓库所有集成测试通过 |
 
-上轮 Codex provider gate 曾因 Viewer Job 汇总 token 与 Trial token 严格相等断言而失败，删除该断言后复跑通过。该结果只证明 Trial 级 usage 满足接入要求，Viewer 汇总差异未在本任务解决，不能宣称一致性已验证。
+上轮 Codex provider gate 曾因 Viewer Job input 与 Trial input 严格相等断言而失败。此次 high 验证已查明口径：Harbor Viewer 显示未缓存 input，Trial input 包含 cache。用两条 high E2E 的真实 Viewer API 验证，Viewer input + cache = Trial input，output 和 cost 同样匹配；无需修改 Harbor。
+
+### 2026-10-10 high 验证结果
+
+- Codex 0.162.1 + `gpt-5.6-sol`：provider smoke 以 `-c model_reasoning_effort=high` 成功；一次冷启动曾因 npm arm64 optional package 缺失失败，官方安装重试后通过。显式 high 的单任务 VGB E2E 成功，score `0.944178`，耗时约 763 秒，ATIF reasoning tokens `9405`。
+- Claude Code 2.1.296 + `claude-opus-5.5`：provider smoke 以 `--effort high` 成功，原生 session 明确记录 `effort: "high"`；显式 high 的单任务 VGB E2E 成功，score `0.723213`，耗时约 102 秒，ATIF thinking/reasoning tokens `1564`。
+- 两次 E2E 均使用 `skills_off`、单并发、单次尝试、无重试；配置、版本、模型、session、ATIF、VGB schema-v5 和 reward/score 可追溯。
+- `observability.totals.tokens.reasoning` 现在从统一 Harbor Trial metadata 或 ATIF trajectory 投影；`observability.provider_usage.model_usage` 保留 Harbor 原生模型 usage。此次补齐后不需要额外 agent runner 或旁路执行脚手架。
+- 指标完整性仍有边界：API 调用计数未由 native Harbor 明确提供；cost 来源未全部统一标记；Codex 部分原生工具失败在 ATIF 中丢失结构化状态；CPU/内存只有资源配置，没有实测峰值。详见同目录 `2026-10-10-native-high-observability-review.md`。这些项不能因为基础 E2E 通过就宣称与 Hermes 的每项指标完全对齐。
+
+high 的真实请求通过只能证明当前模型、provider、CLI 和网关接受该等级并完成任务；不能推导 low/medium/xhigh/max 也都已通过，也不能证明网关将同名等级映射为相同 token 预算。
 
 保留产物均不跟踪：run-artifacts/native-validation-2026-10-10 下 codex-e2e、claude-code-e2e 的 report.json、runtime-manifest.json、results.json、per-record 和 Harbor jobs。
 
@@ -146,6 +156,8 @@ agent:
 - CLI 拒绝、provider 拒绝、静默降档、网关忽略分别归因。不能靠删除失败断言或替换模型，把不支持档位标成通过。
 
 验收：两个独立能力矩阵；未知项可保留，但不能宣称全档通过。
+
+当前建议：不再增加独立运行脚手架。复用已有 `tests/native_gate.py` 和 `scripts/run_native_vgb_e2e.py`，通过 `NATIVE_AGENT_REASONING_EFFORT` / `--reasoning-effort` 参数化其余等级；仅当后续需要记录 provider 返回的 effective effort 而原生 artifact 不提供时，增加脱敏 metadata 字段或 provider-side probe。
 
 ### D. 显式 effort 的 VGB 验收
 

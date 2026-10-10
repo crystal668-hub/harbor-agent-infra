@@ -7,6 +7,10 @@ variables. Templates are organized under `configs/experiments/openclaw/` and
 `benchmark.cases` and `task_ids` for each run.
 
 OpenClaw templates use `thinking: high`; Hermes templates use `reasoning: high`.
+Native Codex and Claude Code use `reasoning_effort: high`, with `adapter: codex`
+and `model: gpt-5.6-sol`, or `adapter: claude-code` and
+`model: claude-opus-5.5`. Both use the same `hai run` / materialization flow.
+The current native E2E helper accepts `--reasoning-effort` and defaults to `high`.
 Run a consolidated `harbor-run.v1` file with the default single `skills_off`
 group:
 
@@ -65,6 +69,14 @@ Hermes reads its cumulative session-level input, cache, output, reasoning, API-c
 and cost fields; resumed sessions emit only the delta for the current Trial. A cost
 marked unknown by Hermes remains `null`. Per-record `runner` values are derived as
 `harbor_<agent_name>` from the materialized agent rather than fixed to one harness.
+
+Native reasoning tokens are projected from Harbor ATIF when agent metadata lacks
+them; per-model usage is preserved in `observability.provider_usage.model_usage`.
+Missing native API-call counts remain `null`, and cost fields can be CLI or pricing
+table estimates rather than provider invoices. Viewer input excludes cache while
+Trial input includes it: compare Viewer input + cache against Trial input.
+See the [native high and observability audit](plan/2026-10-10-native-high-observability-review.md)
+for the remaining metrics coverage limits.
 
 Tests and experiments default to the single `skills_off` group. Use `--group
 skills_off` for routine runs; use a paired `skills_on`/`skills_off` run only when the
