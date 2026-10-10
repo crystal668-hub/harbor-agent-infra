@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from harbor.models.agent.context import ModelUsage
 from test_task_materializer import FakeVgbRuntime, _resources, _spec
 
 from harbor_agent_infra.harbor import run as run_module
@@ -32,7 +33,7 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
         trial_uri=str(tmp_path / "jobs" / "task__abc"),
         agent_result=SimpleNamespace(
             metadata={"usage": {"reasoning_tokens": 34, "api_call_count": 1}},
-            model_usage={"fixture-model": {"n_output_tokens": 47}},
+            model_usage={"fixture-model": ModelUsage(n_output_tokens=47)},
         ),
         compute_token_cost_totals=lambda: (12_454, 10_757, 47, 0.42),
     )
@@ -76,7 +77,7 @@ def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     }
     assert record["raw"]["harbor_trial_result"] == {}
     assert record["observability"]["provider_usage"]["model_usage"] == {
-        "fixture-model": {"n_output_tokens": 47}
+        "fixture-model": ModelUsage(n_output_tokens=47).model_dump(mode="json")
     }
     assert record["trial_result_path"] == payload["trial_result_path"]
 

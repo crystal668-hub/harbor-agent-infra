@@ -355,7 +355,10 @@ class RunEventSink:
         model_usage = getattr(agent_result, "model_usage", None)
         provider_usage = dict(usage_metadata)
         if isinstance(model_usage, dict):
-            provider_usage["model_usage"] = model_usage
+            provider_usage["model_usage"] = {
+                model: usage.model_dump(mode="json") if hasattr(usage, "model_dump") else usage
+                for model, usage in model_usage.items()
+            }
         metadata_reasoning = usage_metadata.get("reasoning_tokens")
         reasoning_tokens = (
             metadata_reasoning
