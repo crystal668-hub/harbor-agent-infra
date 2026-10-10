@@ -55,6 +55,21 @@
     "bootstrap_mode": "skip-setup-and-onboarding",
     "version_command": "hermes --version"
   },
+  "codex": {
+    "package": "@openai/codex",
+    "version": "0.162.1",
+    "package_tarball": "https://registry.npmjs.org/@openai/codex/-/codex-0.162.1.tgz",
+    "package_integrity": "sha512-NWZdi/kxyjv/8EUGFupziGU38YyleugZRM4JXgY5XFH7FUmaFA33NZS2Bmq0HPazf7S3jJQQWsZ/jAK9jsrV3Q==",
+    "version_command": "codex --version",
+    "runtime_strategy": "harbor-native-nvm22-npm"
+  },
+  "claude_code": {
+    "version": "2.1.296",
+    "bootstrap_url": "https://downloads.claude.ai/claude-code-releases/bootstrap.sh",
+    "bootstrap_channel": "stable",
+    "version_command": "claude --version",
+    "runtime_strategy": "harbor-native-bootstrap-binary"
+  },
   "agent_base_image": {
     "reference": "hai-base-env",
     "digest": "sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68",

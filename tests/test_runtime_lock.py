@@ -22,7 +22,9 @@ def test_runtime_lock_separates_control_plane_and_agent_python() -> None:
     assert lock.agent_python.pip_alias == "pip"
     assert lock.agent_python.package_install_policy == "agent-managed"
     assert lock.agent_python.preinstalled_packages == (
-        "numpy==2.2.6", "Pillow==11.3.0", "rdkit==2025.9.6"
+        "numpy==2.2.6",
+        "Pillow==11.3.0",
+        "rdkit==2025.9.6",
     )
     assert lock.agent_chemistry.xtb_package == "xtb=6.5.1-3"
 
@@ -63,3 +65,23 @@ def test_runtime_lock_rejects_ambiguous_agent_python_policy(tmp_path: Path, muta
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="agent_python"):
         load_runtime_lock(path)
+
+
+@pytest.mark.parametrize("agent", ["codex", "claude_code"])
+@pytest.mark.parametrize("version", ["latest", "", "1.2", "main"])
+def test_native_runtime_rejects_unpinned_version(tmp_path, agent, version):
+    payload = json.loads(Path("runtime-lock.json").read_text())
+    payload[agent]["version"] = version
+    path = tmp_path / "lock.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
+        load_runtime_lock(path)
+
+
+def test_native_runtime_sources_are_distinct():
+    lock = load_runtime_lock(Path("runtime-lock.json"))
+    assert lock.codex.package == "@openai/codex"
+    assert lock.codex.version == "0.162.1"
+    assert lock.claude_code.version == "2.1.296"
+    assert lock.claude_code.runtime_strategy == "harbor-native-bootstrap-binary"
+    assert not hasattr(lock.claude_code, "package_integrity")

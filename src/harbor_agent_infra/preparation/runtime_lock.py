@@ -65,9 +65,30 @@ class HermesRuntimeLock:
 
 
 @dataclass(frozen=True)
+class CodexRuntimeLock:
+    package: str
+    version: str
+    package_tarball: str
+    package_integrity: str
+    version_command: str
+    runtime_strategy: str
+
+
+@dataclass(frozen=True)
+class ClaudeCodeRuntimeLock:
+    version: str
+    bootstrap_url: str
+    bootstrap_channel: str
+    version_command: str
+    runtime_strategy: str
+
+
+@dataclass(frozen=True)
 class InfraRuntimeLock:
     openclaw: OpenClawRuntimeLock
     hermes: HermesRuntimeLock
+    codex: CodexRuntimeLock
+    claude_code: ClaudeCodeRuntimeLock
     agent_base_image: AgentBaseImageLock
     agent_python: AgentPythonRuntimeLock
     agent_chemistry: AgentChemistryToolsLock
@@ -77,6 +98,8 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     payload: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     openclaw = payload.get("openclaw")
     hermes = payload.get("hermes")
+    codex = payload.get("codex")
+    claude_code = payload.get("claude_code")
     image = payload.get("agent_base_image")
     agent_python = payload.get("agent_python")
     agent_chemistry = payload.get("agent_chemistry")
@@ -84,6 +107,10 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError("runtime lock is missing the openclaw object")
     if not isinstance(hermes, dict):
         raise ValueError("runtime lock is missing the hermes object")
+    if not isinstance(codex, dict):
+        raise ValueError("runtime lock is missing the codex object")
+    if not isinstance(claude_code, dict):
+        raise ValueError("runtime lock is missing the claude_code object")
     if not isinstance(image, dict):
         raise ValueError("runtime lock is missing the agent_base_image object")
     if not isinstance(agent_python, dict):
@@ -121,6 +148,37 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         raise ValueError("Hermes bootstrap_mode must skip setup and onboarding")
     if hermes.get("version_command") != "hermes --version":
         raise ValueError("Hermes version_command must be hermes --version")
+    for field in (
+        "package",
+        "version",
+        "package_tarball",
+        "package_integrity",
+        "version_command",
+        "runtime_strategy",
+    ):
+        if not isinstance(codex.get(field), str) or not codex[field]:
+            raise ValueError(f"Codex {field} is required")
+    if codex["package"] != "@openai/codex" or not _SEMVER.fullmatch(codex["version"]):
+        raise ValueError("Codex package/version is invalid")
+    if not codex["package_integrity"].startswith("sha512-"):
+        raise ValueError("Codex package_integrity must be an npm sha512 integrity")
+    if codex["version_command"] != "codex --version":
+        raise ValueError("Codex version_command must be codex --version")
+    for field in (
+        "version",
+        "bootstrap_url",
+        "bootstrap_channel",
+        "version_command",
+        "runtime_strategy",
+    ):
+        if not isinstance(claude_code.get(field), str) or not claude_code[field]:
+            raise ValueError(f"Claude Code {field} is required")
+    if not _SEMVER.fullmatch(claude_code["version"]):
+        raise ValueError("Claude Code version must be a complete semver")
+    if claude_code["version_command"] != "claude --version":
+        raise ValueError("Claude Code version_command must be claude --version")
+    if not claude_code["bootstrap_url"].startswith("https://"):
+        raise ValueError("Claude Code bootstrap_url must be HTTPS")
     reference = image.get("reference")
     digest = image.get("digest")
     platform = image.get("platform")
@@ -137,8 +195,12 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     if not isinstance(python, dict) or not isinstance(pip, dict):
         raise ValueError("agent_python must define python and pip objects")
     required_runtime_fields = (
-        python.get("command"), python.get("alias"), python.get("version"),
-        pip.get("command"), pip.get("alias"), pip.get("version"),
+        python.get("command"),
+        python.get("alias"),
+        python.get("version"),
+        pip.get("command"),
+        pip.get("alias"),
+        pip.get("version"),
     )
     if not all(isinstance(value, str) and value for value in required_runtime_fields):
         raise ValueError("agent_python command, alias and version fields are required")
@@ -149,8 +211,14 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     ):
         raise ValueError("agent_python.preinstalled_packages must be a list of names")
     chemistry_fields = (
-        "rdkit_version", "rdkit_source", "rdkit_wheel_sha256", "numpy_version",
-        "pillow_version", "xtb_version", "xtb_package", "xtb_source",
+        "rdkit_version",
+        "rdkit_source",
+        "rdkit_wheel_sha256",
+        "numpy_version",
+        "pillow_version",
+        "xtb_version",
+        "xtb_package",
+        "xtb_source",
     )
     if any(
         not isinstance(agent_chemistry.get(field), str) or not agent_chemistry[field]
@@ -172,9 +240,32 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
             bootstrap_mode=hermes["bootstrap_mode"],
             version_command=hermes["version_command"],
         ),
-        agent_base_image=AgentBaseImageLock(
-            reference=reference, digest=digest, platform=platform
+        codex=CodexRuntimeLock(
+            **{
+                field: codex[field]
+                for field in (
+                    "package",
+                    "version",
+                    "package_tarball",
+                    "package_integrity",
+                    "version_command",
+                    "runtime_strategy",
+                )
+            }
         ),
+        claude_code=ClaudeCodeRuntimeLock(
+            **{
+                field: claude_code[field]
+                for field in (
+                    "version",
+                    "bootstrap_url",
+                    "bootstrap_channel",
+                    "version_command",
+                    "runtime_strategy",
+                )
+            }
+        ),
+        agent_base_image=AgentBaseImageLock(reference=reference, digest=digest, platform=platform),
         agent_python=AgentPythonRuntimeLock(
             python_command=python["command"],
             python_alias=python["alias"],
