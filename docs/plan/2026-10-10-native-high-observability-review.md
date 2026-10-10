@@ -1,5 +1,9 @@
 # Native agent high 验证与任务观测审计
 
+后续更新：观测补强和本地模板已于 2026-10-11 完成，见
+[实施记录](2026-10-11-native-observability-and-configs.md)。下面的指标差异表保留
+2026-10-10 审计时的状态；新增覆盖范围及剩余限制以实施记录为准。
+
 日期：2026-10-10（Asia/Shanghai）。范围：Codex 0.162.1、Claude Code 2.1.296、Harbor 0.23.0，当前已配置网关。所有新实验均为 skills_off；没有重跑 paired pilot。
 
 ## 结论
