@@ -182,3 +182,51 @@ def test_reasoning_tokens_prefers_final_metrics_then_claude_step_metrics(tmp_pat
     assert reasoning_tokens_from_atif(path) == 8
     path.write_text("not json")
     assert reasoning_tokens_from_atif(path) is None
+
+
+def test_codex_structured_failures_deduplicate_and_ignore_error_text(tmp_path):
+    (tmp_path / "trajectory.json").write_text(
+        json.dumps(
+            {
+                "steps": [
+                    {
+                        "source": "agent",
+                        "message": "avoid using tools",
+                        "tool_calls": [{}, {}],
+                        "observation": {"results": [{"content": '{"exit_code":1}'}]},
+                    }
+                ]
+            }
+        )
+    )
+    failed = {
+        "type": "item.completed",
+        "item": {"id": "item_1", "type": "command_execution", "status": "failed", "exit_code": 1},
+    }
+    passed = {
+        "type": "item.completed",
+        "item": {
+            "id": "item_2",
+            "type": "command_execution",
+            "status": "completed",
+            "exit_code": 0,
+            "aggregated_output": "Traceback ERROR exit_code=1",
+        },
+    }
+    (tmp_path / "codex.txt").write_text(
+        "\n".join(
+            ["ERROR websocket fallback", json.dumps(failed), json.dumps(failed), json.dumps(passed)]
+        )
+    )
+    audit = audit_tool_calls(tmp_path)
+    assert audit["tool_counts"]["failures"] == 1
+    assert audit["native_command_audit"]["failed_commands"] == 1
+    assert audit["native_command_audit"]["completed_commands"] == 2
+    assert audit["model_declared_skip"] is True
+    assert audit["failure_count_scope"] == "recognized_failures_lower_bound"
+
+
+def test_setup_failure_uses_harbor_phase(tmp_path):
+    error = SimpleNamespace(exception_type="NonZeroAgentExitCodeError")
+    assert failure_mode(error, tmp_path, phase="agent_setup") == "agent_setup_error"
+    assert failure_mode(error, tmp_path) == "agent_execution_error"

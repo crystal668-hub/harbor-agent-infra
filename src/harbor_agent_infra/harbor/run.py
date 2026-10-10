@@ -344,7 +344,14 @@ class RunEventSink:
         )
         trial_dir = _trial_dir(result.trial_uri)
         tool_audit = audit_tool_calls(trial_dir / "agent")
-        classified_failure = failure_mode(result.exception_info, trial_dir / "agent")
+        setup = getattr(result, "agent_setup", None)
+        execution = getattr(result, "agent_execution", None)
+        phase = (
+            "agent_setup"
+            if getattr(setup, "started_at", None) and not getattr(execution, "started_at", None)
+            else None
+        )
+        classified_failure = failure_mode(result.exception_info, trial_dir / "agent", phase=phase)
         harness_runner = self.harness_runners.get(group_id)
         agent_name = harness_runner.agent_name if harness_runner else None
         runner = harness_runner.runner_id if harness_runner else "harbor"

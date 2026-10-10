@@ -17,9 +17,13 @@ def _audit_atif_trajectory(path: Path) -> dict[str, Any] | None:
         names: list[str] = []
         skill_calls = 0
         failures = 0
+        skip = False
         for step in steps:
             if not isinstance(step, dict) or step.get("source") != "agent":
                 continue
+            message = step.get("message")
+            if isinstance(message, str):
+                skip |= bool(re.search(r"\b(?:skip|avoid) (?:using )?tools\b", message, re.I))
             for call in step.get("tool_calls") or []:
                 if not isinstance(call, dict):
                     continue
@@ -68,7 +72,7 @@ def _audit_atif_trajectory(path: Path) -> dict[str, Any] | None:
                 "skill_related": skill_calls,
             },
             "no_tool_calls": not names,
-            "model_declared_skip": False,
+            "model_declared_skip": skip,
             "source": str(path),
         }
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
@@ -121,6 +125,13 @@ def audit_tool_calls(agent_dir: Path) -> dict[str, Any]:
     if trajectory_audit is not None and (
         trajectory_audit["tool_audit_status"] == "available" or not path.is_file()
     ):
+        if trajectory_audit["tool_audit_status"] == "available":
+            native = _codex_command_failures(agent_dir / "codex.txt")
+            if native is not None:
+                counts = trajectory_audit["tool_counts"]
+                counts["failures"] = max(counts["failures"], native["failed_commands"])
+                trajectory_audit["native_command_audit"] = native
+                trajectory_audit["failure_count_scope"] = "recognized_failures_lower_bound"
         return trajectory_audit
     unavailable = {
         "tool_audit_status": "unavailable",
@@ -198,7 +209,43 @@ def audit_tool_calls(agent_dir: Path) -> dict[str, Any]:
         return {**unavailable, "reason": "session_log_parse_error"}
 
 
-def failure_mode(exception: Any, agent_dir: Path) -> str | None:
+def _codex_command_failures(path: Path) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    completed: dict[str, dict[str, Any]] = {}
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # Codex stdout also contains transport diagnostics.
+            if not isinstance(event, dict) or event.get("type") != "item.completed":
+                continue
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "command_execution":
+                item_id = item.get("id")
+                if isinstance(item_id, str) and item_id:
+                    completed[item_id] = item
+    except OSError:
+        return None
+    if not completed:
+        return None
+    failed_ids = [
+        item_id
+        for item_id, item in completed.items()
+        if item.get("status") == "failed"
+        or type(item.get("exit_code")) is int
+        and item["exit_code"] != 0
+    ]
+    return {
+        "source": str(path),
+        "completed_commands": len(completed),
+        "failed_commands": len(failed_ids),
+        "failed_item_ids": sorted(failed_ids),
+    }
+
+
+def failure_mode(exception: Any, agent_dir: Path, *, phase: str | None = None) -> str | None:
     if exception is None:
         return None
     exception_type = str(getattr(exception, "exception_type", ""))
@@ -220,6 +267,8 @@ def failure_mode(exception: Any, agent_dir: Path) -> str | None:
         except (OSError, ValueError, TypeError):
             pass
     message = str(getattr(exception, "exception_message", "")).lower()
+    if phase == "agent_setup":
+        return "agent_setup_error"
     if exception_type in {"AgentSetupTimeoutError", "EnvironmentStartTimeoutError"}:
         return "agent_setup_error"
     if exception_type in {"AgentAuthenticationError", "ModelNotFoundError"} or any(
