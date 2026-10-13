@@ -14,6 +14,12 @@ from harbor_agent_infra.preparation.experiments import expand_required
     [
         ("codex", "vgb-gpt.config.yaml", "gpt-5.6-sol"),
         ("claude-code", "vgb-claude.config.yaml", "claude-opus-5.5"),
+        ("codex", "vgb-claude.config.yaml", "claude-opus-5.5"),
+        ("codex", "vgb-qwen.config.yaml", "qwen3.8-max"),
+        ("codex", "vgb-deepseek.config.yaml", "deepseek-v4-pro"),
+        ("claude-code", "vgb-gpt.config.yaml", "gpt-6.1-sol"),
+        ("claude-code", "vgb-qwen.config.yaml", "qwen3.8-max"),
+        ("claude-code", "vgb-deepseek.config.yaml", "deepseek-v4-pro"),
     ],
 )
 def test_native_templates_materialize_only_requested_group(
@@ -34,5 +40,9 @@ def test_native_templates_materialize_only_requested_group(
     native = jobs.groups["skills_off"].job_config.agents[0]
     assert native.name == agent and native.import_path is None
     assert native.model_name == model and native.kwargs["reasoning_effort"] == "high"
-    assert native.skills == [] and native.env == {}
+    assert native.skills == []
+    if config.experiment.agent.provider is None:
+        assert native.env == {}
+    else:
+        assert all(value.startswith("${") and value.endswith("}") for value in native.env.values())
     assert jobs.groups["skills_off"].job_config.retry.max_retries == 0

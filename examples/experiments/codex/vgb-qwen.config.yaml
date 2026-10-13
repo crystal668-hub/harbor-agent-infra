@@ -1,0 +1,60 @@
+# Cross-provider template. Use --group skills_off; credentials stay in .env.
+schema_version: harbor-run.v1
+run:
+  output_dir: run-artifacts/codex-vgb-qwen-cross-provider
+  skills_root: ${OPENCLAW_SKILLS_ROOT}
+  vgb_python: ${VGB_PYTHON}
+docker:
+  delete_containers: true
+task:
+  agent_timeout_sec: 1800
+  verifier_timeout_sec: 120
+  agent_network_mode: public
+  agent_allowed_hosts: []
+  verifier_network_mode: public
+  verifier_allowed_hosts: []
+resources:
+  schema_version: resource-profiles.v1
+  capacity:
+    source: harbor-job
+    max_concurrent_trials: 1
+  profiles:
+    codex:
+      cpus: 4
+      memory_mb: 4096
+      cpu_enforcement_policy: limit
+      memory_enforcement_policy: limit
+experiment:
+  schema_version: experiment.v2
+  experiment_id: codex-vgb-qwen-cross-provider
+  domain: verifier-grounded
+  benchmark:
+    package_lock: runtime-lock.json
+    cases:
+    - track: open_generation_rdkit
+      task_ids:
+      - rdkit_001_qed_max
+  groups:
+  - id: skills_on
+    label: benchmark skills enabled
+    skills_enabled: true
+    skill_allowlist_ref: configs/skills/benchmark-allowlist.v1.json
+  - id: skills_off
+    label: benchmark skills disabled
+    skills_enabled: false
+  agent:
+    adapter: codex
+    model: qwen3.8-max
+    provider: qwen
+    reasoning_effort: high
+  image:
+    reference: hai-base-env
+    digest: sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936
+    platform: linux/arm64
+    pull_policy: if_missing
+  resources:
+    profile: codex
+    config_file: embedded
+  retry:
+    n_attempts: 1
+    max_retries: 0

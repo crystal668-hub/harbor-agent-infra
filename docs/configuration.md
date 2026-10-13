@@ -95,6 +95,11 @@ Trial input includes it: compare Viewer input + cache against Trial input.
 See the [native high and observability audit](plan/2026-10-10-native-high-observability-review.md)
 for the remaining metrics coverage limits.
 
+Codex/Claude Code cross-provider templates and their protocol-specific endpoint
+variables are documented in [cross-provider.md](cross-provider.md). The selected
+models are Claude `claude-opus-5.5`, GPT `gpt-6.1-sol`, Qwen `qwen3.8-max`, and
+DeepSeek `deepseek-v4-pro`; two routes require the local protocol bridge.
+
 `observability.evidence` adds cache-write tokens, cost provenance, recorded model
 response counts, requested/native effort, phase timings and missing-coverage
 reasons. Recorded model responses exclude unobserved transport retries and are
