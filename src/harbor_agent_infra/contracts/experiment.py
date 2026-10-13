@@ -13,6 +13,8 @@ class AgentSpec(BaseModel):
 
     adapter: Literal["openclaw", "hermes", "codex", "claude-code"]
     model: str = Field(min_length=1)
+    provider: Literal["openai", "anthropic", "qwen", "deepseek"] | None = None
+    base_url_env: str | None = Field(default=None, pattern=r"^[A-Z][A-Z0-9_]*$")
     thinking: str | None = Field(default=None, min_length=1)
     reasoning: (
         Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None
@@ -21,6 +23,13 @@ class AgentSpec(BaseModel):
 
     @model_validator(mode="after")
     def validate_thinking(self) -> AgentSpec:
+        if self.provider is not None or self.base_url_env is not None:
+            if self.adapter not in {"codex", "claude-code"}:
+                raise ValueError(
+                    "provider and base_url_env are only supported by native CLI agents"
+                )
+            if self.provider is None:
+                raise ValueError("base_url_env requires an explicit provider")
         if self.adapter != "openclaw" and self.thinking is not None:
             raise ValueError("thinking is only supported by the OpenClaw adapter")
         if self.adapter != "hermes" and self.reasoning is not None:

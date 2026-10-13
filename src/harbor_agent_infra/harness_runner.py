@@ -112,9 +112,18 @@ class NativeHarnessRunner(HarnessRunner):
         kwargs: dict[str, object] = {"version": version}
         if spec.reasoning_effort is not None:
             kwargs["reasoning_effort"] = spec.reasoning_effort
+        env: dict[str, str] = {}
+        if spec.provider is not None:
+            source = spec.provider.upper()
+            target = "OPENAI" if self.agent_name == "codex" else "ANTHROPIC"
+            env = {
+                f"{target}_API_KEY": f"${{{source}_API_KEY}}",
+                f"{target}_BASE_URL": f"${{{spec.base_url_env or source + '_BASE_URL'}}}",
+            }
         return AgentConfig(
             name=self.agent_name,
             model_name=spec.model,
+            env=env,
             skills=list(skills),
             override_setup_timeout_sec=1200,
             kwargs=kwargs,
