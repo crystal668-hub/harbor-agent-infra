@@ -10,6 +10,7 @@ from typing import Any
 from harbor import Job, JobConfig
 
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from integrations.vgb.chemistry import preflight_chemistry
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.prompts import materialize_prompt
 from integrations.vgb.result_projection import build_schema_v5_envelope, project_schema_v5
@@ -96,6 +97,7 @@ async def _run_track(
     model: str,
 ) -> dict[str, Any]:
     lock = load_runtime_lock(lock_path)
+    preflight_chemistry(runtime, lock_path, output_path=root / track / "chemistry-preflight.json")
     prompt_path = root / track / "agent-trial-input.v1.json"
     prompt_record = materialize_prompt(
         runtime, track=track, task_id=task_id, output_path=prompt_path

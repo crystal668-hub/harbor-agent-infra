@@ -9,6 +9,7 @@ from pathlib import Path
 from harbor import Job, JobConfig
 
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from integrations.vgb.chemistry import preflight_chemistry
 from integrations.vgb.prompts import materialize_prompt
 from integrations.vgb.runtime import VgbRuntime
 
@@ -46,6 +47,7 @@ async def run(*, lock_path: Path, output_dir: Path, model: str) -> dict[str, obj
 
     lock = load_runtime_lock(lock_path)
     runtime = VgbRuntime.from_environment()
+    preflight_chemistry(runtime, lock_path, output_path=output_dir / "chemistry-preflight.json")
     output_dir.mkdir(parents=True, exist_ok=True)
     prompt_record = materialize_prompt(
         runtime,

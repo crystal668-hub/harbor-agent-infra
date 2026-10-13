@@ -28,6 +28,7 @@ from harbor_agent_infra.harbor.job_config import (
 from harbor_agent_infra.harbor.observability import artifact_observability
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.harness_runner import HarnessRunner, harness_runner_for
+from integrations.vgb.chemistry import preflight_chemistry
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.result_projection import project_schema_v5
 from integrations.vgb.runtime import VgbRuntime
@@ -510,6 +511,11 @@ async def run_paired_jobs(
     run_id = output_root.name
     lock_path = Path(spec.benchmark.package_lock)
     lock_payload = json.loads(lock_path.read_text(encoding="utf-8"))
+    chemistry = await asyncio.to_thread(
+        preflight_chemistry, runtime, lock_path,
+        output_path=output_root / "chemistry-preflight.json",
+        pull_policy=spec.image.pull_policy,
+    )
     runtime_metadata = runtime.metadata()
     if (
         runtime_metadata.get("package") != lock_payload["vgb"]["package"]
@@ -583,6 +589,8 @@ async def run_paired_jobs(
             (not source_matches and not (allow_task_selection_change and execution_settings_match))
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
             or skills_mismatch
+            or previous_manifest.get("chemistry_preflight", {}).get("lock_sha256")
+            != chemistry["lock_sha256"]
         ):
             raise ValueError("existing runtime manifest does not match run inputs")
     replacement_artifacts = None
@@ -798,6 +806,7 @@ async def run_paired_jobs(
                 "pythonpath_cleared_for_subprocess": True,
             },
             "image": spec.image.model_dump(mode="json"),
+            "chemistry_preflight": chemistry,
             "agent_runtime": {
                 "python": lock_payload["agent_python"],
                 "chemistry": lock_payload["agent_chemistry"],

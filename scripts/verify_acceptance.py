@@ -12,6 +12,8 @@ from typing import Any
 
 from harbor_agent_infra.preparation.image_manager import ImageManagerError, inspect_image
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from integrations.vgb.chemistry import preflight_chemistry
+from integrations.vgb.runtime import VgbRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -104,7 +106,7 @@ def main() -> int:
             "agent-python-policy",
             lock.agent_python.package_install_policy == "agent-managed"
             and set(lock.agent_python.preinstalled_packages)
-            == {"numpy==2.2.6", "Pillow==11.3.0", "rdkit==2025.9.6"},
+            == {"numpy==2.2.6", "Pillow==11.3.0", "rdkit==2026.3.2"},
             "Python/pip and fixed chemistry packages are locked; "
             "other packages remain agent-managed",
             blocker=True,
@@ -153,7 +155,7 @@ def main() -> int:
                 "python3 -c 'from rdkit import Chem; "
                 "assert Chem.MolToSmiles(Chem.MolFromSmiles(\"CCO\")) == \"CCO\"'; "
                 "test \"$(xtb --version 2>&1 | grep -o 'xtb version [0-9.]*' "
-                "| head -1)\" = 'xtb version 6.5.1'",
+                f"| head -1)\" = 'xtb version {lock.agent_chemistry.xtb_version}'",
             ],
             capture_output=True,
             text=True,
@@ -172,7 +174,7 @@ def main() -> int:
                 "-lc",
                 "set -eu; python3 -c 'import rdkit, numpy, PIL'; "
                 "test \"$(xtb --version 2>&1 | grep -o 'xtb version [0-9.]*' "
-                "| head -1)\" = 'xtb version 6.5.1'",
+                f"| head -1)\" = 'xtb version {lock.agent_chemistry.xtb_version}'",
             ],
             capture_output=True,
             text=True,
@@ -184,6 +186,15 @@ def main() -> int:
             chemistry_probe.stdout.strip() or chemistry_probe.stderr.strip(),
             blocker=True,
         )
+    try:
+        preflight_chemistry(
+            VgbRuntime.from_environment(), ROOT / "runtime-lock.json",
+            output_path=ROOT / "run-artifacts/acceptance/chemistry-preflight.json",
+        )
+    except Exception as exc:
+        check("chemistry-parity", False, str(exc), blocker=True)
+    else:
+        check("chemistry-parity", True, "image and verifier match the common lock", blocker=True)
     check(
         "registry-configured",
         bool(os.environ.get("HARBOR_REGISTRY_REFERENCE")),

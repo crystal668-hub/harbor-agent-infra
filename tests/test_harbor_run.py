@@ -26,6 +26,33 @@ from harbor_agent_infra.harbor.run import (
 from harbor_agent_infra.preparation.experiments import experiment_sha256
 
 
+@pytest.fixture(autouse=True)
+def isolated_chemistry_preflight(monkeypatch):
+    monkeypatch.setattr(
+        run_module, "preflight_chemistry",
+        lambda *args, **kwargs: {"status": "passed", "lock_sha256": "fixture-chemistry"},
+    )
+
+
+@pytest.mark.parametrize("entry", ["run_paired_jobs", "run_group_jobs"])
+def test_both_run_entries_block_before_job_creation(monkeypatch, tmp_path, entry):
+    from integrations.vgb.chemistry import ChemistryError
+
+    def blocked(*args, **kwargs):
+        raise ChemistryError("xTB drift")
+
+    async def must_not_create(*args, **kwargs):
+        pytest.fail("Job.create called despite chemistry drift")
+
+    monkeypatch.setattr(run_module, "preflight_chemistry", blocked)
+    monkeypatch.setattr(run_module.Job, "create", must_not_create)
+    with pytest.raises(ChemistryError, match="xTB drift"):
+        asyncio.run(getattr(run_module, entry)(
+            _spec(tmp_path), _resources(), FakeVgbRuntime(),
+            output_root=tmp_path / "run", group_id="skills_off",
+        ))
+
+
 def test_run_event_sink_persists_completed_trial_event(tmp_path: Path) -> None:
     result = SimpleNamespace(
         trial_name="task__abc",
