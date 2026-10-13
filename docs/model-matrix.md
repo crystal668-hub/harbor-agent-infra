@@ -54,6 +54,19 @@ and Codex documentation retrieval returned HTTP 403 during this audit. No
 absolute provider maximum is inferred from a catalog on a different gateway,
 a short successful response, context-window size or a reasoning-effort label.
 
+Short-response boundary probes used high effort and the existing credentials:
+
+| Model / tested wire route | Accepted request cap | Next-value probe | Conclusion |
+| --- | ---: | --- | --- |
+| GPT / Responses | 128,000 | 128,001 also completed | Absolute upper limit remains unknown; acceptance does not prove the gateway honors the full cap. |
+| Claude / Messages | 128,000 | 128,001 returned HTTP 400 explicitly naming 128,000 as the maximum | 128,000 is the verified maximum for this Messages route. Hermes's source default matches it; Claude Code's captured 64,000 default is lower. |
+| Qwen / Chat Completions | 131,072 | 131,073 returned HTTP 400 twice, with a generic gateway error | The tested request boundary is 131,072, but the gateway does not expose the rejection's exact upstream cause. |
+| DeepSeek / Chat Completions | 384,000 | 384,001 also completed | Absolute upper limit remains unknown. |
+
+These probes requested only `OK`; they did not generate maximum-length outputs
+or change any saved experiment cap. Limits are specific to the tested wire
+route; they are not automatically evidence for the other harness protocols.
+
 Validation: 202 provider-free tests passed, including all 16 example-template
 projections and provider/protocol routing contracts. The 16 actual local
 configurations also materialized successfully with a single `skills_off` public
