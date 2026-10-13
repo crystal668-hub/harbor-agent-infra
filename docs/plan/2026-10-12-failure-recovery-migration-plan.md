@@ -144,6 +144,30 @@ Harbor 当前接口是否支持按共享路由暂停尚待专门验证。第一�
 
 所有实际运行证据继续位于 Git ignored 的 `run-artifacts/`；tracked 文件只包含 schema、合成样例、测试与文档，不含私有 VGB 评分内容或凭据。
 
+目录分类约定（2026-10-13 补充，待实施）：仅按运行目的分为正式实验和临时测试两类，每个 run 内继续使用原有产物结构。
+
+```text
+run-artifacts/
+  formal/
+    <run-id>/                 # 正式实验及其审计、评分、分析产物
+    <repair-run-id>/          # 正式实验的补跑，关联原 slot/attempt
+  temporary/
+    <test-run-id>/            # smoke、调试、集成验收、诊断与离线重放
+```
+
+| 分类 | 归属规则 | 统计与保留 |
+| --- | --- | --- |
+| `formal/`：正式实验 | 按冻结协议采集的正式运行，以及服务于该实验的补跑、重评和分析快照 | 保留完整证据；进入正式分析仍须满足 slot 有效性与选样规则，目录归属不代表成功或已入选 |
+| `temporary/`：临时测试 | fake/provider smoke、开发调试、集成验收、恢复诊断和探索性重放 | 不进入正式样本分母；若被正式恢复决策引用，保留所引用证据并关联成本，不能直接清空 |
+
+分类在启动前按目的确定，与是否调用真实模型、运行是否成功、是否使用 `skills_off` 无关。正式实验的失败产物仍留在 `formal/`；临时测试成功也不通过移动目录升级为正式样本。正式实验的恢复 smoke 放入 `temporary/`，获准的替代执行放入 `formal/`。
+
+下表中的产物路径均相对于所属 `<run-id>/`。正式实验的重评和分析通常写入原 run 的独立 assessment／snapshot 目录；需要新建 repair run 时使用 `formal/<repair-run-id>/`，通过台账关联原 run。两类 run 使用跨类别唯一的 run ID，避免当前 `output_root.name` 身份发生冲突。
+
+实施时同步调整配置模板、测试／smoke 脚本的输出路径，以及 Viewer 和审计工具的发现逻辑。当前 Viewer 只发现根目录下一层含 `jobs/` 的 run，因此新增分类层后需显式扫描 `formal/`、`temporary/` 并显示分类，同时兼容旧的顶层 run；不递归扫描 run 内的备份或 evidence 目录。正式汇总默认只处理 `formal/` 的协议与 slot 表，跨类别引用的诊断成本单独读取。
+
+历史顶层目录先保留原位并标为待分类，后续依据原运行目的建立迁移清单；核对产物内路径和台账引用后再迁移，不按目录名或分数自动推断。本轮仅更新分类计划，不移动已有产物、不增加自动清理规则。
+
 | 产物（拟议） | 必要内容 |
 | --- | --- |
 | `protocol.json` / `slots.jsonl` | 冻结条件、规则与哈希；完整预定 slot 矩阵，派发前即存在 |
@@ -188,7 +212,7 @@ Harbor 当前接口是否支持按共享路由暂停尚待专门验证。第一�
 | 阶段／优先级 | 变更模块与交付 | 必须通过的验收 |
 | --- | --- | --- |
 | P0：冻结协议与兼容边界 | 新增协议／recovery 契约及配置校验；明确测量对象、成功定义、repeat、预算和旧入口策略；配置文档解释历史行为 | 合成条件稳定生成身份；改变 prompt／模型／预算生成新条件；缺失主指标定义拒绝正式启动；默认单组 |
-| P1：slot 台账与证据保全 | 在材料化与 Harbor hooks 周边建立 slots、attempt mapping 和独立 evidence；替换旧覆盖／删除式恢复语义；禁止原地重写历史 tasks | 多 repeat 映射独立；失败、中断、resume、内部 retry 前的证据完整且原字节哈希不变；归档失败阻止破坏性继续 |
+| P1：slot 台账与证据保全 | 在材料化与 Harbor hooks 周边建立 slots、attempt mapping 和独立 evidence；落地 formal/temporary 分类及模板、脚本、Viewer 发现适配；替换旧覆盖／删除式恢复语义；禁止原地重写历史 tasks | 两类目录及旧顶层 run 均可发现且不误收备份；多 repeat 映射独立；失败、中断、resume、内部 retry 前的证据完整且原字节哈希不变；归档失败阻止破坏性继续 |
 | P2：证据分类与只读审计 | 在 `harbor/audit.py` 旁新增独立分类模块，保留原 failure_mode 兼容字段；输出分层 decisions 和 gaps | 低分、坏答案、正常超时不触发替代；恢复过的 429 不剔除；未知 137 待审；工具 error 文本不直接决定有效性 |
 | P3：仅后处理恢复 | 拆分 `harbor/run.py` 的采集、评分与聚合；扩展 VGB runtime 期限／回收；增加独立 assessment 与重建入口 | lifecycle failed 但原答案完整时能只恢复评分；Agent 调用数不增加；源 reward/答案/结果不变；有效低分不可重抽；评分超时进程已退出 |
 | P4：精确恢复计划与执行门禁 | CLI、JobConfig 材料化消费 reviewed plan；预算、占用、条件哈希、过期计划与新 Job 映射校验；熔断先采用可验证的小批派发 | 3 个 repeat 只补指定 1 个；重复提交不重复派发；不同条件／未知副作用／额度耗尽拒绝；替代有效失败后停止替代 |
@@ -205,6 +229,7 @@ Provider-free 单元／契约测试重点覆盖：
 - agent setup 故障、恢复／未恢复的传输故障、正式预算失败、未知退出、取消及清理失败。
 - 原答案完整但 verifier 失败、提取器 bug、VGB 输入拒绝、评分版本变化及聚合缺失。
 - 明确零值与 unavailable；失败／内部 retry／诊断成本不可漏报；历史重复记录不能伪造 repeat。
+- 正式补跑归入 formal、恢复 smoke 归入 temporary；临时成功样本不混入正式统计，被引用的诊断证据与成本可追溯。
 - 暂停／恢复、计划提交中断与台账原子写入；没有原始结果文件的现场在 resume 前保留。
 
 Docker/Registry integration 独立标记，复用 fake agent 验证 pull/setup、中途取消、Harbor retry 清理前归档、资源故障取证和容器清理。OOM 测试必须有 `OOMKilled` 或等价结构化证据；不能只断言 RuntimeError 就通过 OOM 归因验收。Registry 故障仅在具备隔离测试仓库时验证。
