@@ -58,7 +58,7 @@ experiment and resource configuration hashes plus Harbor's native JobConfig snap
 
 Agent base image references used for execution must include an immutable digest. The image
 manager checks the local RepoDigest and OS/architecture before a Harbor job is created;
-the locked image already contains Python 3.11, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1
+the locked image already contains Python 3.11, pip 23.0.1, RDKit 2026.03.2, xTB 6.7.1
 and venv support. Additional skill-specific Python packages remain agent-managed.
 Harbor then installs the locked harness version in the Trial container. Registry
 credentials are consumed by Docker's credential helper and are never written to evidence.

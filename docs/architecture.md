@@ -18,8 +18,8 @@ cleanup, result projection and Viewer routing remain shared control-plane logic.
 The Phase 1 materializer validates the external resource profile and immutable agent image
 digest, locks Harbor's native OpenClaw npm version, records the agent Python/pip toolchain,
 runs Docker capability preflight, and emits a native `JobConfig` snapshot. The locked agent
-image contains the fixed chemistry baseline (RDKit 2025.09.6, NumPy 2.2.6, Pillow 11.3.0
-and xTB 6.5.1); other third-party Python packages are deliberately agent-managed at Trial time.
+image contains the fixed chemistry baseline (RDKit 2026.03.2, NumPy 2.2.6, Pillow 11.3.0
+and xTB 6.7.1); other third-party Python packages are deliberately agent-managed at Trial time.
 Infra records identities and relationships. Harbor remains the lifecycle owner, and VGB
 evaluation stays outside the agent container.
 
@@ -31,7 +31,8 @@ configuration, evidence hashes and stable failure codes. Harbor still owns insta
 exec, logs, trajectory download and cleanup.
 
 The shared agent base image is built by `images/base-env/Dockerfile` from the locked Node base.
-The Dockerfile installs Debian's Python 3 interpreter, pip, venv support, RDKit and xTB.
+The Dockerfile installs Debian's Python 3 interpreter, pip and venv support, a hashed
+RDKit wheel, and the explicit Conda chemistry packages for xTB and CREST.
 `PIP_BREAK_SYSTEM_PACKAGES=1` allows an agent-selected
 `pip install` in the disposable container; agents may instead create a venv.
 

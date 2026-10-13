@@ -82,7 +82,7 @@ The locked agent image is built with:
 ./scripts/build_agent_image.sh hai-base-env
 ```
 
-The build verifies Python 3.11.2, pip 23.0.1, RDKit 2025.09.6, xTB 6.5.1 and venv inside
+The build verifies Python 3.11.2, pip 23.0.1, RDKit 2026.03.2, xTB 6.7.1 and venv inside
 the image, and verifies that OpenClaw is not preinstalled. Harbor installs the locked
 OpenClaw npm version inside each Trial. Additional Python dependencies are selected and
 installed by the agent during the Trial; use a venv when a skill needs stronger isolation.
