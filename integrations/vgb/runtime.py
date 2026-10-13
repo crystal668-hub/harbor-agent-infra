@@ -7,6 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from integrations.vgb.chemistry import (
+    controlled_environment,
+    probe_host,
+    read_chemistry_lock,
+    runtime_settings,
+    validate_probe,
+)
+
 _PROTOCOL = r'''
 import importlib.metadata
 import json
@@ -61,6 +69,13 @@ class VgbRuntime:
         env = dict(os.environ)
         env.pop("PYTHONPATH", None)
         env["PYTHONNOUSERSITE"] = "1"
+        if operation == "evaluate":
+            # Ordinary xTB and CREST must inherit exactly the same tool/parameter paths.
+            prefix, lock_path = runtime_settings(self.python_executable)
+            env = controlled_environment(prefix)
+            validate_probe(
+                probe_host(self.python_executable, prefix, env), read_chemistry_lock(lock_path),
+            )
         completed = subprocess.run(
             [str(self.python_executable), "-c", _PROTOCOL],
             input=json.dumps(request),

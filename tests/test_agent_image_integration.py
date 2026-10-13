@@ -39,7 +39,7 @@ def test_locked_agent_image_has_fixed_chemistry_tools() -> None:
             "&& test \"$PIP_BREAK_SYSTEM_PACKAGES\" = 1 "
             "&& python -c 'from rdkit import Chem; "
             "assert Chem.MolToSmiles(Chem.MolFromSmiles(\"CCO\")) == \"CCO\"' "
-            "&& xtb --version 2>&1 | grep -q 'xtb version 6.5.1' "
+            "&& xtb --version 2>&1 | grep -q 'xtb version 6.7.1' "
             "&& printf '3\\nwater\\nO 0 0 0\\nH 0 0 0.96\\nH 0.92 0 0\\n' > /tmp/water.xyz "
             "&& cd /tmp && xtb water.xyz --gfn 2 --chrg 0 --uhf 0 > /tmp/xtb.log 2>&1 "
             "&& grep -q 'normal termination of xtb' /tmp/xtb.log "
@@ -55,5 +55,5 @@ def test_locked_agent_image_has_fixed_chemistry_tools() -> None:
     names = {item["name"].lower() for item in installed}
     assert {"rdkit", "numpy", "pillow"} <= names
     assert lock.agent_python.package_install_policy == "agent-managed"
-    assert lock.agent_chemistry.rdkit_version == "2025.09.6"
-    assert lock.agent_chemistry.xtb_version == "6.5.1"
+    assert lock.agent_chemistry.rdkit_version == "2026.03.2"
+    assert lock.agent_chemistry.xtb_version == "6.7.1"

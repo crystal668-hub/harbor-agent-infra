@@ -23,7 +23,7 @@ agent:
   model: ${TEST_MODEL}
 image:
   reference: hai-base-env
-  digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
+  digest: sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936
   platform: linux/arm64
   pull_policy: if_missing
 resources:
@@ -75,7 +75,7 @@ agent:
   model: ${TEST_MODEL}
 image:
   reference: hai-base-env
-  digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
+  digest: sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936
   platform: linux/arm64
   pull_policy: if_missing
 resources:
@@ -115,7 +115,7 @@ groups:
 agent: {adapter: openclaw, model: fixture}
 image:
   reference: hai-base-env
-  digest: sha256:e3faddf399e7898938d5e3f76c8aa8455d69d571849aa2940da8ed6e613b5c68
+  digest: sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936
   platform: linux/arm64
   pull_policy: if_missing
 resources: {profile: local-smoke, config_file: local.yaml}

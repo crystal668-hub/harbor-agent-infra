@@ -7,6 +7,7 @@ from pathlib import Path
 
 from integrations.vgb.release_lock import load_release_lock, verify_release_lock
 from integrations.vgb.runtime import VgbRuntime
+from scripts.provision_chemistry import provision as provision_chemistry
 
 
 def provision(lock_path: Path, wheel_path: Path, runtime_dir: Path) -> None:
@@ -48,12 +49,15 @@ def main() -> int:
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--runtime-dir", type=Path, required=True)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--chemistry-prefix", type=Path)
     args = parser.parse_args()
     if args.check:
         runtime = VgbRuntime(args.runtime_dir / "bin" / "python")
         print(json.dumps(runtime.metadata(), indent=2, sort_keys=True))
         return 0
     provision(args.lock, args.wheel, args.runtime_dir)
+    if args.chemistry_prefix is not None:
+        provision_chemistry(args.chemistry_prefix, args.runtime_dir, args.lock)
     return 0
 
 

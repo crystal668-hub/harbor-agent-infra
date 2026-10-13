@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from packaging.version import Version
+
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _GIT_COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -225,6 +227,16 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         for field in chemistry_fields
     ):
         raise ValueError("agent_chemistry fields are required")
+    chemistry = payload.get("chemistry")
+    if not isinstance(chemistry, dict) or chemistry.get("schema_version") != 1:
+        raise ValueError("shared chemistry lock is required")
+    if (
+        Version(agent_chemistry["rdkit_version"]) != Version(chemistry["rdkit"]["version"])
+        or agent_chemistry["xtb_version"] != chemistry["xtb"]["version"]
+        or agent_chemistry["rdkit_wheel_sha256"]
+        != chemistry["rdkit"]["wheels"]["linux-aarch64"]["sha256"]
+    ):
+        raise ValueError("agent_chemistry must match the shared chemistry lock")
     return InfraRuntimeLock(
         openclaw=OpenClawRuntimeLock(
             version=version,

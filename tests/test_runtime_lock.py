@@ -24,9 +24,9 @@ def test_runtime_lock_separates_control_plane_and_agent_python() -> None:
     assert lock.agent_python.preinstalled_packages == (
         "numpy==2.2.6",
         "Pillow==11.3.0",
-        "rdkit==2025.9.6",
+        "rdkit==2026.3.2",
     )
-    assert lock.agent_chemistry.xtb_package == "xtb=6.5.1-3"
+    assert lock.agent_chemistry.xtb_package == "xtb=6.7.1=gfortran_hcd2ce30_5"
 
 
 @pytest.mark.parametrize(
