@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import shlex
 from typing import Literal, override
 
@@ -16,9 +15,9 @@ from pydantic import Field
 
 
 class HermesOptions(HarborHermesOptions):
-    reasoning: Literal[
-        "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"
-    ] | None = Field(
+    reasoning: (
+        Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None
+    ) = Field(
         default=None,
         description="Hermes reasoning effort for this invocation.",
     )
@@ -42,6 +41,22 @@ class HermesAgent(HarborHermes):
     @override
     def _build_config_yaml(self, model: str) -> str:
         config = yaml.safe_load(HarborHermes._build_config_yaml(model))
+        provider, _, model_id = (self.model_name or "").partition("/")
+        if provider == "anthropic":
+            config["model"] = {
+                "default": model_id,
+                "provider": "anthropic",
+                "api_mode": "anthropic_messages",
+            }
+            if base_url := self._get_env("ANTHROPIC_BASE_URL"):
+                config["model"]["base_url"] = base_url
+        elif provider == "openai" and model_id == "gpt-6.1-sol":
+            # The locked Hermes release only infers Responses for GPT-5.x.
+            config["model"] = {
+                "default": model_id,
+                "provider": "openai",
+                "api_mode": "codex_responses",
+            }
         if self.options.reasoning is not None:
             config.setdefault("agent", {})["reasoning_effort"] = self.options.reasoning
         config["onboarding"] = {
@@ -81,9 +96,7 @@ class HermesAgent(HarborHermes):
     async def install(self, environment: BaseEnvironment) -> None:
         if not self._version:
             raise ValueError("Hermes version must be pinned to an immutable tag")
-        await self.ensure_system_dependencies(
-            environment, ("curl", "git", "ripgrep", "xz")
-        )
+        await self.ensure_system_dependencies(environment, ("curl", "git", "ripgrep", "xz"))
         installer_url = (
             "https://raw.githubusercontent.com/NousResearch/hermes-agent/"
             f"{self._source_commit}/scripts/install.sh"
@@ -118,7 +131,7 @@ class HermesAgent(HarborHermes):
         context: AgentContext,
     ) -> None:
         provider, separator, model = (self.model_name or "").partition("/")
-        if provider != "qwen" or not separator:
+        if provider not in {"qwen", "deepseek"} or not separator:
             await self.exec_as_agent(
                 environment,
                 command="rm -f /workspace/BOOTSTRAP.md /workspace/IDENTITY.md",
@@ -128,10 +141,13 @@ class HermesAgent(HarborHermes):
             await super().run(instruction, environment, context)
             return
 
-        api_key = os.environ.get("QWEN_API_KEY")
-        base_url = os.environ.get("QWEN_BASE_URL")
+        prefix = provider.upper()
+        api_key = self._get_env(f"{prefix}_API_KEY")
+        base_url = self._get_env(f"{prefix}_BASE_URL")
         if not api_key or not base_url:
-            raise ValueError("QWEN_API_KEY and QWEN_BASE_URL are required for qwen models")
+            raise ValueError(
+                f"{prefix}_API_KEY and {prefix}_BASE_URL are required for {provider} models"
+            )
 
         self._last_run_was_resume = self._resume
         env = {
@@ -154,9 +170,7 @@ class HermesAgent(HarborHermes):
         )
         skills_command = self._build_register_skills_command()
         if skills_command:
-            await self.exec_as_agent(
-                environment, command=skills_command, env=env, timeout_sec=10
-            )
+            await self.exec_as_agent(environment, command=skills_command, env=env, timeout_sec=10)
 
         cli_parts = [
             'export PATH="$HOME/.local/bin:$PATH"',
@@ -362,10 +376,6 @@ class HermesAgent(HarborHermes):
                 )
                 if delta(key) is not None
             }
-            | {
-                key: usage[key]
-                for key in ("cost_source", "cost_status")
-                if usage[key] is not None
-            },
+            | {key: usage[key] for key in ("cost_source", "cost_status") if usage[key] is not None},
         }
         self._reported_session_usage = usage

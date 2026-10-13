@@ -104,12 +104,18 @@ def test_hermes_retries_package_manager_install_failures(tmp_path: Path, monkeyp
     sleep.assert_awaited_once_with(1)
 
 
-def test_hermes_qwen_export_prefers_oneshot_sessions(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setenv("QWEN_API_KEY", "test-key")
-    monkeypatch.setenv("QWEN_BASE_URL", "https://qwen.example/v1")
+@pytest.mark.parametrize(
+    "provider,model",
+    [("qwen", "qwen3.8-flash"), ("qwen", "qwen3.8-max"), ("deepseek", "deepseek-v4-pro")],
+)
+def test_hermes_compatible_provider_export_prefers_oneshot_sessions(
+    tmp_path: Path, monkeypatch, provider, model
+) -> None:
+    monkeypatch.setenv(f"{provider.upper()}_API_KEY", "test-key")
+    monkeypatch.setenv(f"{provider.upper()}_BASE_URL", "https://selected.example/v1")
     agent = HermesAgent(
         logs_dir=tmp_path / "logs",
-        model_name="qwen/qwen3.8-flash",
+        model_name=f"{provider}/{model}",
         version="v0.21.6",
         source_commit=SOURCE_COMMIT,
         install_branch="main",
@@ -130,9 +136,43 @@ def test_hermes_qwen_export_prefers_oneshot_sessions(tmp_path: Path, monkeypatch
     assert "rm -f /workspace/BOOTSTRAP.md /workspace/IDENTITY.md" in config_command
     run_command = execute.await_args_list[1].kwargs["command"]
     assert "--reasoning high" in run_command
+    assert f"--model {model}" in run_command
+    assert "--provider openai-api" in run_command
+    assert execute.await_args_list[1].kwargs["env"]["OPENAI_API_KEY"] == "test-key"
+    assert (
+        execute.await_args_list[1].kwargs["env"]["OPENAI_BASE_URL"] == "https://selected.example/v1"
+    )
     export_command = execute.await_args_list[-1].kwargs["command"]
     assert "--source oneshot" in export_command
     assert "--source cli" in export_command
+
+
+@pytest.mark.parametrize(
+    "provider,model,api_mode",
+    [
+        ("openai", "gpt-6.1-sol", "codex_responses"),
+        ("anthropic", "claude-opus-5.5", "anthropic_messages"),
+    ],
+)
+def test_hermes_current_model_config_pins_protocol(
+    tmp_path, monkeypatch, provider, model, api_mode
+):
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://selected.example")
+    agent = HermesAgent(
+        logs_dir=tmp_path / "logs",
+        model_name=f"{provider}/{model}",
+        version="v0.21.6",
+        source_commit=SOURCE_COMMIT,
+        install_branch="main",
+        reasoning="high",
+    )
+    config = yaml.safe_load(agent._build_config_yaml(model))
+    assert config["model"]["provider"] == provider
+    assert config["model"]["default"] == model
+    assert config["model"]["api_mode"] == api_mode
+    assert config["agent"]["reasoning_effort"] == "high"
+    if provider == "anthropic":
+        assert config["model"]["base_url"] == "https://selected.example"
 
 
 def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
