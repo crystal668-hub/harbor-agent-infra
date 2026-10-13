@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
 from harbor.agents.factory import AgentFactory
 from harbor.agents.installed.base import NonZeroAgentExitCodeError
 from harbor.agents.installed.openclaw import OpenClaw as HarborOpenClaw
@@ -33,18 +34,12 @@ def test_session_identity_is_explicit_and_attempt_scoped() -> None:
     assert identity.agent_id == "openclaw"
     assert identity.session_key == "agent:openclaw:explicit:task__attempt-1"
     assert identity.session_id != retry.session_id
-    assert identity.environment()["OPENCLAW_STATE_DIR"].endswith(
-        "/task__attempt-1"
-    )
+    assert identity.environment()["OPENCLAW_STATE_DIR"].endswith("/task__attempt-1")
 
 
 def test_session_identity_uses_harbor_context_for_retry_isolation() -> None:
-    first = SessionIdentity.from_harbor_session(
-        "task__attempt-1__agent", context_id=uuid4()
-    )
-    second = SessionIdentity.from_harbor_session(
-        "task__attempt-1__agent", context_id=uuid4()
-    )
+    first = SessionIdentity.from_harbor_session("task__attempt-1__agent", context_id=uuid4())
+    second = SessionIdentity.from_harbor_session("task__attempt-1__agent", context_id=uuid4())
     assert first.session_id != second.session_id
     assert first.session_key != second.session_key
     assert first.state_dir != second.state_dir
@@ -62,8 +57,7 @@ def test_openclaw_config_and_command_project_identity(tmp_path: Path, monkeypatc
     agent = _agent(tmp_path)
     monkeypatch.setenv("OPENAI_BASE_URL", "https://provider.example/v1")
     assert agent._SETUP_CLI == (
-        "openclaw config set agents.defaults.skipBootstrap true && "
-        "openclaw setup --workspace ."
+        "openclaw config set agents.defaults.skipBootstrap true && openclaw setup --workspace ."
     )
     config = agent._build_full_openclaw_config()
     assert config["agents"]["defaults"]["skipBootstrap"] is True
@@ -171,6 +165,34 @@ def test_openclaw_adapter_is_discoverable_through_harbor_factory() -> None:
     assert agent_class.capabilities.atif is True
 
 
+@pytest.mark.parametrize(
+    "provider,model_id,api",
+    [
+        ("openai", "gpt-6.1-sol", "openai-responses"),
+        ("anthropic", "claude-opus-5.5", "anthropic-messages"),
+        ("qwen", "qwen3.8-max", "openai-completions"),
+        ("deepseek", "deepseek-v4-pro", "openai-completions"),
+    ],
+)
+def test_current_models_select_provider_protocol_without_legacy_limits(
+    tmp_path, monkeypatch, provider, model_id, api
+):
+    key_name = f"{provider.upper()}_API_KEY"
+    monkeypatch.setenv(f"{provider.upper()}_BASE_URL", "https://selected.example/v1")
+    agent = OpenClawAgent(
+        logs_dir=tmp_path / "logs", model_name=f"{provider}/{model_id}", version="2026.6.34"
+    )
+    agent.session_id = "task__attempt-1__agent"
+    config = agent._build_full_openclaw_config()
+    selected = config["models"]["providers"][provider]
+    assert selected["api"] == api
+    assert selected["apiKey"]["id"] == key_name
+    assert config["secrets"]["providers"]["default"]["allowlist"] == [key_name]
+    model = selected["models"][0]
+    assert model["id"] == model_id and model["reasoning"] is True
+    assert "maxTokens" not in model and "contextWindow" not in model
+
+
 def test_openclaw_retries_transient_debian_5xx(tmp_path: Path, monkeypatch) -> None:
     install = AsyncMock(
         side_effect=[
@@ -202,9 +224,7 @@ def test_openclaw_does_not_retry_other_install_errors(tmp_path: Path, monkeypatc
 
 
 def test_openclaw_retries_npm_connection_reset(tmp_path: Path, monkeypatch) -> None:
-    install = AsyncMock(
-        side_effect=[NonZeroAgentExitCodeError("npm error code ECONNRESET"), None]
-    )
+    install = AsyncMock(side_effect=[NonZeroAgentExitCodeError("npm error code ECONNRESET"), None])
     sleep = AsyncMock()
     monkeypatch.setattr(HarborOpenClaw, "install", install)
     monkeypatch.setattr("adapters.openclaw.adapter.asyncio.sleep", sleep)

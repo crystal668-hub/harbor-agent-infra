@@ -33,14 +33,13 @@ class OpenClawAgent(HarborOpenClaw):
     # Qwen exposes an OpenAI-compatible endpoint using the conventional
     # QWEN_API_KEY/QWEN_BASE_URL variables, so only the provider allowlist needs
     # extending; Harbor still owns env forwarding and OpenClaw execution.
-    _SUPPORTED_PROVIDERS = HarborOpenClaw._SUPPORTED_PROVIDERS | {"qwen"}
+    _SUPPORTED_PROVIDERS = HarborOpenClaw._SUPPORTED_PROVIDERS | {"qwen", "deepseek"}
 
     # Harbor v0.23.0 uses the pre-2026.6 setup flags. OpenClaw 2026.6.34
     # accepts the workspace through --workspace. Persist skipBootstrap before
     # setup so the trial workspace is not seeded with unrelated Markdown files.
     _SETUP_CLI = (
-        "openclaw config set agents.defaults.skipBootstrap true && "
-        "openclaw setup --workspace ."
+        "openclaw config set agents.defaults.skipBootstrap true && openclaw setup --workspace ."
     )
 
     @override
@@ -68,9 +67,11 @@ class OpenClawAgent(HarborOpenClaw):
                 return
             except NonZeroAgentExitCodeError as exc:
                 detail = str(exc)
-                if "npm error" not in detail or not any(
-                    marker in detail for marker in ("ECONNRESET", "ETIMEDOUT")
-                ) or attempt == 2:
+                if (
+                    "npm error" not in detail
+                    or not any(marker in detail for marker in ("ECONNRESET", "ETIMEDOUT"))
+                    or attempt == 2
+                ):
                     raise
                 await asyncio.sleep(2**attempt)
 
@@ -111,38 +112,45 @@ class OpenClawAgent(HarborOpenClaw):
     def _build_full_openclaw_config(self) -> dict[str, Any]:
         identity = self.session_identity()
         config = super()._build_full_openclaw_config()
-        config.setdefault("agents", {}).setdefault("defaults", {})[
-            "skipBootstrap"
-        ] = True
+        config.setdefault("agents", {}).setdefault("defaults", {})["skipBootstrap"] = True
         provider, _, model_id = self.model_name.partition("/")
         provider_config = config.get("models", {}).get("providers", {}).get(provider)
         if isinstance(provider_config, dict) and model_id:
-            if provider == "qwen":
-                # Qwen is exposed through an OpenAI-compatible endpoint. OpenClaw
-                # requires the explicit API discriminator for custom providers.
-                provider_config["api"] = "openai-completions"
+            provider_apis = {
+                "openai": "openai-responses",
+                "anthropic": "anthropic-messages",
+                "qwen": "openai-completions",
+                "deepseek": "openai-completions",
+            }
+            if provider in provider_apis:
+                provider_config["api"] = provider_apis[provider]
+                key_env = f"{provider.upper()}_API_KEY"
                 provider_config["apiKey"] = {
                     "source": "env",
                     "provider": "default",
-                    "id": "QWEN_API_KEY",
+                    "id": key_env,
                 }
-                config.setdefault("secrets", {}).setdefault("providers", {})[
-                    "default"
-                ] = {
+                config.setdefault("secrets", {}).setdefault("providers", {})["default"] = {
                     "source": "env",
-                    "allowlist": ["QWEN_API_KEY"],
+                    "allowlist": [key_env],
                 }
             models = provider_config.get("models")
             if isinstance(models, list):
                 for model in models:
-                    if isinstance(model, dict) and model.get("id") == self.model_name:
+                    if isinstance(model, dict) and model.get("id") in {self.model_name, model_id}:
                         model["id"] = model_id
                         model["name"] = model_id
-                        if provider == "qwen":
+                        if (provider, model_id) in {
+                            ("qwen", "qwen3.8-flash"),
+                            ("qwen", "qwen3.8-max"),
+                            ("deepseek", "deepseek-v4-pro"),
+                            ("anthropic", "claude-opus-5.5"),
+                            ("openai", "gpt-6.1-sol"),
+                            ("openai", "gpt-5.6-sol"),
+                        }:
                             model["reasoning"] = True
                             model["input"] = ["text"]
-                            model["contextWindow"] = _QWEN_38_FLASH_CONTEXT_WINDOW
-                            model["maxTokens"] = _QWEN_38_FLASH_MAX_TOKENS
+                        if provider in {"qwen", "deepseek"}:
                             model["compat"] = {
                                 "supportsReasoningEffort": True,
                                 "supportedReasoningEfforts": [
@@ -150,6 +158,21 @@ class OpenClawAgent(HarborOpenClaw):
                                     "low",
                                     "medium",
                                     "high",
+                                ],
+                            }
+                        if provider == "qwen" and model_id == "qwen3.8-flash":
+                            model["contextWindow"] = _QWEN_38_FLASH_CONTEXT_WINDOW
+                            model["maxTokens"] = _QWEN_38_FLASH_MAX_TOKENS
+                        if provider == "openai" and model_id == "gpt-6.1-sol":
+                            model["compat"] = {
+                                "supportsReasoningEffort": True,
+                                "supportedReasoningEfforts": [
+                                    "none",
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "xhigh",
+                                    "max",
                                 ],
                             }
                         if provider == "openai" and model_id == "gpt-5.6-sol":
@@ -209,9 +232,7 @@ class OpenClawAgent(HarborOpenClaw):
                 self.logs_dir,
                 identity,
                 failure={"code": code.value, **details},
-            ).write(
-                self.logs_dir / "openclaw-evidence.json"
-            )
+            ).write(self.logs_dir / "openclaw-evidence.json")
             raise
 
     @override
@@ -221,11 +242,11 @@ class OpenClawAgent(HarborOpenClaw):
         """Copy the OpenClaw session transcript using Node in the slim image."""
         command = (
             "node -e "
-            "'const fs=require(\"fs\");"
-            "const raw=fs.readFileSync(\"/logs/agent/openclaw.txt\",\"utf8\");"
-            "const match=raw.match(/\"sessionFile\"\\s*:\\s*\"([^\"]+)\"/);"
+            '\'const fs=require("fs");'
+            'const raw=fs.readFileSync("/logs/agent/openclaw.txt","utf8");'
+            'const match=raw.match(/"sessionFile"\\s*:\\s*"([^"]+)"/);'
             "const source=match?.[1];"
-            "if(source&&fs.existsSync(source))fs.copyFileSync(source,\"/logs/agent/openclaw.session.jsonl\");'"
+            'if(source&&fs.existsSync(source))fs.copyFileSync(source,"/logs/agent/openclaw.session.jsonl");\''
         )
         try:
             await self.exec_as_agent(environment, command=command, env=env)
