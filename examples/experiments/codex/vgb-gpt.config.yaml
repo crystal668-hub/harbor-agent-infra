@@ -1,10 +1,7 @@
-# Validated native codex configuration. Run from the repository root.
-# Credentials: OPENAI_API_KEY / OPENAI_BASE_URL in .env; never add values here.
-# Routine runs: hai run --config <this-file> --group skills_off
-# experiment.v2 stores both group definitions; only the selected group runs.
+# Native Codex GPT configuration. Credentials stay in the environment.
 schema_version: harbor-run.v1
 run:
-  output_dir: run-artifacts/codex-vgb-high
+  output_dir: run-artifacts/codex-vgb-gpt-6.1-sol
   skills_root: ${OPENCLAW_SKILLS_ROOT}
   vgb_python: ${VGB_PYTHON}
 docker:
@@ -29,7 +26,7 @@ resources:
       memory_enforcement_policy: limit
 experiment:
   schema_version: experiment.v2
-  experiment_id: codex-vgb-high
+  experiment_id: codex-vgb-gpt-6.1-sol
   domain: verifier-grounded
   benchmark:
     package_lock: runtime-lock.json
@@ -47,7 +44,7 @@ experiment:
     skills_enabled: false
   agent:
     adapter: codex
-    model: gpt-5.6-sol
+    model: gpt-6.1-sol
     reasoning_effort: high
   image:
     reference: hai-base-env

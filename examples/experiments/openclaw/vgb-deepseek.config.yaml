@@ -1,0 +1,59 @@
+# Selected four-model example. Credentials stay in the environment.
+docker:
+  delete_containers: true
+experiment:
+  agent:
+    adapter: openclaw
+    model: deepseek/deepseek-v4-pro
+    thinking: high
+  benchmark:
+    cases:
+    - task_ids:
+      - rdkit_001_qed_max
+      track: open_generation_rdkit
+    package_lock: runtime-lock.json
+  domain: verifier-grounded
+  experiment_id: openclaw-vgb-deepseek-v4-pro
+  groups:
+  - id: skills_on
+    label: benchmark skills enabled
+    skill_allowlist_ref: configs/skills/benchmark-allowlist.v1.json
+    skills_enabled: true
+  - id: skills_off
+    label: benchmark skills disabled
+    skills_enabled: false
+  image:
+    digest: sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936
+    platform: linux/arm64
+    pull_policy: if_missing
+    reference: hai-base-env
+  resources:
+    config_file: embedded
+    profile: openclaw
+  retry:
+    max_retries: 0
+    n_attempts: 1
+  schema_version: experiment.v2
+resources:
+  capacity:
+    max_concurrent_trials: 1
+    source: harbor-job
+  profiles:
+    openclaw:
+      cpus: 4
+      memory_mb: 6144
+      cpu_enforcement_policy: limit
+      memory_enforcement_policy: limit
+  schema_version: resource-profiles.v1
+run:
+  output_dir: run-artifacts/openclaw-vgb-deepseek-v4-pro
+  skills_root: ${OPENCLAW_SKILLS_ROOT}
+  vgb_python: ${VGB_PYTHON}
+schema_version: harbor-run.v1
+task:
+  agent_allowed_hosts: []
+  agent_network_mode: public
+  agent_timeout_sec: 1800
+  verifier_allowed_hosts: []
+  verifier_network_mode: public
+  verifier_timeout_sec: 120

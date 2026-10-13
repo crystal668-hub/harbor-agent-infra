@@ -12,7 +12,7 @@ from harbor_agent_infra.preparation.experiments import expand_required
 @pytest.mark.parametrize(
     "agent,filename,model",
     [
-        ("codex", "vgb-gpt.config.yaml", "gpt-5.6-sol"),
+        ("codex", "vgb-gpt.config.yaml", "gpt-6.1-sol"),
         ("claude-code", "vgb-claude.config.yaml", "claude-opus-5.5"),
         ("codex", "vgb-claude.config.yaml", "claude-opus-5.5"),
         ("codex", "vgb-qwen.config.yaml", "qwen3.8-max"),
@@ -46,3 +46,36 @@ def test_native_templates_materialize_only_requested_group(
     else:
         assert all(value.startswith("${") and value.endswith("}") for value in native.env.values())
     assert jobs.groups["skills_off"].job_config.retry.max_retries == 0
+
+
+@pytest.mark.parametrize("agent", ["openclaw", "hermes"])
+@pytest.mark.parametrize(
+    "label,model",
+    [
+        ("gpt", "openai/gpt-6.1-sol"),
+        ("qwen", "qwen/qwen3.8-max"),
+        ("claude", "anthropic/claude-opus-5.5"),
+        ("deepseek", "deepseek/deepseek-v4-pro"),
+    ],
+)
+def test_provider_templates_materialize_selected_models_with_high_effort(
+    agent, label, model, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("OPENCLAW_SKILLS_ROOT", str(tmp_path / "not-needed"))
+    monkeypatch.setenv("VGB_PYTHON", "/unused/vgb/python")
+    path = Path("examples/experiments") / agent / f"vgb-{label}.config.yaml"
+    config = RunConfig.model_validate(expand_required(yaml.safe_load(path.read_text())))
+    jobs = materialize_paired_job_configs(
+        config.experiment,
+        config.resources,
+        FakeVgbRuntime(),
+        group_id="skills_off",
+        output_root=tmp_path,
+    )
+    assert list(jobs.groups) == ["skills_off"]
+    native = jobs.groups["skills_off"].job_config.agents[0]
+    class_name = "OpenClawAgent" if agent == "openclaw" else "HermesAgent"
+    assert native.import_path == f"adapters.{agent}.adapter:{class_name}"
+    assert native.model_name == model
+    assert native.kwargs["thinking" if agent == "openclaw" else "reasoning"] == "high"
+    assert native.skills == [] and native.env == {}
