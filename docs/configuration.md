@@ -7,10 +7,12 @@ Native templates also have tracked copies under `examples/experiments/codex/`
 and `examples/experiments/claude-code/`. Keep fixed provider settings intact and edit only
 `benchmark.cases` and `task_ids` for each run.
 
-OpenClaw templates use `thinking: high`; Hermes templates use `reasoning: high`.
-Native Codex and Claude Code use `reasoning_effort: high`, with `adapter: codex`
-and `model: gpt-5.6-sol`, or `adapter: claude-code` and
-`model: claude-opus-5.5`. Both use the same `hai run` / materialization flow.
+All four harness directories now contain GPT `gpt-6.1-sol`, Claude
+`claude-opus-5.5`, Qwen `qwen3.8-max` and DeepSeek `deepseek-v4-pro` templates.
+OpenClaw uses `thinking: high`; Hermes uses `reasoning: high`; native Codex and
+Claude Code use `reasoning_effort: high`. All use the same `hai run` /
+materialization flow. See [model-matrix.md](model-matrix.md) for the 4×4 routes,
+maximum-output-token controls and the distinction between defaults and ceilings.
 The current native E2E helper accepts `--reasoning-effort` and defaults to `high`.
 Run a consolidated `harbor-run.v1` file with the default single `skills_off`
 group:

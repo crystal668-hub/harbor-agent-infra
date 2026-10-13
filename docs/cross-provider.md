@@ -1,6 +1,8 @@
 # Native CLI cross-provider configuration
 
 The native Harbor agents keep CLI selection independent of model selection.
+All four harnesses now have the four selected model templates; see
+[model-matrix.md](model-matrix.md) for output-token controls and validation scope.
 Use `experiment.agent.provider` to select the host credential source and
 `base_url_env` to select a protocol-specific endpoint variable. Neither field
 contains a credential or an endpoint value. Harbor resolves the environment

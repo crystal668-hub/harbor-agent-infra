@@ -1,6 +1,8 @@
 # Codex local experiment contract
 
-Validated combination: `codex` with `gpt-5.6-sol`, `reasoning_effort: high`.
+Current configured combination: `codex` with `gpt-6.1-sol`, `reasoning_effort: high`.
+Historical native GPT validation used `gpt-5.6-sol`; the model change does not
+retroactively validate the updated configuration. See `docs/model-matrix.md`.
 Credentials are loaded from `.env` through `OPENAI_API_KEY` and `OPENAI_BASE_URL`.
 No secret or endpoint value belongs in this YAML. The CLI version and immutable
 image come from `runtime-lock.json`.
