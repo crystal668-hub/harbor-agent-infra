@@ -53,7 +53,14 @@ def test_bridge_routes_streams_without_exposing_credentials(
     response = client.post(
         f"/v1/{route}",
         headers={"x-api-key": key},
-        json={"model": model, "stream": True, "input": "fixture"},
+        json={
+            "model": model,
+            "stream": True,
+            "input": "fixture",
+            **(
+                {"reasoning": {"effort": "high", "summary": "auto"}} if route == "responses" else {}
+            ),
+        },
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
@@ -63,6 +70,8 @@ def test_bridge_routes_streams_without_exposing_credentials(
     assert kwargs["model"] == f"openai/{model}"
     assert kwargs["api_key"] == key and kwargs["api_base"] == base
     assert kwargs.get("use_chat_completions_api") is (True if route == "responses" else None)
+    if route == "responses":
+        assert kwargs["reasoning"] == {"effort": "high"}
 
 
 def test_bridge_rejects_wrong_credentials_and_models(client):

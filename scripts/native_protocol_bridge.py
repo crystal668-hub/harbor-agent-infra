@@ -53,6 +53,15 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
             if messages:
                 result = await litellm.anthropic.messages.acreate(**payload)
             else:
+                # LiteLLM preserves a Responses reasoning dict when it has a
+                # summary field. This gateway's Chat Completions endpoint
+                # requires reasoning_effort to be a string. Keep the requested
+                # effort and omit the unsupported summary presentation setting.
+                reasoning = payload.get("reasoning")
+                if isinstance(reasoning, dict):
+                    payload["reasoning"] = {
+                        name: value for name, value in reasoning.items() if name != "summary"
+                    }
                 result = await litellm.aresponses(**payload, use_chat_completions_api=True)
         except Exception as exc:
             # SDK exception text can contain request URLs or credentials.

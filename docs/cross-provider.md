@@ -25,6 +25,13 @@ only the two configured model IDs and authenticates using the matching provider
 key. This is a standalone host-side service; Harbor still owns Trial scheduling,
 CLI installation, Docker lifecycle, logs and cleanup.
 
+The Claude bridge preserves requested reasoning effort but omits the Responses
+reasoning-summary presentation field. The gateway requires a string
+`reasoning_effort` on Chat Completions; forwarding a summary-bearing reasoning
+object causes an upstream JSON type error. This does not establish an equal
+model reasoning budget. Codex also falls back from unsupported gateway/bridge
+WebSockets to HTTP streaming; its native logs preserve those transport attempts.
+
 Configure the endpoint variables in the ignored `.env`. At the current gateway,
 Qwen/DeepSeek Messages use the service root, while Responses use the existing
 `/v1` base. Other gateways require separately verified addresses; the native
