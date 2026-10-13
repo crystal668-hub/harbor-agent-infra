@@ -13,8 +13,12 @@ class AgentSpec(BaseModel):
 
     adapter: Literal["openclaw", "hermes", "codex", "claude-code"]
     model: str = Field(min_length=1)
-    provider: Literal["openai", "anthropic", "qwen", "deepseek"] | None = None
-    base_url_env: str | None = Field(default=None, pattern=r"^[A-Z][A-Z0-9_]*$")
+    provider: Literal["openai", "anthropic", "qwen", "deepseek"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    base_url_env: str | None = Field(
+        default=None, pattern=r"^[A-Z][A-Z0-9_]*$", exclude_if=lambda value: value is None
+    )
     thinking: str | None = Field(default=None, min_length=1)
     reasoning: (
         Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None

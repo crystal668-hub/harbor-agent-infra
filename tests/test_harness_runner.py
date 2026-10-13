@@ -82,6 +82,19 @@ def test_native_provider_uses_its_own_base_url_by_default() -> None:
     assert config.env["OPENAI_BASE_URL"] == "${QWEN_BASE_URL}"
 
 
+def test_unselected_provider_preserves_legacy_agent_serialization() -> None:
+    # experiment_sha256 includes this payload; adding unused defaults must not
+    # invalidate historical run manifests or failure-recovery configurations.
+    spec = AgentSpec(adapter="codex", model="gpt-5.6-sol", reasoning_effort="high")
+    assert spec.model_dump(mode="json") == {
+        "adapter": "codex",
+        "model": "gpt-5.6-sol",
+        "thinking": None,
+        "reasoning": None,
+        "reasoning_effort": "high",
+    }
+
+
 @pytest.mark.parametrize(
     "options",
     [
