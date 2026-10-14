@@ -50,6 +50,30 @@ class OpenClawHarnessRunner(HarnessRunner):
         paired: bool = False,
     ) -> AgentConfig:
         kwargs: dict[str, object] = {"version": lock.openclaw.version}
+        if spec.thinking is not None:
+            kwargs["thinking"] = spec.thinking
+        if spec.max_output_tokens is not None:
+            provider, _, model_id = spec.model.partition("/")
+            kwargs["openclaw_config"] = {
+                "agents": {
+                    "defaults": {
+                        "models": {spec.model: {"params": {"maxTokens": spec.max_output_tokens}}}
+                    }
+                },
+                "models": {
+                    "providers": {
+                        provider: {
+                            "models": [
+                                {
+                                    "id": model_id,
+                                    "name": model_id,
+                                    "maxTokens": spec.max_output_tokens,
+                                }
+                            ]
+                        }
+                    }
+                },
+            }
         if paired:
             kwargs.update(
                 {
@@ -87,6 +111,8 @@ class HermesHarnessRunner(HarnessRunner):
         }
         if spec.reasoning is not None:
             kwargs["reasoning"] = spec.reasoning
+        if spec.max_output_tokens is not None:
+            kwargs["max_output_tokens"] = spec.max_output_tokens
         return AgentConfig(
             import_path=self.import_path,
             model_name=spec.model,
@@ -120,6 +146,22 @@ class NativeHarnessRunner(HarnessRunner):
                 f"{target}_API_KEY": f"${{{source}_API_KEY}}",
                 f"{target}_BASE_URL": f"${{{spec.base_url_env or source + '_BASE_URL'}}}",
             }
+        if spec.max_output_tokens is not None:
+            if self.agent_name == "claude-code":
+                env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = str(spec.max_output_tokens)
+            else:
+                if spec.max_output_tokens != 64_000:
+                    raise ValueError("The Codex cap bridge currently requires 64000 output tokens")
+                endpoint_envs = {
+                    "openai": "CODEX_GPT_BASE_URL",
+                    "anthropic": "CODEX_CLAUDE_BASE_URL",
+                    "qwen": "CODEX_QWEN_BASE_URL",
+                    "deepseek": "CODEX_DEEPSEEK_BASE_URL",
+                }
+                if spec.provider is None or spec.base_url_env != endpoint_envs[spec.provider]:
+                    raise ValueError(
+                        "Codex output caps require an explicit CODEX_* bridge endpoint"
+                    )
         return AgentConfig(
             name=self.agent_name,
             model_name=spec.model,

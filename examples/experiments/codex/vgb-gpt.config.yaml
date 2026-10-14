@@ -44,6 +44,9 @@ experiment:
     skills_enabled: false
   agent:
     adapter: codex
+    provider: openai
+    base_url_env: CODEX_GPT_BASE_URL
+    max_output_tokens: 64000
     model: gpt-6.1-sol
     reasoning_effort: high
   image:

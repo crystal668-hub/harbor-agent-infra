@@ -4,6 +4,7 @@ docker:
 experiment:
   agent:
     adapter: openclaw
+    max_output_tokens: 64000
     model: qwen/qwen3.8-max
     thinking: high
   benchmark:

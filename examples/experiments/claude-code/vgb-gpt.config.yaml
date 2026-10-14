@@ -44,6 +44,7 @@ experiment:
     skills_enabled: false
   agent:
     adapter: claude-code
+    max_output_tokens: 64000
     model: gpt-6.1-sol
     provider: openai
     reasoning_effort: high

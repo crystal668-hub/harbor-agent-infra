@@ -41,10 +41,16 @@ def test_native_templates_materialize_only_requested_group(
     assert native.name == agent and native.import_path is None
     assert native.model_name == model and native.kwargs["reasoning_effort"] == "high"
     assert native.skills == []
+    assert config.experiment.agent.max_output_tokens == 64_000
+    credential_env = dict(native.env)
+    if agent == "claude-code":
+        assert credential_env.pop("CLAUDE_CODE_MAX_OUTPUT_TOKENS") == "64000"
     if config.experiment.agent.provider is None:
-        assert native.env == {}
+        assert credential_env == {}
     else:
-        assert all(value.startswith("${") and value.endswith("}") for value in native.env.values())
+        assert all(
+            value.startswith("${") and value.endswith("}") for value in credential_env.values()
+        )
     assert jobs.groups["skills_off"].job_config.retry.max_retries == 0
 
 

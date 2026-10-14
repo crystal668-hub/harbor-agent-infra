@@ -44,6 +44,7 @@ experiment:
     skills_enabled: false
   agent:
     adapter: claude-code
+    max_output_tokens: 64000
     model: qwen3.8-max
     provider: qwen
     reasoning_effort: high

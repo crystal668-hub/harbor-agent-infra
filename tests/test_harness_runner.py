@@ -107,3 +107,39 @@ def test_unselected_provider_preserves_legacy_agent_serialization() -> None:
 def test_provider_routing_rejects_ambiguous_or_literal_configuration(options) -> None:
     with pytest.raises(ValidationError):
         AgentSpec(model="fixture", **options)
+
+
+@pytest.mark.parametrize("cap", [0, -1, 1.5, True])
+def test_output_cap_requires_positive_integer(cap):
+    with pytest.raises(ValidationError):
+        AgentSpec(adapter="hermes", model="fixture", max_output_tokens=cap)
+
+
+def test_single_group_openclaw_keeps_explicit_reasoning_and_output_cap():
+    spec = AgentSpec(
+        adapter="openclaw",
+        model="anthropic/claude-opus-5.5",
+        thinking="high",
+        max_output_tokens=64_000,
+    )
+    config = harness_runner_for("openclaw").build_agent_config(
+        spec, load_runtime_lock(Path("runtime-lock.json")), paired=False
+    )
+    from harbor.agents.factory import AgentFactory
+
+    agent = AgentFactory.create_agent_from_config(config, logs_dir=Path("/tmp/cap-test"))
+    agent.session_id = "output-cap-test__agent"
+    projected = agent._build_full_openclaw_config()
+    assert config.kwargs["thinking"] == "high"
+    assert projected["agents"]["defaults"]["models"][spec.model]["params"]["maxTokens"] == 64_000
+    assert projected["models"]["providers"]["anthropic"]["models"][0]["maxTokens"] == 64_000
+
+
+def test_codex_output_cap_rejects_direct_endpoint():
+    spec = AgentSpec(
+        adapter="codex", model="qwen3.8-max", provider="qwen", max_output_tokens=64_000
+    )
+    with pytest.raises(ValueError, match="bridge endpoint"):
+        harness_runner_for("codex").build_agent_config(
+            spec, load_runtime_lock(Path("runtime-lock.json"))
+        )

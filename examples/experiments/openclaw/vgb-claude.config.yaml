@@ -4,6 +4,7 @@ docker:
 experiment:
   agent:
     adapter: openclaw
+    max_output_tokens: 64000
     model: anthropic/claude-opus-5.5
     thinking: high
   benchmark:

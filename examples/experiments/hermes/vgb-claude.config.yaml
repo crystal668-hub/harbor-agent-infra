@@ -4,6 +4,7 @@ docker:
 experiment:
   agent:
     adapter: hermes
+    max_output_tokens: 64000
     model: anthropic/claude-opus-5.5
     reasoning: high
   benchmark:

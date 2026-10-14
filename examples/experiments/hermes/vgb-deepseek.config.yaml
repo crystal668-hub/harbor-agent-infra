@@ -4,6 +4,7 @@ docker:
 experiment:
   agent:
     adapter: hermes
+    max_output_tokens: 64000
     model: deepseek/deepseek-v4-pro
     reasoning: high
   benchmark:

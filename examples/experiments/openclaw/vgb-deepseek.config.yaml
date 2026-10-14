@@ -4,6 +4,7 @@ docker:
 experiment:
   agent:
     adapter: openclaw
+    max_output_tokens: 64000
     model: deepseek/deepseek-v4-pro
     thinking: high
   benchmark:

@@ -4,6 +4,7 @@ docker:
 experiment:
   agent:
     adapter: openclaw
+    max_output_tokens: 64000
     model: openai/gpt-6.1-sol
     thinking: high
   benchmark:

@@ -24,6 +24,9 @@ class AgentSpec(BaseModel):
         Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None
     ) = None
     reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+    max_output_tokens: int | None = Field(
+        default=None, gt=0, strict=True, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_thinking(self) -> AgentSpec:
