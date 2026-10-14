@@ -3,7 +3,9 @@
 Current configured combination: `codex` with `gpt-6.1-sol`, `reasoning_effort: high`.
 Historical native GPT validation used `gpt-5.6-sol`; the model change does not
 retroactively validate the updated configuration. See `docs/model-matrix.md`.
-Credentials are loaded from `.env` through `OPENAI_API_KEY` and `OPENAI_BASE_URL`.
+Credentials are loaded from `.env` through `OPENAI_API_KEY`; the capped local
+bridge endpoint comes from `CODEX_GPT_BASE_URL`. Every current template sets
+`max_output_tokens: 64000`; the bridge injects that value on each request.
 No secret or endpoint value belongs in this YAML. The CLI version and immutable
 image come from `runtime-lock.json`.
 

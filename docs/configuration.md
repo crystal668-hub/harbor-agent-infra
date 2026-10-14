@@ -11,7 +11,9 @@ All four harness directories now contain GPT `gpt-6.1-sol`, Claude
 `claude-opus-5.5`, Qwen `qwen3.8-max` and DeepSeek `deepseek-v4-pro` templates.
 OpenClaw uses `thinking: high`; Hermes uses `reasoning: high`; native Codex and
 Claude Code use `reasoning_effort: high`. All use the same `hai run` /
-materialization flow. See [model-matrix.md](model-matrix.md) for the 4×4 routes,
+materialization flow. All 16 templates explicitly set
+`experiment.agent.max_output_tokens: 64000`. Codex requires the capped local
+bridge endpoints; see [cross-provider.md](cross-provider.md). See [model-matrix.md](model-matrix.md) for the 4×4 routes,
 maximum-output-token controls and the distinction between defaults and ceilings.
 The current native E2E helper accepts `--reasoning-effort` and defaults to `high`.
 Run a consolidated `harbor-run.v1` file with the default single `skills_off`

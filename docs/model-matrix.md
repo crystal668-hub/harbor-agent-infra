@@ -1,5 +1,88 @@
 # Four harnesses and four selected models
 
+The selected single-response output setting is now **64,000 tokens** in all
+16 example templates and local configurations. The field is
+`experiment.agent.max_output_tokens: 64000`. Probes on 2026-10-14 requested
+high effort, a single `skills_off` group and the short final reply `OK`.
+
+| Harness | GPT `gpt-6.1-sol` | Claude `claude-opus-5.5` | Qwen `qwen3.8-max` | DeepSeek `deepseek-v4-pro` |
+| --- | --- | --- | --- | --- |
+| OpenClaw 2026.6.34 | 64,000; passed transport probe | 64,000; passed after adaptive-thinking fix | 64,000; passed transport probe | 64,000; passed transport probe |
+| Hermes 0.21.6 | 64,000; passed request-builder probe | 64,000; passed request-builder probe | 64,000; passed request-builder probe | 64,000; passed request-builder probe |
+| Codex 0.162.1 | 64,000; passed native CLI via cap bridge | 64,000; passed native CLI via cap bridge | 64,000; passed native CLI via cap bridge | 64,000; passed native CLI via cap bridge |
+| Claude Code 2.1.296 | 64,000; passed native CLI | 64,000; passed native CLI | 64,000; passed native CLI | 64,000; passed native CLI |
+
+All 16 final upstream requests captured **64,000**, including the requests
+created by protocol conversion. This confirms the selected parameter's
+compatibility on the current gateway. It does not guarantee arbitrary future
+calls, full VGB runs, maximum-length generation or a strict gateway-enforced
+limit: the previous GPT tiny-cap check showed that this gateway can ignore
+`max_output_tokens`. A long prompt may also reduce available output space.
+Eight combinations used native CLI calls; OpenClaw and Hermes checks used their
+locked transport/request builders, with guarded runtime edits described below.
+
+OpenClaw sets both per-model request `params.maxTokens` and model catalog
+`maxTokens` to 64,000. Explicit `thinking: high` now reaches the runner even for
+single-group runs; it was previously projected only for paired runs. Its wire
+fields are Responses `max_output_tokens`, Claude Messages `max_tokens`, and
+Qwen/DeepSeek Chat `max_completion_tokens`.
+
+Hermes receives `HAI_MAX_OUTPUT_TOKENS=64000` through the adapter. Both locked
+CLI constructors omit `AIAgent(max_tokens=...)`; the adapter applies a guarded,
+idempotent edit to the pinned `agent/agent_init.py` so initialization reads the
+explicit environment value when the constructor omits it. This sets the live
+`agent.max_tokens` and its saved session configuration before the existing
+request builders use it. An explicitly supplied constructor value retains
+precedence. The source commit is verified before patching.
+
+Claude Code receives `CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000`. Codex has no native
+output-token field, so the existing local bridge now injects 64,000 on every
+Responses request. GPT/Qwen/DeepSeek use direct capped Responses forwarding;
+Claude keeps Responses-to-Chat conversion and explicitly preserves
+`max_tokens=64000` in the converted request body. Configure
+`CODEX_GPT_BASE_URL`, `CODEX_CLAUDE_BASE_URL`, `CODEX_QWEN_BASE_URL` and
+`CODEX_DEEPSEEK_BASE_URL` to the matching bridge routes. Their Docker Desktop
+paths are `/openai/v1`, `/anthropic/v1`, `/qwen/v1`, `/deepseek/v1` on the host
+bridge; upstream provider base variables keep their original gateway values.
+The current local bridge has been restarted with these routes and its health
+endpoint returned HTTP 200. The GPT Claude Code conversion route also forwards
+64,000 to Responses. A single cap spans the response, including reasoning where
+counted by the upstream protocol, rather than the entire multi-turn run.
+
+The OpenClaw Claude failure was **a stale model capability predicate, not an
+8,192-token limit**. OpenClaw normalizes dots to hyphens, but its locked
+`supportsClaudeAdaptiveThinking` predicate does not recognize either
+`claude-opus-5.5` or `claude-opus-5-5`. It consequently sends manual
+`thinking.type=enabled` and `budget_tokens`, which the gateway explicitly
+rejects for this model. The appropriate request is:
+
+```json
+{
+  "model": "claude-opus-5.5",
+  "max_tokens": 64000,
+  "thinking": {"type": "adaptive", "display": "summarized"},
+  "output_config": {"effort": "high"}
+}
+```
+
+The adapter applies a version-guarded, idempotent edit to the installed
+OpenClaw 2026.6.34 predicate to recognize Opus 5.5. This lets the existing
+transport construct adaptive thinking natively, including correct replay
+behavior, without changing the gateway model ID or claiming that it is an
+older Claude model. There is no `budget_tokens` for adaptive thinking;
+`display` controls presentation and can be omitted without selecting a
+reasoning budget. The corrected locked transport returned exactly `OK` at
+64,000 with HTTP 200 and normal completion.
+
+Validation: **217 provider-free tests passed**, including output-cap routing,
+serialization compatibility, guarded edits and repeatability, native bridge
+forwarding, and template materialization. All 16 live requests passed. Captures,
+CLI output and the selected-setting matrix are under
+`run-artifacts/model-matrix-2026-10-14/output-64000/`. Full Docker/VGB benchmarks
+were not rerun for this parameter audit.
+
+## Earlier boundary audit (before the 64,000 decision and compatibility fix)
+
 The 16 templates select GPT `gpt-6.1-sol`, Claude `claude-opus-5.5`, Qwen
 `qwen3.8-max`, and DeepSeek `deepseek-v4-pro`. Live output-cap probes on
 2026-10-14 explicitly requested high reasoning effort and a single `skills_off`

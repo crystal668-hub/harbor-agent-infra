@@ -11,9 +11,10 @@ their original credential routing.
 
 | CLI | Model | Provider | Key source | Endpoint source | Route |
 | --- | --- | --- | --- | --- | --- |
+| Codex | `gpt-6.1-sol` | `openai` | `OPENAI_API_KEY` | `CODEX_GPT_BASE_URL` | Local capped Responses forwarding |
 | Codex | `claude-opus-5.5` | `anthropic` | `ANTHROPIC_API_KEY` | `CODEX_CLAUDE_BASE_URL` | Local Responses → Chat Completions bridge |
-| Codex | `qwen3.8-max` | `qwen` | `QWEN_API_KEY` | `QWEN_BASE_URL` | Gateway Responses |
-| Codex | `deepseek-v4-pro` | `deepseek` | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL` | Gateway Responses |
+| Codex | `qwen3.8-max` | `qwen` | `QWEN_API_KEY` | `CODEX_QWEN_BASE_URL` | Local capped Responses forwarding |
+| Codex | `deepseek-v4-pro` | `deepseek` | `DEEPSEEK_API_KEY` | `CODEX_DEEPSEEK_BASE_URL` | Local capped Responses forwarding |
 | Claude Code | `gpt-6.1-sol` | `openai` | `OPENAI_API_KEY` | `CLAUDE_CODE_GPT_BASE_URL` | Local Messages → Responses bridge |
 | Claude Code | `qwen3.8-max` | `qwen` | `QWEN_API_KEY` | `QWEN_ANTHROPIC_BASE_URL` | Gateway Messages |
 | Claude Code | `deepseek-v4-pro` | `deepseek` | `DEEPSEEK_API_KEY` | `DEEPSEEK_ANTHROPIC_BASE_URL` | Gateway Messages |
@@ -23,7 +24,7 @@ Codex/Claude Responses and Claude Code/GPT Messages requests returned HTTP 503
 with no available upstream channel. The local bridge uses LiteLLM 1.102.1 from
 Harbor's locked environment to convert streaming events, conversation history,
 tool calls and usage. Codex custom tools are converted by LiteLLM. It serves
-only the two configured model IDs and authenticates using the matching provider
+only the configured model IDs and authenticates using the matching provider
 key. This is a standalone host-side service; Harbor still owns Trial scheduling,
 CLI installation, Docker lifecycle, logs and cleanup.
 
@@ -38,9 +39,20 @@ Configure the endpoint variables in the ignored `.env`. At the current gateway,
 Qwen/DeepSeek Messages use the service root, while Responses use the existing
 `/v1` base. Other gateways require separately verified addresses; the native
 runner does not rewrite their paths. The Docker Desktop bridge addresses are
-`http://host.docker.internal:4141/v1` for `CODEX_CLAUDE_BASE_URL` and
+`http://host.docker.internal:4141/anthropic/v1` for `CODEX_CLAUDE_BASE_URL` and
 `http://host.docker.internal:4141` for `CLAUDE_CODE_GPT_BASE_URL`. Configure these
 local values yourself when reproducing on another host.
+
+The bridge now sets **64,000** output tokens on every routed request.
+All four Codex templates use it because the locked Codex request builder omits
+an output-cap parameter. Set the ignored `CODEX_*_BASE_URL` variables to the
+host bridge with these paths: GPT `/openai/v1`, Claude `/anthropic/v1`, Qwen
+`/qwen/v1`, DeepSeek `/deepseek/v1`. Keep `OPENAI_BASE_URL`,
+`ANTHROPIC_BASE_URL`, `QWEN_BASE_URL`, `DEEPSEEK_BASE_URL` pointing at the
+upstream gateway so the bridge does not recurse. The existing `/v1/responses`
+Claude conversion endpoint remains supported for earlier callers. See
+[model-matrix.md](model-matrix.md) for live 64,000-token validation and the
+OpenClaw Claude adaptive-thinking correction.
 
 Start the bridge from the repository root in a separate terminal and leave it
 running for Codex/Claude and Claude Code/GPT:
