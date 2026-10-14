@@ -38,11 +38,40 @@ class ArtifactRun:
     jobs_dir: Path
     job_count: int
     modified_at: float
+    category: str | None  # 'formal', 'temporary', or None for legacy top-level
 
 
 def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
+    """Discover artifact runs, supporting categorized (formal/temporary) and legacy top-level layout."""
     runs = []
+
+    # Discover categorized runs (formal/ and temporary/)
+    for category_name in ["formal", "temporary"]:
+        category_dir = artifacts_dir / category_name
+        if category_dir.is_dir() and not category_dir.is_symlink():
+            for child in category_dir.iterdir():
+                jobs_dir = child / "jobs"
+                if not child.is_dir() or child.is_symlink() or not jobs_dir.is_dir():
+                    continue
+                job_count = sum(
+                    job.is_dir() and (job / "config.json").is_file() for job in jobs_dir.iterdir()
+                )
+                runs.append(
+                    ArtifactRun(
+                        name=child.name,
+                        jobs_dir=jobs_dir,
+                        job_count=job_count,
+                        modified_at=child.stat().st_mtime,
+                        category=category_name,
+                    )
+                )
+
+    # Discover legacy top-level runs (backward compatibility)
     for child in artifacts_dir.iterdir():
+        # Skip category directories
+        if child.name in ("formal", "temporary"):
+            continue
+
         jobs_dir = child / "jobs"
         if not child.is_dir() or child.is_symlink() or not jobs_dir.is_dir():
             continue
@@ -55,8 +84,10 @@ def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
                 jobs_dir=jobs_dir,
                 job_count=job_count,
                 modified_at=child.stat().st_mtime,
+                category=None,  # Legacy top-level
             )
         )
+
     return tuple(sorted(runs, key=lambda run: (-run.modified_at, run.name)))
 
 
@@ -67,18 +98,30 @@ class _RunDispatcher:
         self._apps: dict[str, FastAPI] = {}
 
     def find_run(self, name: str) -> ArtifactRun | None:
-        return next(
-            (run for run in discover_artifact_runs(self.artifacts_dir) if run.name == name),
-            None,
-        )
+        """Find run by name. Prefers categorized runs over legacy top-level."""
+        candidates = [
+            run for run in discover_artifact_runs(self.artifacts_dir) if run.name == name
+        ]
+        if not candidates:
+            return None
+        # Prefer categorized (formal or temporary) over legacy None
+        categorized = [r for r in candidates if r.category is not None]
+        return categorized[0] if categorized else candidates[0]
+
+    def _cache_key(self, run: ArtifactRun) -> str:
+        """Generate cache key that isolates runs by category."""
+        if run.category is None:
+            return run.name
+        return f"{run.category}/{run.name}"
 
     def app_for(self, run: ArtifactRun) -> FastAPI:
         from harbor.viewer import create_app
 
-        app = self._apps.get(run.name)
+        cache_key = self._cache_key(run)
+        app = self._apps.get(cache_key)
         if app is None:
             app = create_app(run.jobs_dir, mode="jobs", static_dir=self.static_dir)
-            self._apps[run.name] = app
+            self._apps[cache_key] = app
         return app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -233,6 +276,27 @@ def _directory_page(runs: tuple[ArtifactRun, ...]) -> str:
         text-overflow: ellipsis;
         white-space: nowrap;
       }}
+      .category {{
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 8px;
+        font-size: .75rem;
+        font-weight: 600;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }}
+      .category.formal {{
+        background: #d4f4e2;
+        color: #0f6d38;
+      }}
+      .category.temporary {{
+        background: #fee;
+        color: #b71c1c;
+      }}
+      .category.legacy {{
+        background: #e0e0e0;
+        color: #616161;
+      }}
       .count {{ color: #68726a; font-size: .8125rem; }}
       .open {{ color: #17653a; font-size: .8125rem; font-weight: 700; }}
       .empty {{
@@ -263,6 +327,9 @@ def _directory_page(runs: tuple[ArtifactRun, ...]) -> str:
         .summary, .count, .empty {{ color: #a6b0a8; }}
         .list, .run, .empty {{ border-color: #303832; }}
         .run:hover, .run:focus-visible {{ background: #19201b; }}
+        .category.formal {{ background: #1a3d2a; color: #72d796; }}
+        .category.temporary {{ background: #3d1a1a; color: #ff6b6b; }}
+        .category.legacy {{ background: #2a2a2a; color: #9e9e9e; }}
         .open, code {{ color: #72d796; }}
         .empty strong {{ color: #e6ebe7; }}
       }}
@@ -284,9 +351,18 @@ def _run_row(run: ArtifactRun) -> str:
     query = urlencode({"run": run.name})
     name = escape(run.name)
     job_label = "job" if run.job_count == 1 else "jobs"
+
+    # Add category badge
+    if run.category == "formal":
+        category_badge = '<span class="category formal">Formal</span>'
+    elif run.category == "temporary":
+        category_badge = '<span class="category temporary">Temporary</span>'
+    else:
+        category_badge = '<span class="category legacy">Legacy</span>'
+
     return f"""
         <a class="run" href="/?{query}">
-          <span class="name">{name}</span>
+          <span class="name">{name}{category_badge}</span>
           <span class="count">{run.job_count} {job_label}</span>
           <span class="open">Open jobs &rarr;</span>
         </a>"""
