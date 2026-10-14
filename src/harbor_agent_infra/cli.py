@@ -136,6 +136,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="show what would be recovered without executing"
     )
 
+    merge = subparsers.add_parser(
+        "merge",
+        help="merge recovery results back into original run"
+    )
+    merge.add_argument(
+        "original_run",
+        type=Path,
+        help="path to original run directory"
+    )
+    merge.add_argument(
+        "recovery_runs",
+        type=Path,
+        nargs="+",
+        help="path(s) to recovery run directories"
+    )
+    merge.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="output directory for merged results"
+    )
+
     return parser
 
 
@@ -482,6 +504,60 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         else:
             print("\n⚠ No slots were executed")
+            return 1
+
+    if args.command == "merge":
+        from harbor_agent_infra.recovery.merger import ResultMerger
+
+        # Validate paths
+        if not args.original_run.exists():
+            print(f"Error: Original run not found: {args.original_run}")
+            return 1
+
+        for recovery_run in args.recovery_runs:
+            if not recovery_run.exists():
+                print(f"Error: Recovery run not found: {recovery_run}")
+                return 1
+
+        print(f"\nMerging recovery results...")
+        print(f"  Original run: {args.original_run}")
+        print(f"  Recovery runs: {len(args.recovery_runs)}")
+        for recovery_run in args.recovery_runs:
+            print(f"    - {recovery_run}")
+        print(f"  Output: {args.output_dir}")
+        print("")
+
+        # Create merger and execute
+        merger = ResultMerger(
+            original_run_dir=args.original_run,
+            recovery_dirs=args.recovery_runs,
+            output_dir=args.output_dir,
+        )
+
+        result = merger.merge()
+
+        # Report results
+        print("\n" + "=" * 70)
+        print("Merge Complete")
+        print("=" * 70)
+        print(f"Original run: {result.original_run}")
+        print(f"Recovery runs: {len(result.recovery_runs)}")
+        print(f"Total recovery slots: {result.total_slots}")
+        print(f"Successfully merged: {result.merged_slots}")
+        print(f"Conflicts: {len(result.conflicts)}")
+        print("=" * 70)
+
+        if result.conflicts:
+            print("\nConflicts encountered:")
+            for conflict in result.conflicts:
+                print(f"  ⚠ {conflict}")
+
+        print(f"\n✓ Merged results saved to: {result.merged_output_path}")
+
+        if result.merged_slots == result.total_slots:
+            return 0
+        else:
+            print(f"\n⚠ {result.total_slots - result.merged_slots} slots could not be merged")
             return 1
 
     raise AssertionError(f"unhandled command: {args.command}")
