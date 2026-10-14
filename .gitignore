@@ -10,6 +10,7 @@ configs/
 configs/resources/local.yaml
 run-artifacts/
 outputs/
+logs/
 dist/
 build/
 *.egg-info/
