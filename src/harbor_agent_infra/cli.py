@@ -158,6 +158,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="output directory for merged results"
     )
 
+    analyze = subparsers.add_parser(
+        "analyze",
+        help="analyze recovery statistics and generate report"
+    )
+    analyze.add_argument(
+        "run_dir",
+        type=Path,
+        help="path to run directory with recovery artifacts"
+    )
+    analyze.add_argument(
+        "--output",
+        type=Path,
+        help="output path for statistics JSON (optional)"
+    )
+
     return parser
 
 
@@ -558,6 +573,38 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         else:
             print(f"\n⚠ {result.total_slots - result.merged_slots} slots could not be merged")
+            return 1
+
+    if args.command == "analyze":
+        from harbor_agent_infra.recovery.analyzer import RecoveryAnalyzer
+
+        # Validate path
+        if not args.run_dir.exists():
+            print(f"Error: Run directory not found: {args.run_dir}")
+            return 1
+
+        print(f"\nAnalyzing recovery run: {args.run_dir}")
+        print("")
+
+        # Create analyzer
+        analyzer = RecoveryAnalyzer(run_dir=args.run_dir)
+
+        try:
+            # Generate report
+            report = analyzer.generate_report()
+            print(report)
+
+            # Save statistics if requested
+            if args.output:
+                stats = analyzer.analyze()
+                with open(args.output, "w") as f:
+                    json.dump(stats.to_dict(), f, indent=2)
+                print(f"\n✓ Statistics saved to: {args.output}")
+
+            return 0
+
+        except FileNotFoundError as e:
+            print(f"\nError: {e}")
             return 1
 
     raise AssertionError(f"unhandled command: {args.command}")
