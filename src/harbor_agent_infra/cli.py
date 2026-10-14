@@ -84,6 +84,58 @@ def build_parser() -> argparse.ArgumentParser:
         image_parser.add_argument("--reference", required=True)
         image_parser.add_argument("--digest")
         image_parser.add_argument("--platform", default="linux/arm64")
+
+    # Recovery system commands
+    audit = subparsers.add_parser(
+        "audit",
+        help="scan a run for failures and generate a recovery manifest"
+    )
+    audit.add_argument(
+        "run_name",
+        help="name of the run to audit"
+    )
+    audit.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        default=Path("run-artifacts"),
+        help="root artifacts directory (default: run-artifacts)"
+    )
+    audit.add_argument(
+        "--output",
+        type=Path,
+        help="output manifest path (default: <run_dir>/recovery-manifest.json)"
+    )
+    audit.add_argument(
+        "--auto-approve-substitutable",
+        action="store_true",
+        help="automatically approve all substitutable (engineering) failures"
+    )
+
+    recover = subparsers.add_parser(
+        "recover",
+        help="execute a recovery plan from a manifest"
+    )
+    recover.add_argument(
+        "manifest",
+        type=Path,
+        help="path to recovery manifest JSON"
+    )
+    recover.add_argument(
+        "--config",
+        type=Path,
+        help="run config TOML (required for recovery execution)"
+    )
+    recover.add_argument(
+        "--output-dir",
+        type=Path,
+        help="recovery run output directory (default: run-artifacts/recovery-<timestamp>)"
+    )
+    recover.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="show what would be recovered without executing"
+    )
+
     return parser
 
 
@@ -266,6 +318,92 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(evidence.to_dict(), indent=2, sort_keys=True))
         return 0
+    if args.command == "audit":
+        from harbor_agent_infra.recovery.auditor import audit_run_from_artifacts
+
+        manifest = audit_run_from_artifacts(args.artifacts_dir, args.run_name)
+
+        if args.auto_approve_substitutable:
+            manifest.approve_all_substitutable()
+
+        # Determine output path
+        if args.output:
+            output_path = args.output
+        else:
+            # Find the run directory
+            for category_name in ["formal", "temporary"]:
+                category_dir = args.artifacts_dir / category_name
+                run_dir = category_dir / args.run_name
+                if run_dir.exists():
+                    output_path = run_dir / "recovery-manifest.json"
+                    break
+            else:
+                run_dir = args.artifacts_dir / args.run_name
+                if run_dir.exists():
+                    output_path = run_dir / "recovery-manifest.json"
+                else:
+                    raise ValueError(f"Run directory not found: {args.run_name}")
+
+        manifest.save(output_path)
+
+        # Print summary
+        total = len(manifest.slots)
+        approved = len(manifest.get_approved_slots())
+        substitutable = sum(1 for s in manifest.slots if s.can_substitute)
+        capability = sum(
+            1 for s in manifest.slots
+            if s.failure_classification.category.value == "capability"
+        )
+        scoring = sum(
+            1 for s in manifest.slots
+            if s.failure_classification.category.value == "scoring"
+        )
+        engineering = sum(
+            1 for s in manifest.slots
+            if s.failure_classification.category.value == "engineering"
+        )
+
+        print(f"\n✓ Recovery manifest saved to: {output_path}")
+        print(f"\nFailure Summary:")
+        print(f"  Total failed slots: {total}")
+        print(f"  - Capability failures: {capability} (agent limitations)")
+        print(f"  - Engineering failures: {engineering} (infrastructure)")
+        print(f"  - Scoring failures: {scoring} (verifier errors)")
+        print(f"\nRecovery Status:")
+        print(f"  Substitutable slots: {substitutable}")
+        print(f"  Approved for recovery: {approved}")
+        print(f"  Pending review: {total - approved}")
+
+        if approved > 0:
+            print(f"\n→ Run 'hai recover {output_path}' to execute recovery")
+        elif substitutable > 0 and not args.auto_approve_substitutable:
+            print(f"\n→ Run 'hai audit {args.run_name} --auto-approve-substitutable' to auto-approve")
+        else:
+            print(f"\n→ No approved recovery slots (all failures are capability/scoring)")
+
+        return 0
+    if args.command == "recover":
+        from harbor_agent_infra.recovery.manifest import RecoveryManifest
+
+        manifest = RecoveryManifest.load(args.manifest)
+        approved = manifest.get_approved_slots()
+
+        if not approved:
+            print("No approved slots in manifest. Nothing to recover.")
+            return 1
+
+        if args.dry_run:
+            print(f"Dry run: would recover {len(approved)} approved slots:")
+            for slot in approved:
+                print(f"  - {slot.job_name} :: {slot.task_id}")
+                print(f"    Reason: {slot.failure_classification.reason}")
+                print(f"    Substitutions: {slot.substitution_count}/{slot.max_substitutions}")
+            return 0
+
+        # TODO: P2 implementation - actual recovery execution
+        print("Recovery execution not yet implemented (P2 phase)")
+        return 1
+
     raise AssertionError(f"unhandled command: {args.command}")
 
 
