@@ -507,15 +507,20 @@ async def run_paired_jobs(
     source_experiment_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
+    print(f"Starting run_paired_jobs for group_id={group_id}", flush=True)
     output_root.mkdir(parents=True, exist_ok=True)
     run_id = output_root.name
+    print(f"Run ID: {run_id}", flush=True)
     lock_path = Path(spec.benchmark.package_lock)
+    print(f"Loading lock from {lock_path}", flush=True)
     lock_payload = json.loads(lock_path.read_text(encoding="utf-8"))
+    print("Running preflight chemistry check...", flush=True)
     chemistry = await asyncio.to_thread(
         preflight_chemistry, runtime, lock_path,
         output_path=output_root / "chemistry-preflight.json",
         pull_policy=spec.image.pull_policy,
     )
+    print("Preflight chemistry check completed.", flush=True)
     runtime_metadata = runtime.metadata()
     if (
         runtime_metadata.get("package") != lock_payload["vgb"]["package"]
@@ -538,6 +543,7 @@ async def run_paired_jobs(
     started_at = (
         previous_manifest["started_at"] if previous_manifest else datetime.now(UTC).isoformat()
     )
+    print("Materializing paired job configs...", flush=True)
     materialized: MaterializedPairedJobs = materialize_paired_job_configs(
         spec,
         resource_config,
@@ -552,6 +558,7 @@ async def run_paired_jobs(
             f"-rerun-{uuid4().hex[:8]}" if replace_group_task_names else job_name_suffix
         ),
     )
+    print(f"Materialization complete. Groups: {list(materialized.groups.keys())}", flush=True)
     if previous_manifest:
         expected = next(iter(materialized.groups.values()))
         expected_source_hash = source_experiment_sha256 or expected.experiment_sha256
@@ -611,6 +618,7 @@ async def run_paired_jobs(
             for group_id, group in materialized.groups.items()
         },
     )
+    print("Event sink initialized.", flush=True)
     groups: list[GroupRunResult] = []
     errors: list[dict[str, str]] = []
     cancelled = False
@@ -888,14 +896,19 @@ async def run_paired_jobs(
         return json.loads(json.dumps(manifest))
 
     write_outputs()
+    print(f"Starting job execution loop for groups: {list(materialized.groups.keys())}", flush=True)
     for current_group_id in materialized.groups:
+        print(f"Processing group: {current_group_id}", flush=True)
         config: JobConfig = materialized.groups[current_group_id].job_config
+        print(f"Creating Job for group {current_group_id}...", flush=True)
         job = None
         status = "completed"
         try:
             job = await Job.create(config)
+            print(f"Job created: {job.id}. Setting up event hooks...", flush=True)
             job.on_trial_ended(_hook(events, current_group_id))
             job.on_trial_cancelled(_hook(events, current_group_id))
+            print(f"Starting job execution for {current_group_id}...", flush=True)
             result = await job.run()
         except asyncio.CancelledError:
             status = "cancelled"

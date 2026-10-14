@@ -279,14 +279,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "run":
         if args.config:
+            print(f"Loading config from {args.config}...", flush=True)
             config = load_run_config(args.config)
+            print("Config loaded. Extracting spec...", flush=True)
             spec = config.experiment
             resources = config.resources
             output_dir = args.output_dir or Path(config.run.output_dir)
             skills_root = Path(args.skills_root or config.run.skills_root)
+            print("Initializing VGB runtime...", flush=True)
             runtime = VgbRuntime.from_executable(config.run.vgb_python)
+            print("Getting task settings...", flush=True)
             task_settings = _task_settings(config)
             delete_containers = config.docker.delete_containers
+            print("Initial setup complete.", flush=True)
         else:
             if args.resource_config is None or args.output_dir is None:
                 raise ValueError(
@@ -301,7 +306,9 @@ def main(argv: list[str] | None = None) -> int:
             delete_containers = True
         if not isinstance(spec, ExperimentSpecV2):
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
+        print("Computing experiment SHA256...", flush=True)
         source_experiment_sha256 = experiment_sha256(spec)
+        print(f"Experiment SHA256: {source_experiment_sha256}", flush=True)
         replace_group_task_names = None
         job_name_suffix = ""
         explicit_task_names = frozenset(args.task_name or ())
@@ -321,6 +328,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.rerun_failed, group_id=args.group
             )
             spec = _with_selected_task_names(spec, replace_group_task_names)
+        print("Starting asyncio run...", flush=True)
         asyncio.run(
             run_paired_jobs(
                 spec,
@@ -438,10 +446,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         # P2 implementation - actual recovery execution
-        import asyncio
         from datetime import datetime
         from harbor_agent_infra.recovery.executor import RecoveryExecutor
-        from harbor_agent_infra.preparation.run_config import load_run_config
 
         # Load run config
         if not args.config:
@@ -506,7 +512,6 @@ def main(argv: list[str] | None = None) -> int:
         # Save recovery result summary
         result_path = output_dir / "recovery-result.json"
         with open(result_path, "w") as f:
-            import json
             json.dump(result.to_dict(), f, indent=2)
 
         print(f"\n✓ Recovery result saved to: {result_path}")
