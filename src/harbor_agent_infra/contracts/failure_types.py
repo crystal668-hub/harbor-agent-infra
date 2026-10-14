@@ -74,6 +74,12 @@ KNOWN_PATTERNS: dict[str, FailureClassification] = {
         is_substitutable=True,
         evidence={"type": "auth"},
     ),
+    "DockerException": FailureClassification(
+        category=FailureCategory.ENGINEERING,
+        reason="Docker operation failure",
+        is_substitutable=True,
+        evidence={"type": "docker"},
+    ),
     "OutOfMemoryError": FailureClassification(
         category=FailureCategory.ENGINEERING,
         reason="Container ran out of memory",

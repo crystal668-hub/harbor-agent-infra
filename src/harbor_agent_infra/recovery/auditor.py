@@ -68,14 +68,27 @@ def audit_run(
             )
 
             # Check if this is already a recovery slot
-            harbor_json = job_dir / "harbor.json"
             substitution_count = 0
-            if harbor_json.exists():
-                with open(harbor_json) as f:
-                    harbor_data = json.load(f)
-                    recovery_meta = harbor_data.get("recovery_metadata", {})
-                    if recovery_meta.get("is_recovery"):
-                        substitution_count = recovery_meta.get("substitution_attempt", 0)
+
+            # First check recovery-metadata.json (primary source)
+            recovery_meta_path = job_dir / "recovery-metadata.json"
+            if recovery_meta_path.exists():
+                with open(recovery_meta_path) as f:
+                    recovery_meta = json.load(f)
+                    # If this job is a recovery, increment the count
+                    if "slot_id" in recovery_meta:
+                        # This is a recovery job - get previous count from original slot
+                        # For now, we increment by 1 (this is the Nth recovery attempt)
+                        substitution_count = recovery_meta.get("substitution_count", 0) + 1
+            else:
+                # Fallback: check harbor.json for legacy recovery_metadata
+                harbor_json = job_dir / "harbor.json"
+                if harbor_json.exists():
+                    with open(harbor_json) as f:
+                        harbor_data = json.load(f)
+                        recovery_meta = harbor_data.get("recovery_metadata", {})
+                        if recovery_meta.get("is_recovery"):
+                            substitution_count = recovery_meta.get("substitution_attempt", 0)
 
             slot = RecoverySlot(
                 job_name=job_name,

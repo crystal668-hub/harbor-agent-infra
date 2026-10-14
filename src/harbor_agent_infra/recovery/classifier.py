@@ -56,6 +56,7 @@ def classify_failure(
         [
             "connection refused",
             "connection timeout",
+            "network timeout",
             "network unreachable",
             "no route to host",
             "dns resolution failed",
