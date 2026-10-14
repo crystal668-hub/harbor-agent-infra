@@ -69,6 +69,36 @@ def test_hermes_config_projects_reasoning_effort(tmp_path: Path) -> None:
     assert config["agent"]["reasoning_effort"] == "high"
 
 
+def test_hermes_cap_compiles_to_native_environment(tmp_path):
+    agent = HermesAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="openai/gpt-6.1-sol",
+        version="v0.21.6",
+        source_commit=SOURCE_COMMIT,
+        install_branch="main",
+        max_output_tokens=64_000,
+    )
+    assert agent.compile_env_vars()["HAI_MAX_OUTPUT_TOKENS"] == "64000"
+
+
+def test_hermes_install_applies_cap_patch_only_after_locked_install(tmp_path, monkeypatch):
+    agent = HermesAgent(
+        logs_dir=tmp_path / "logs",
+        model_name="qwen/qwen3.8-max",
+        version="v0.21.6",
+        source_commit=SOURCE_COMMIT,
+        install_branch="main",
+        max_output_tokens=64_000,
+    )
+    execute = AsyncMock()
+    monkeypatch.setattr(agent, "ensure_system_dependencies", AsyncMock())
+    monkeypatch.setattr(agent, "exec_as_agent", execute)
+    asyncio.run(agent.install(None))
+    assert execute.await_count == 2
+    assert "--commit" in execute.await_args_list[0].kwargs["command"]
+    assert "HAI_MAX_OUTPUT_TOKENS" in execute.await_args_list[1].kwargs["command"]
+
+
 def test_hermes_install_pins_installer_and_checkout(tmp_path: Path, monkeypatch) -> None:
     agent = _agent(tmp_path)
     dependencies = AsyncMock()

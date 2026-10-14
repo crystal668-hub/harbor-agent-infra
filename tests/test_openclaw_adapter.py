@@ -233,6 +233,21 @@ def test_openclaw_retries_npm_connection_reset(tmp_path: Path, monkeypatch) -> N
     sleep.assert_awaited_once_with(1)
 
 
+def test_openclaw_claude_install_applies_adaptive_compatibility(tmp_path, monkeypatch):
+    agent = OpenClawAgent(
+        logs_dir=tmp_path / "logs", model_name="anthropic/claude-opus-5.5", version="2026.6.34"
+    )
+    install = AsyncMock()
+    execute = AsyncMock()
+    monkeypatch.setattr(HarborOpenClaw, "install", install)
+    monkeypatch.setattr(agent, "exec_as_agent", execute)
+    asyncio.run(agent.install(None))
+    install.assert_awaited_once_with(None)
+    command = execute.await_args.kwargs["command"]
+    assert "nvm use 22" in command
+    assert "supportsClaudeAdaptiveThinking" in command
+
+
 def test_evidence_manifest_hashes_files_without_copying_content(tmp_path: Path) -> None:
     logs = tmp_path / "logs"
     logs.mkdir()

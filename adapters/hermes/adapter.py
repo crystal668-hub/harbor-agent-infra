@@ -3,18 +3,24 @@ from __future__ import annotations
 import asyncio
 import json
 import shlex
-from typing import Literal, override
+from typing import Annotated, Literal, override
 
 import yaml
 from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_template
 from harbor.agents.installed.hermes import Hermes as HarborHermes
 from harbor.agents.installed.hermes import HermesOptions as HarborHermesOptions
+from harbor.agents.options import Env
 from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext, ModelUsage
 from pydantic import Field
 
+from adapters.runtime_patches import hermes_output_patch_command
+
 
 class HermesOptions(HarborHermesOptions):
+    max_output_tokens: Annotated[int | None, Env("HAI_MAX_OUTPUT_TOKENS")] = Field(
+        default=None, gt=0, description="Maximum output tokens per model response."
+    )
     reasoning: (
         Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None
     ) = Field(
@@ -116,6 +122,13 @@ class HermesAgent(HarborHermes):
         for attempt in range(3):
             try:
                 await self.exec_as_agent(environment, command=command)
+                if self.options.max_output_tokens is not None:
+                    await self.exec_as_agent(
+                        environment,
+                        command=hermes_output_patch_command(self._source_commit),
+                        env={"HERMES_HOME": "/tmp/hermes"},
+                        timeout_sec=30,
+                    )
                 return
             except NonZeroAgentExitCodeError as exc:
                 if "pm install failed" not in str(exc) or attempt == 2:
@@ -157,6 +170,8 @@ class HermesAgent(HarborHermes):
             "OPENAI_BASE_URL": base_url,
             "HARBOR_INSTRUCTION": instruction,
         }
+        if self.options.max_output_tokens is not None:
+            env["HAI_MAX_OUTPUT_TOKENS"] = str(self.options.max_output_tokens)
         config_yaml = self._build_config_yaml(model)
         await self.exec_as_agent(
             environment,
