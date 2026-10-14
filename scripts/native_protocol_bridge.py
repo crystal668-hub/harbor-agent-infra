@@ -16,6 +16,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+OUTPUT_CAP = 64_000
+CODEX_MODELS = {
+    "openai": "gpt-6.1-sol",
+    "anthropic": "claude-opus-5.5",
+    "qwen": "qwen3.8-max",
+    "deepseek": "deepseek-v4-pro",
+}
+
 
 def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-opus-5.5") -> FastAPI:
     # Avoid LiteLLM's remote model-pricing refresh during local startup.
@@ -43,6 +51,7 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
         payload = await request.json()
         if payload.get("model") != model:
             raise HTTPException(400, "Model does not match the configured bridge route")
+        payload["max_tokens" if messages else "max_output_tokens"] = OUTPUT_CAP
         # A Claude credential is already validated with Chat Completions at
         # this gateway. Its Responses route has no upstream channel.
         if not base.endswith("/v1"):
@@ -62,6 +71,9 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
                     payload["reasoning"] = {
                         name: value for name, value in reasoning.items() if name != "summary"
                     }
+                # Keep an explicit Chat cap even if the Responses conversion
+                # drops its mapped optional parameter for this provider.
+                payload["extra_body"] = {**payload.get("extra_body", {}), "max_tokens": OUTPUT_CAP}
                 result = await litellm.aresponses(**payload, use_chat_completions_api=True)
         except Exception as exc:
             # SDK exception text can contain request URLs or credentials.
@@ -85,6 +97,58 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
     @app.post("/v1/responses")
     async def responses(request: Request):
         return await dispatch(request, messages=False)
+
+    @app.post("/{provider}/v1/responses")
+    async def capped_responses(provider: str, request: Request):
+        import httpx
+
+        if provider not in CODEX_MODELS:
+            raise HTTPException(404, "Unknown capped provider route")
+        if provider == "anthropic":
+            return await dispatch(request, messages=False)
+        prefix = provider.upper()
+        key = os.environ.get(f"{prefix}_API_KEY", "")
+        base = os.environ.get(f"{prefix}_BASE_URL", "").rstrip("/")
+        if not key or not base:
+            raise HTTPException(503, f"Missing {prefix} provider configuration")
+        if not hmac.compare_digest(request.headers.get("authorization", ""), f"Bearer {key}"):
+            raise HTTPException(401, "Invalid bridge credential")
+        payload = await request.json()
+        if payload.get("model") != CODEX_MODELS[provider]:
+            raise HTTPException(400, "Model does not match the configured bridge route")
+        payload["max_output_tokens"] = OUTPUT_CAP
+        if not base.endswith("/v1"):
+            base += "/v1"
+        client = httpx.AsyncClient(timeout=240)
+        try:
+            upstream = await client.send(
+                client.build_request(
+                    "POST",
+                    base + "/responses",
+                    json=payload,
+                    headers={"authorization": f"Bearer {key}"},
+                ),
+                stream=True,
+            )
+        except Exception:
+            await client.aclose()
+            raise HTTPException(502, "Upstream request failed") from None
+        if upstream.status_code != 200:
+            await upstream.aclose()
+            await client.aclose()
+            raise HTTPException(upstream.status_code, "Upstream rejected capped request")
+
+        async def passthrough() -> AsyncIterator[bytes]:
+            try:
+                async for chunk in upstream.aiter_bytes():
+                    yield chunk
+            finally:
+                await upstream.aclose()
+                await client.aclose()
+
+        return StreamingResponse(
+            passthrough(), media_type=upstream.headers.get("content-type", "text/event-stream")
+        )
 
     return app
 

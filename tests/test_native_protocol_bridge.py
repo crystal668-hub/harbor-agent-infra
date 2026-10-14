@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
@@ -72,6 +73,10 @@ def test_bridge_routes_streams_without_exposing_credentials(
     assert kwargs.get("use_chat_completions_api") is (True if route == "responses" else None)
     if route == "responses":
         assert kwargs["reasoning"] == {"effort": "high"}
+        assert kwargs["max_output_tokens"] == 64_000
+        assert kwargs["extra_body"]["max_tokens"] == 64_000
+    else:
+        assert kwargs["max_tokens"] == 64_000
 
 
 def test_bridge_rejects_wrong_credentials_and_models(client):
@@ -97,3 +102,52 @@ def test_bridge_does_not_return_sdk_exception_secrets(client, monkeypatch):
     )
     assert response.status_code == 502
     assert "claude-test-key" not in response.text
+
+
+@pytest.mark.parametrize(
+    "provider,model",
+    [("openai", "gpt-6.1-sol"), ("qwen", "qwen3.8-max"), ("deepseek", "deepseek-v4-pro")],
+)
+def test_responses_cap_bridge_injects_on_every_request(provider, model, monkeypatch):
+    monkeypatch.setenv(provider.upper() + "_API_KEY", "test-route-key")
+    monkeypatch.setenv(provider.upper() + "_BASE_URL", "https://upstream.example/v1")
+    captured = []
+
+    async def send(self, request, **kwargs):
+        import json
+
+        captured.append(json.loads(request.content))
+        assert request.headers["authorization"] == "Bearer test-route-key"
+        return httpx.Response(
+            200,
+            content=b'data: {"type":"response.completed"}\n\n',
+            headers={"content-type": "text/event-stream"},
+            request=request,
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "send", send)
+    with TestClient(create_app()) as client:
+        for cap in (None, 128_000):
+            payload = {"model": model, "input": "fixture", "stream": True}
+            if cap is not None:
+                payload["max_output_tokens"] = cap
+            response = client.post(
+                f"/{provider}/v1/responses",
+                json=payload,
+                headers={"authorization": "Bearer test-route-key"},
+            )
+            assert response.status_code == 200 and "response.completed" in response.text
+    assert [r["max_output_tokens"] for r in captured] == [64_000, 64_000]
+
+
+def test_capped_claude_route_uses_chat_conversion(client, monkeypatch):
+    handler = AsyncMock(return_value=FakeResponse())
+    monkeypatch.setattr("litellm.aresponses", handler)
+    response = client.post(
+        "/anthropic/v1/responses",
+        headers={"authorization": "Bearer claude-test-key"},
+        json={"model": "claude-opus-5.5", "input": "fixture", "max_output_tokens": 128000},
+    )
+    assert response.status_code == 200
+    assert handler.await_args.kwargs["max_output_tokens"] == 64_000
+    assert handler.await_args.kwargs["extra_body"]["max_tokens"] == 64_000
