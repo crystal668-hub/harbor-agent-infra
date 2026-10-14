@@ -1,0 +1,304 @@
+# 正式实验方案总结
+**日期**: 2026-10-14  
+**完整方案**: [2026-10-14-formal-experiment-plan.md](2026-10-14-formal-experiment-plan.md)
+
+---
+
+## 快速概览
+
+### 实验规模
+- **矩阵**: 4 harness × 4 model = **16 组合**
+- **第一阶段任务**: 2 tracks, **71 tasks** (20 advanced + 51 basic)
+- **重复次数**: 每组合每任务 **3 次**
+- **总 slots**: 16 × 71 × 3 = **3,408 slots**
+
+### 执行配置（统一）
+```yaml
+思考强度: high
+最大输出: 64,000 tokens
+Agent 超时: 7,200 秒 (2小时)
+资源: 4 CPU / 6144 MB
+并发: 2 trials
+Group: skills_off (仅)
+重试: max_retries=0 (关闭内部重试)
+```
+
+### Harness × Model 矩阵
+|  | GPT 6.1-sol | Claude Opus 5.5 | Qwen 3.8-max | DeepSeek v4-pro |
+|--|-------------|-----------------|--------------|-----------------|
+| **OpenClaw 2026.6.34** | ✓ | ✓ | ✓ | ✓ |
+| **Hermes 0.21.6** | ✓ | ✓ | ✓ | ✓ |
+| **Codex 0.162.1** | ✓ | ✓ | ✓ | ✓ |
+| **Claude Code 2.1.296** | ✓ | ✓ | ✓ | ✓ |
+
+---
+
+## VGB 任务列表
+
+### Track 1: property_calculation_advanced (20 tasks)
+```
+property_calculation_advanced_001_free_energy
+property_calculation_advanced_002_crystal_phase
+property_calculation_advanced_003_hbond_count
+property_calculation_advanced_004_ir_top2_frequencies
+property_calculation_advanced_005_crystal_density
+property_calculation_advanced_006_cocrystal_ratio
+property_calculation_advanced_007_polymorph_free_energy_crossover
+property_calculation_advanced_008_interaction_binding_energy
+property_calculation_advanced_009_homo_lumo_gap
+property_calculation_advanced_010_hbond_distances
+property_calculation_advanced_011_accessible_pore_volume_ratio
+property_calculation_advanced_012_carboxyl_hydrogen_distance
+property_calculation_advanced_013_halogen_bond_energy
+property_calculation_advanced_014_bay069_pka
+property_calculation_advanced_015_formaldehyde_socme
+property_calculation_advanced_016_anthracene_isc_rate
+property_calculation_advanced_017_biacetyl_phosphorescence_rate
+property_calculation_advanced_018_anthracene_ht_contribution
+property_calculation_advanced_019_acetophenone_isc_rate
+property_calculation_advanced_020_azulene_internal_conversion_rate
+```
+
+### Track 2: property_calculation_basic (51 tasks)
+```
+property_calculation_basic_001_toluene_aqueous_solvation_free_energy
+property_calculation_basic_002_ethanol_aqueous_solvation_free_energy
+property_calculation_basic_003_diethyl_ether_aqueous_solvation_free_energy
+property_calculation_basic_004_anisole_aqueous_solvation_free_energy
+property_calculation_basic_005_nitrobenzene_reduction_potential
+property_calculation_basic_006_tetracyanoethylene_reduction_potential
+property_calculation_basic_007_dimethylaniline_oxidation_potential
+property_calculation_basic_008_triphenylamine_oxidation_potential
+property_calculation_basic_009_thianthrene_oxidation_potential
+property_calculation_basic_010_water_dimer_binding_energy
+property_calculation_basic_011_ammonia_dimer_binding_energy
+property_calculation_basic_012_benzene_t_dimer_binding_energy
+property_calculation_basic_013_adenine_thymine_wc_pair_binding_energy
+property_calculation_basic_014_water_methanol_complex_binding_energy
+property_calculation_basic_015_ethene_ethyne_t_complex_binding_energy
+property_calculation_basic_016_thiophene_polarizability
+property_calculation_basic_017_benzene_polarizability
+property_calculation_basic_018_octatetraene_polarizability
+property_calculation_basic_019_dimethyl_sulfoxide_water_dipole_moment
+property_calculation_basic_020_cis_dichloroethene_dipole_moment
+property_calculation_basic_021_acetonitrile_dipole_moment
+property_calculation_basic_022_naphthalene_bridge_bond_order
+property_calculation_basic_023_dimethyl_sulfone_so_bond_order
+property_calculation_basic_024_methyl_nitrate_no_bond_order
+property_calculation_basic_025_phenol_surface_esp_minimum
+property_calculation_basic_026_nitrobenzene_vdw_surface_area
+property_calculation_basic_027_pyrrole_surface_esp_variance
+property_calculation_basic_028_urea_crystal_density
+property_calculation_basic_029_tnt_crystal_density
+property_calculation_basic_030_picric_acid_crystal_density
+property_calculation_basic_031_allyl_radical_c1_spin_density
+property_calculation_basic_032_benzyl_radical_para_c_spin_density
+property_calculation_basic_033_phenoxy_radical_o_spin_density
+property_calculation_basic_034_indole_c3_fukui_minus
+property_calculation_basic_035_chloronitrobenzene_c_fukui_plus
+property_calculation_basic_036_furfural_carbonyl_c_fukui_plus
+property_calculation_basic_037_benzene_standard_entropy
+property_calculation_basic_038_acetonitrile_standard_entropy
+property_calculation_basic_039_neopentane_standard_entropy
+property_calculation_basic_040_methane_standard_entropy
+property_calculation_basic_041_ammonia_standard_entropy
+property_calculation_basic_042_carbon_dioxide_standard_entropy
+property_calculation_basic_043_acetic_acid_dimerization_enthalpy
+property_calculation_basic_044_caffeine_most_negative_mulliken_atom
+property_calculation_basic_045_trifluoroacetic_acid_hydrogen_charge
+property_calculation_basic_046_methyl_azide_most_negative_mulliken_atom
+property_calculation_basic_047_formaldehyde_s1_vertical_excitation_energy
+property_calculation_basic_048_acetaldehyde_s1_vertical_excitation_energy
+property_calculation_basic_049_acetone_s1_vertical_excitation_energy
+property_calculation_basic_050_pyrazine_s1_vertical_excitation_energy
+property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
+```
+
+---
+
+## 失败处理核心原则
+
+### 保留 vs 替代
+- **保留**: 超时、低分、错误答案、正常预算耗尽 → 有效能力观测
+- **替代**: 镜像故障、Provider 鉴权/路由错误、持续传输故障 → 工程无效
+- **重评**: VGB runtime 故障 → 执行有效，只重新评分
+- **待审**: OOM/SIGTERM 无现场 → 需人工判定
+
+### 恢复流程
+```
+初始执行 → audit (自动分类) → 人工审查 → recover (补跑) → 重复 audit → aggregate (最终报告)
+```
+
+### 替代预算
+- 主执行: 原始 + 最多 2 次（仅工程无效）
+- 评分: 原始 + 最多 2 次（仅评分工程故障）
+
+---
+
+## 配置检查清单
+
+### 启动前必须确认
+- [ ] Agent 镜像已构建: `sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936`
+- [ ] VGB runtime 已配置: `.vgb-runtime/bin/python`
+- [ ] 化学环境已验证: `chemistry-preflight.json`
+- [ ] Provider 凭据已设置: `.env` 文件
+- [ ] 输出目录: `run-artifacts/formal/<run-id>`
+- [ ] 配置统一性: 所有模板使用统一参数
+
+### 每个配置文件必须包含
+```yaml
+experiment:
+  retry:
+    n_attempts: 1
+    max_retries: 0  # 必须为 0
+  
+  agent:
+    max_output_tokens: 64000
+    # OpenClaw: thinking: high
+    # Hermes: reasoning: high
+    # Codex/Claude Code: reasoning_effort: high
+
+task:
+  agent_timeout_sec: 7200
+  verifier_timeout_sec: 120
+
+resources:
+  capacity:
+    max_concurrent_trials: 2
+  profiles:
+    <profile-name>:
+      cpus: 4
+      memory_mb: 6144
+
+experiment:
+  groups:
+  - id: skills_off
+    skills_enabled: false
+```
+
+---
+
+## 执行命令参考
+
+### 准备环境
+```bash
+# 1. Python 环境
+uv python install 3.12.13
+uv venv --python 3.12.13 .venv
+uv sync --frozen --dev
+
+# 2. VGB Runtime
+uv run python scripts/provision_vgb_runtime.py \
+  --lock runtime-lock.json \
+  --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
+  --runtime-dir .vgb-runtime \
+  --chemistry-prefix /path/to/vgb-crest
+
+# 3. Agent 镜像
+./scripts/build_agent_image.sh hai-base-env:chemistry-20261013
+
+# 4. 验证
+uv run hai doctor
+uv run pytest -m 'not integration'
+```
+
+### 执行实验（示例）
+```bash
+# OpenClaw + GPT
+uv run --locked hai run \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
+  --group skills_off
+
+# Hermes + Claude
+uv run --locked hai run \
+  --config configs/experiments/hermes/vgb-claude.config.yaml \
+  --group skills_off
+
+# ... 依次执行所有 16 组
+```
+
+### 监控
+```bash
+uv run --locked hai view
+# 访问 http://127.0.0.1:8080
+```
+
+### 恢复（待实施 P0-P5）
+```bash
+# 1. 审计
+uv run --locked hai audit \
+  --run-dir run-artifacts/formal/<run-id> \
+  --output recovery-plan.json
+
+# 2. 审查 recovery-plan.json
+
+# 3. 执行补跑
+uv run --locked hai recover \
+  --plan recovery-plan.json \
+  --output-dir run-artifacts/formal/<repair-run-id>
+
+# 4. 最终聚合
+uv run --locked hai aggregate \
+  --run-dir run-artifacts/formal/<run-id> \
+  --output analysis/<snapshot-id>
+```
+
+---
+
+## 交付物核心清单
+
+### 必须交付
+- [ ] 16 个 `protocol.json` (每个 harness×model 组合)
+- [ ] 16 个 `slots.jsonl` (共 54,528 预定 slots)
+- [ ] 所有执行的 `attempts.jsonl`
+- [ ] 所有判定的 `decisions.jsonl`
+- [ ] 所有评分的 `assessments/`
+- [ ] Harbor 原生 Trial 产物 (result, trajectory, logs)
+- [ ] 最终 `analysis/` 报告
+
+### 最终报告必须包含
+1. VGB 分数汇总（按 track, harness, model）
+2. 执行覆盖率（≥90%）
+3. 评分覆盖率（≥95%，基于有效执行）
+4. 工程可靠性统计
+5. 成本与耗时
+6. 审计完整性
+
+---
+
+## 成功标准
+
+### 最低
+- 有效执行覆盖率 ≥ 90%
+- 评分覆盖率 ≥ 95%（基于有效执行）
+- 所有判定有证据支持
+- 最终分析可从产物重建
+
+### 理想
+- 有效执行覆盖率 ≥ 95%
+- 评分覆盖率 ≥ 98%
+- 工程无效替代成功率 ≥ 90%
+- 无协议偏离
+- 完整的成本记录
+
+---
+
+## 第二阶段（预留）
+- **open_generation_rdkit** (14 tasks)
+- **open_generation_xtb** (20 tasks)
+- 使用相同协议和配置参数
+- 在第一阶段完成并验证恢复流程后启动
+
+---
+
+## 重要提醒
+
+1. **目录归属**: 本次实验输出到 `run-artifacts/formal/`，属于正式实验
+2. **不要改协议**: 执行中途不得修改模型、镜像、预算等条件
+3. **保全证据**: 任何删除或恢复前，必须先保全现场
+4. **人工审查**: 所有补跑必须经过人工审查批准
+5. **串行建议**: 首次执行建议串行或小批量并行，避免资源/配额问题
+
+---
+
+**详细内容请参考**: [2026-10-14-formal-experiment-plan.md](2026-10-14-formal-experiment-plan.md)

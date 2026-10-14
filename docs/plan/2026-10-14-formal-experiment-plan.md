@@ -1,0 +1,637 @@
+# 正式实验方案
+**制定日期**: 2026-10-14  
+**状态**: 待审核  
+**Git 基线**: `74e2b2e` (docs: record 64000 matrix validation and adaptive thinking fix)
+
+---
+
+## 1. 实验目标
+
+在固定环境与预算下，系统性测量 4 种 Agent harness 与 4 种模型组合在 VGB 化学任务上的表现，以 VGB 得分为主要评估指标。
+
+### 1.1 测量对象
+- **系统能力**: Agent harness、模型及其自身行为的综合表现
+- **主指标**: VGB 官方评分（`vgb_score`）
+- **次要指标**: 执行覆盖率、任务完成状态、工程可靠性、成本与耗时
+
+### 1.2 实验原则
+- 固定环境与预算下的能力观测
+- 正常任务失败、超时、低分均为有效观测，保留记录
+- 工程故障单独处理，允许在恢复条件后替代执行
+- 每个 slot 至多一条主执行代表，优先原始有效结果
+
+---
+
+## 2. 实验矩阵
+
+### 2.1 完整矩阵 (4×4 = 16 组合)
+
+| Harness | GPT | Claude | Qwen | DeepSeek |
+|---------|-----|--------|------|----------|
+| OpenClaw 2026.6.34 | ✓ | ✓ | ✓ | ✓ |
+| Hermes 0.21.6 | ✓ | ✓ | ✓ | ✓ |
+| Codex 0.162.1 | ✓ | ✓ | ✓ | ✓ |
+| Claude Code 2.1.296 | ✓ | ✓ | ✓ | ✓ |
+
+**模型**:
+- GPT: `gpt-6.1-sol`
+- Claude: `claude-opus-5.5`
+- Qwen: `qwen3.8-max`
+- DeepSeek: `deepseek-v4-pro`
+
+### 2.2 扩展性
+实验设计支持后续新增 harness 或模型，保持相同的实验协议和配置参数。
+
+---
+
+## 3. 任务范围
+
+### 3.1 第一阶段实验（本次实施）
+
+包含 VGB 的 2 个 track，共 71 个任务：
+
+#### Track 1: property_calculation_advanced (20 tasks)
+```
+property_calculation_advanced_001_free_energy
+property_calculation_advanced_002_crystal_phase
+property_calculation_advanced_003_hbond_count
+property_calculation_advanced_004_ir_top2_frequencies
+property_calculation_advanced_005_crystal_density
+property_calculation_advanced_006_cocrystal_ratio
+property_calculation_advanced_007_polymorph_free_energy_crossover
+property_calculation_advanced_008_interaction_binding_energy
+property_calculation_advanced_009_homo_lumo_gap
+property_calculation_advanced_010_hbond_distances
+property_calculation_advanced_011_accessible_pore_volume_ratio
+property_calculation_advanced_012_carboxyl_hydrogen_distance
+property_calculation_advanced_013_halogen_bond_energy
+property_calculation_advanced_014_bay069_pka
+property_calculation_advanced_015_formaldehyde_socme
+property_calculation_advanced_016_anthracene_isc_rate
+property_calculation_advanced_017_biacetyl_phosphorescence_rate
+property_calculation_advanced_018_anthracene_ht_contribution
+property_calculation_advanced_019_acetophenone_isc_rate
+property_calculation_advanced_020_azulene_internal_conversion_rate
+```
+
+#### Track 2: property_calculation_basic (51 tasks)
+```
+property_calculation_basic_001_toluene_aqueous_solvation_free_energy
+property_calculation_basic_002_ethanol_aqueous_solvation_free_energy
+property_calculation_basic_003_diethyl_ether_aqueous_solvation_free_energy
+property_calculation_basic_004_anisole_aqueous_solvation_free_energy
+property_calculation_basic_005_nitrobenzene_reduction_potential
+property_calculation_basic_006_tetracyanoethylene_reduction_potential
+property_calculation_basic_007_dimethylaniline_oxidation_potential
+property_calculation_basic_008_triphenylamine_oxidation_potential
+property_calculation_basic_009_thianthrene_oxidation_potential
+property_calculation_basic_010_water_dimer_binding_energy
+property_calculation_basic_011_ammonia_dimer_binding_energy
+property_calculation_basic_012_benzene_t_dimer_binding_energy
+property_calculation_basic_013_adenine_thymine_wc_pair_binding_energy
+property_calculation_basic_014_water_methanol_complex_binding_energy
+property_calculation_basic_015_ethene_ethyne_t_complex_binding_energy
+property_calculation_basic_016_thiophene_polarizability
+property_calculation_basic_017_benzene_polarizability
+property_calculation_basic_018_octatetraene_polarizability
+property_calculation_basic_019_dimethyl_sulfoxide_water_dipole_moment
+property_calculation_basic_020_cis_dichloroethene_dipole_moment
+property_calculation_basic_021_acetonitrile_dipole_moment
+property_calculation_basic_022_naphthalene_bridge_bond_order
+property_calculation_basic_023_dimethyl_sulfone_so_bond_order
+property_calculation_basic_024_methyl_nitrate_no_bond_order
+property_calculation_basic_025_phenol_surface_esp_minimum
+property_calculation_basic_026_nitrobenzene_vdw_surface_area
+property_calculation_basic_027_pyrrole_surface_esp_variance
+property_calculation_basic_028_urea_crystal_density
+property_calculation_basic_029_tnt_crystal_density
+property_calculation_basic_030_picric_acid_crystal_density
+property_calculation_basic_031_allyl_radical_c1_spin_density
+property_calculation_basic_032_benzyl_radical_para_c_spin_density
+property_calculation_basic_033_phenoxy_radical_o_spin_density
+property_calculation_basic_034_indole_c3_fukui_minus
+property_calculation_basic_035_chloronitrobenzene_c_fukui_plus
+property_calculation_basic_036_furfural_carbonyl_c_fukui_plus
+property_calculation_basic_037_benzene_standard_entropy
+property_calculation_basic_038_acetonitrile_standard_entropy
+property_calculation_basic_039_neopentane_standard_entropy
+property_calculation_basic_040_methane_standard_entropy
+property_calculation_basic_041_ammonia_standard_entropy
+property_calculation_basic_042_carbon_dioxide_standard_entropy
+property_calculation_basic_043_acetic_acid_dimerization_enthalpy
+property_calculation_basic_044_caffeine_most_negative_mulliken_atom
+property_calculation_basic_045_trifluoroacetic_acid_hydrogen_charge
+property_calculation_basic_046_methyl_azide_most_negative_mulliken_atom
+property_calculation_basic_047_formaldehyde_s1_vertical_excitation_energy
+property_calculation_basic_048_acetaldehyde_s1_vertical_excitation_energy
+property_calculation_basic_049_acetone_s1_vertical_excitation_energy
+property_calculation_basic_050_pyrazine_s1_vertical_excitation_energy
+property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
+```
+
+### 3.2 第二阶段实验（预留）
+
+包含另外 2 个 track：
+- **open_generation_rdkit** (14 tasks)
+- **open_generation_xtb** (20 tasks)
+
+第二阶段使用相同的实验协议，可在第一阶段完成并验证恢复流程后启动。
+
+---
+
+## 4. 重复次数与样本规模
+
+### 4.1 独立重复
+每个 "harness × model × task" 组合独立重复 **3 次**。
+
+### 4.2 第一阶段样本规模
+- **组合数**: 4 harness × 4 model = 16
+- **任务数**: 71 (20 advanced + 51 basic)
+- **重复次数**: 3
+- **总 slot 数**: 16 × 71 × 3 = **3,408 slots**
+
+### 4.3 Slot 身份
+每个 slot 由以下要素唯一确定：
+- Experiment ID
+- Execution condition (harness, model, 推理设置, 镜像, 资源配置等)
+- Track + Task ID
+- Group (固定为 `skills_off`)
+- Repeat index (0, 1, 2)
+
+---
+
+## 5. 统一配置参数
+
+所有 16 组实验使用统一的配置参数，确保可比性。
+
+### 5.1 推理与输出参数
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 思考强度 | `high` | OpenClaw: `thinking: high`<br>Hermes: `reasoning: high`<br>Codex/Claude Code: `reasoning_effort: high` |
+| 最大输出 | `64000` tokens | `experiment.agent.max_output_tokens: 64000` |
+
+### 5.2 资源与超时配置
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| CPU | 4 cores | `resources.profiles.*.cpus: 4` |
+| 内存 | 6144 MB | `resources.profiles.*.memory_mb: 6144` |
+| Agent 超时 | 7200 秒 (2 小时) | `task.agent_timeout_sec: 7200` |
+| Verifier 超时 | 120 秒 | `task.verifier_timeout_sec: 120` |
+| 并发 Trials | 2 | `resources.capacity.max_concurrent_trials: 2` |
+
+### 5.3 重试与恢复配置
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 初始尝试次数 | 1 | `experiment.retry.n_attempts: 1` |
+| Harbor 内部重试 | 0 | `experiment.retry.max_retries: 0` |
+| 主执行替代上限 | 2 | 工程无效时，人工审查后最多替代 2 次 |
+| 评分替代上限 | 2 | 评分工程故障时，最多重评 2 次 |
+
+### 5.4 环境与镜像
+
+| 组件 | 版本/配置 | 说明 |
+|------|----------|------|
+| Agent 镜像 | `hai-base-env` | Digest: `sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936` |
+| 平台 | `linux/arm64` | |
+| Python (Agent) | 3.11 | 预装在镜像中 |
+| Python (VGB) | 3.12 | 宿主隔离 runtime |
+| RDKit | 2026.03.2 | Agent 与 Verifier 共享锁 |
+| xTB | 6.7.1 | Agent 与 Verifier 共享锁 |
+| CREST | 2.12 | Agent 与 Verifier 共享锁 |
+| Harbor | 0.23.0 | Commit: `1e5c5c6db929a10a140d05e606882c671ae20729` |
+| VGB | 0.10.0 | Wheel: `verifier_grounded_benchmark-0.10.0-py3-none-any.whl` |
+| OpenClaw | 2026.6.34 | 锁定 npm 包，包含 adaptive thinking 修复 |
+| Hermes | 0.21.6 | Commit: `818c13be1dc4fd28987e1e881a9408224afd4535` |
+| Codex | 0.162.1 | 通过本地 protocol bridge 配置输出上限 |
+| Claude Code | 2.1.296 | Native CLI |
+
+### 5.5 技能配置
+- **Group**: 仅运行 `skills_off`
+- **Skills enabled**: `false`
+- **Skill allowlist**: `null`
+
+不运行配对的 `skills_on` 组，除非后续明确需要比较。
+
+### 5.6 网络配置
+- **Agent network mode**: `public`
+- **Agent allowed hosts**: `[]` (允许所有)
+- **Verifier network mode**: `public`
+- **Verifier allowed hosts**: `[]` (允许所有)
+
+---
+
+## 6. 失败处理与恢复策略
+
+### 6.1 失败分类原则
+
+按照 [2026-10-12 失败恢复迁移计划](2026-10-12-failure-recovery-migration-plan.md) 的判定矩阵：
+
+| 失败类型 | 有效性判定 | 恢复策略 |
+|---------|-----------|---------|
+| **工程无效** | | |
+| 镜像拉取/安装/挂载失败 | 无效 | 修复后补跑对应 slot |
+| Provider 鉴权/额度/路由错误 | 无效 | 恢复条件后替代执行 |
+| 持续传输故障确实剥夺机会 | 无效 | 有证据后替代执行 |
+| **能力观测（保留）** | | |
+| 固定预算正常耗尽 | 有效 | 保留，不加时/加资源 |
+| 正常拒答、错误计算、错误工具参数 | 有效 | 保留为任务失败 |
+| 未完成任务却提前结束 | 有效 | 保留，记录截止时答案 |
+| 答案格式错误、缺 FINAL ANSWER 标记 | 结合契约判定 | 通常为有效任务失败 |
+| VGB 正常判 0 分或低分 | 有效 | 保留，分数不是恢复条件 |
+| **评分故障** | | |
+| VGB runtime/调用工程故障 | 执行有效 | 重评，不重新执行 Agent |
+| 领域拒绝（候选答案导致） | 有效任务结果 | 保留 |
+| 评分超时（工程失灵） | 待审 | 确认旧进程退出后重评 |
+| **待审** | | |
+| 137/SIGTERM/OOM 无足够现场 | 待审 | 区分预算/主机干扰/操作取消 |
+| 无结果但可能仍在运行 | 待审/阻塞 | 核对进程，禁止并发替代 |
+
+### 6.2 恢复流程
+
+采用**人工审查后恢复**模式：
+
+1. **执行初始批次**: 关闭 Harbor 内部重试 (`max_retries: 0`)
+2. **保全现场**: 执行完成后，在任何删除或恢复前保全证据
+3. **自动分类**: 运行 `audit` 命令，生成判定与恢复计划
+4. **人工审查**: 检查恢复计划的准确性和合理性
+5. **执行恢复**: 运行 `recover` 命令，提交获准的补跑
+6. **重复**: 补跑完成后，重新 audit 和审查，直到无需进一步恢复
+7. **最终聚合**: 运行 `aggregate`，生成正式分析报告
+
+### 6.3 替代预算
+
+| 层次 | 预算 | 说明 |
+|------|------|------|
+| 请求级 retry | 由 harness/SDK 控制 | 计入 Agent 时限，部分不可观测 |
+| 主执行替代 | 原始 + 最多 2 次 | 仅工程无效可替代 |
+| 评分替代 | 原始 + 最多 2 次 | 仅评分工程故障可替代 |
+
+替代预算用尽后标记为 `BLOCKED`，保留有效性缺口，不继续重试。
+
+### 6.4 熔断与暂停规则（人工）
+
+- Provider 系统性鉴权/额度/路由错误 → 暂停该路由新批次
+- 同路由连续 3 次同类未恢复传输故障 → 人工排查
+- 主机容量不足或确认 OOM → 暂停新批次，保全数据并恢复容量
+- 恢复前提: 根因处理、剩余额度、活跃任务核对、条件审查、独立 smoke
+
+---
+
+## 7. 数据产物与目录组织
+
+### 7.1 输出目录结构
+
+正式实验输出到 `run-artifacts/formal/`：
+
+```
+run-artifacts/
+  formal/
+    <run-id>/                          # 原始执行
+      jobs/
+        <job-id>/                      # Harbor 原生 Job
+          <trial-id>/                  # Harbor 原生 Trial
+            result.json
+            trajectory/
+            logs/
+            artifacts/
+      protocol.json                    # 冻结协议
+      slots.jsonl                      # 预定 slot 矩阵
+      attempts.jsonl                   # 执行台账
+      decisions.jsonl                  # 判定记录
+      evidence/<attempt_id>/           # 证据归档（按需）
+      assessments/<assessment_id>/     # 评分记录
+      analysis/<snapshot_id>/          # 分析快照
+      chemistry-preflight.json         # 化学环境预检
+      runtime-manifest.json            # 运行清单
+      results.json                     # 兼容聚合结果
+      per-record/                      # 按组/任务/repeat 的结果
+    
+    <repair-run-id>/                   # 补跑执行
+      (同上结构，关联原 run)
+  
+  temporary/
+    <test-run-id>/                     # smoke、调试、诊断
+```
+
+### 7.2 关键产物说明
+
+| 产物 | 内容 | 用途 |
+|------|------|------|
+| `protocol.json` | 冻结条件、规则与哈希 | 确保补跑使用相同条件 |
+| `slots.jsonl` | 完整预定 slot 矩阵 | 派发前即存在，3408 条 |
+| `attempts.jsonl` | Slot、ordinal、Harbor ID、证据索引 | 追溯每次执行 |
+| `decisions.jsonl` | 分层状态、reason、证据、规则版本 | 判定依据与修订历史 |
+| `recovery-plan.json` | 精确 slot/attempt 清单、条件、预算 | 审查后执行补跑 |
+| `assessments/` | 评分版本、输入哈希、VGB 结果 | 独立评分历史 |
+| `analysis/` | 选样 map、指标、成本、来源 | 可重建的最终报告 |
+| Harbor 原生 | Trial result, trajectory, logs | 官方 Viewer 读取 |
+
+---
+
+## 8. 配置模板管理
+
+### 8.1 模板位置
+
+每个 harness 目录下有 4 个模型的模板：
+```
+configs/experiments/
+  openclaw/
+    vgb-gpt.config.yaml
+    vgb-claude.config.yaml
+    vgb-qwen.config.yaml
+    vgb-deepseek.config.yaml
+  hermes/
+    (同上)
+  codex/
+    (同上)
+  claude-code/
+    (同上)
+```
+
+### 8.2 关键配置字段
+
+需要在启动前调整的字段（其他保持模板默认值）：
+
+```yaml
+run:
+  output_dir: run-artifacts/formal/<experiment-id>-<harness>-<model>
+  vgb_python: .vgb-runtime/bin/python
+
+experiment:
+  experiment_id: <experiment-id>-<harness>-<model>
+  benchmark:
+    cases:
+    - track: property_calculation_advanced
+      task_ids: [所有 20 个任务]
+    - track: property_calculation_basic
+      task_ids: [所有 51 个任务]
+  
+  retry:
+    n_attempts: 1
+    max_retries: 0
+```
+
+### 8.3 环境变量（.env）
+
+```bash
+# VGB Runtime
+VGB_PYTHON=.vgb-runtime/bin/python
+OPENCLAW_SKILLS_ROOT=<skills-root-path>
+
+# Provider Credentials (不写入 YAML)
+OPENAI_API_KEY=<key>
+OPENAI_BASE_URL=<url>
+ANTHROPIC_API_KEY=<key>
+ANTHROPIC_BASE_URL=<url>
+# Qwen/DeepSeek 同理
+
+# Codex Bridge (仅 Codex harness 需要)
+CODEX_GPT_BASE_URL=/openai/v1
+CODEX_CLAUDE_BASE_URL=/anthropic/v1
+CODEX_QWEN_BASE_URL=/qwen/v1
+CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
+```
+
+---
+
+## 9. 执行流程
+
+### 9.1 准备阶段
+
+1. **环境准备**:
+   ```bash
+   # Python 与依赖
+   uv python install 3.12.13
+   uv venv --python 3.12.13 .venv
+   uv sync --frozen --dev
+   
+   # VGB Runtime
+   uv run python scripts/provision_vgb_runtime.py \
+     --lock runtime-lock.json \
+     --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
+     --runtime-dir .vgb-runtime \
+     --chemistry-prefix /path/to/vgb-crest
+   
+   # Agent 镜像
+   ./scripts/build_agent_image.sh hai-base-env:chemistry-20261013
+   # 记录返回的 RepoDigest，更新配置中的 digest 字段
+   ```
+
+2. **验证环境**:
+   ```bash
+   uv run hai doctor
+   uv run pytest -m 'not integration'
+   VGB_PYTHON=.vgb-runtime/bin/python uv run pytest \
+     tests/test_vgb_integration.py \
+     tests/test_chemistry_integration.py
+   ```
+
+3. **准备配置模板**: 更新 `configs/experiments/` 下的模板
+
+### 9.2 执行阶段
+
+对每个 harness × model 组合：
+
+```bash
+# 示例: OpenClaw + GPT
+uv run --locked hai run \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
+  --group skills_off
+```
+
+串行或并行执行 16 组实验（注意本机资源和 provider 配额）。
+
+### 9.3 监控与验收
+
+1. **实时监控**: 通过 Harbor Viewer 查看执行状态
+   ```bash
+   uv run --locked hai view
+   # 访问 http://127.0.0.1:8080
+   ```
+
+2. **中间检查**: 定期检查失败率和资源使用
+
+3. **完成后验收**: 确认所有 Job 结束，无卡住的 Trial
+
+### 9.4 恢复阶段
+
+```bash
+# 1. 生成恢复计划
+uv run --locked hai audit \
+  --run-dir run-artifacts/formal/<run-id> \
+  --output recovery-plan.json
+
+# 2. 人工审查
+# 检查 recovery-plan.json 和 decisions.jsonl
+
+# 3. 执行获准的补跑
+uv run --locked hai recover \
+  --plan recovery-plan.json \
+  --output-dir run-artifacts/formal/<repair-run-id>
+
+# 4. 重复 audit 和 recover 直到无需进一步恢复
+```
+
+### 9.5 最终聚合
+
+```bash
+uv run --locked hai aggregate \
+  --run-dir run-artifacts/formal/<run-id> \
+  --output-dir run-artifacts/formal/<run-id>/analysis/<snapshot-id>
+```
+
+---
+
+## 10. 交付清单
+
+### 10.1 必须交付的产物
+
+1. **实验协议**:
+   - `protocol.json` (16 个 run，每个一份)
+   - 本文档及其冻结版本
+
+2. **执行记录**:
+   - `slots.jsonl` (16 × 3408 = 54,528 预定 slots)
+   - `attempts.jsonl` (所有执行记录，包括原始和替代)
+   - Harbor 原生 Trial 产物 (result, trajectory, logs)
+
+3. **判定与恢复**:
+   - `decisions.jsonl` (所有判定记录及修订)
+   - `recovery-plan.json` (所有恢复计划)
+   - 审查记录 (人工审查结果)
+
+4. **评分记录**:
+   - `assessments/` (所有评分，包括原始和重评)
+   - VGB 原始响应 (成功与错误)
+
+5. **最终分析**:
+   - `analysis/<snapshot-id>/` (最终聚合报告)
+   - 逐 slot 选样表
+   - VGB 分数汇总 (按 track, harness, model)
+   - 执行覆盖率
+   - 工程可靠性统计
+   - 成本与耗时汇总
+
+6. **环境身份**:
+   - `runtime-manifest.json` (镜像 digest, VGB 版本, 化学锁等)
+   - `chemistry-preflight.json` (Agent 与 Verifier 环境)
+
+### 10.2 报告要求
+
+最终分析报告必须包含：
+
+1. **主结果**: 按 track 和执行条件的 VGB 分数
+   - 均值、中位数、标准差
+   - 分数分布（如适用）
+   - 标注覆盖率和缺失原因
+
+2. **覆盖率**:
+   - 有效执行覆盖率 = 有有效代表执行的 slots / 全部预定 slots
+   - 评分覆盖率 = 已评分 slots / 有有效执行的 slots
+   - 按失败原因的分布
+
+3. **工程可靠性**:
+   - 工程无效 attempts 数量
+   - 受影响 slots 数量
+   - 恢复成功率 (替代后获得有效结果 / 原始工程无效)
+   - 按路由/主机的故障分布
+
+4. **成本与耗时**:
+   - 入选执行的成本
+   - 全部尝试的实际总成本（包括失败、替代、重试）
+   - Token 使用统计
+   - Wall time 分布
+
+5. **审计完整性**:
+   - Slot 唯一性检查
+   - 证据完整性检查
+   - Lineage 完整度
+   - 未映射或未启动清单
+
+### 10.3 可重建性
+
+所有主指标必须能够从交付的产物重建，包括：
+- 从 `attempts.jsonl` 和 `decisions.jsonl` 重建选样逻辑
+- 从 `assessments/` 重建评分历史
+- 从 Harbor 原生产物重建 usage 和 timing
+- 从 `evidence/` 验证判定依据
+
+---
+
+## 11. 风险与缓解
+
+### 11.1 已知风险
+
+| 风险 | 影响 | 缓解措施 | 状态 |
+|------|------|---------|------|
+| Provider 配额耗尽 | 阻塞执行 | 预留配额；分批执行；监控使用 | 需评估 |
+| 主机资源不足 | OOM, 执行缓慢 | 串行执行；监控资源；预留空间 | 可控 |
+| 网络不稳定 | 传输故障增多 | 按恢复计划替代；记录故障模式 | 已规划 |
+| 长时间执行任务 | 超时增多 | 7200s 应足够；保留超时结果 | 可接受 |
+| VGB 评分故障 | 缺失分数 | 独立重评；保留原答案 | 已规划 |
+| 磁盘空间不足 | 无法保存产物 | 预留 500GB+；监控使用 | 需检查 |
+
+### 11.2 应急预案
+
+1. **Provider 故障**: 暂停该路由，等待恢复后补跑
+2. **主机故障**: 保全已有数据，恢复环境后继续
+3. **配置错误**: 如发现配置偏离，隔离该批次，重新执行
+4. **长时间无响应**: 检查进程，必要时取消并补跑
+
+---
+
+## 12. 成功标准
+
+### 12.1 最低标准
+- 每个 slot 至少有一条有效执行记录或明确的失败原因
+- 有效执行覆盖率 ≥ 90%
+- 评分覆盖率（基于有效执行）≥ 95%
+- 所有判定有证据支持
+- 最终分析可从产物重建
+
+### 12.2 理想标准
+- 有效执行覆盖率 ≥ 95%
+- 评分覆盖率 ≥ 98%
+- 工程无效替代成功率 ≥ 90%
+- 无协议偏离的执行
+- 完整的成本和 usage 记录
+
+---
+
+## 13. 时间线（待补充）
+
+具体时间线需要在评估单个任务平均执行时间和可用资源后确定。
+
+**预估考虑因素**:
+- 单个 task 平均执行时间: 待测量
+- 并发度: 2 trials per job
+- 串行/并行策略: 待确定
+- 恢复轮次: 预计 1-2 轮
+- 人工审查时间: 每轮 0.5-1 天
+
+---
+
+## 14. 附录
+
+### 14.1 参考文档
+- [失败恢复迁移计划](2026-10-12-failure-recovery-migration-plan.md)
+- [模型矩阵](../model-matrix.md)
+- [配置文档](../configuration.md)
+- [化学环境](../chemistry.md)
+- [架构文档](../architecture.md)
+
+### 14.2 变更历史
+- 2026-10-14: 初始版本，待审核
+
+### 14.3 审批
+- [ ] 实验设计审批
+- [ ] 资源与预算审批
+- [ ] 风险评估审批
+- [ ] 最终执行批准
+
+---
+
+**结束**
