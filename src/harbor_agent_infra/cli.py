@@ -400,9 +400,89 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    Substitutions: {slot.substitution_count}/{slot.max_substitutions}")
             return 0
 
-        # TODO: P2 implementation - actual recovery execution
-        print("Recovery execution not yet implemented (P2 phase)")
-        return 1
+        # P2 implementation - actual recovery execution
+        import asyncio
+        from datetime import datetime
+        from harbor_agent_infra.recovery.executor import RecoveryExecutor
+        from harbor_agent_infra.preparation.run_config import load_run_config
+
+        # Load run config
+        if not args.config:
+            print("Error: --config is required for recovery execution")
+            print("Provide the original run configuration TOML file")
+            return 1
+
+        config = load_run_config(args.config)
+
+        # Determine output directory
+        if args.output_dir:
+            output_dir = args.output_dir
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            output_dir = Path(config.run.output_dir).parent / f"recovery-{timestamp}"
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"\nStarting recovery execution...")
+        print(f"  Manifest: {args.manifest}")
+        print(f"  Output: {output_dir}")
+        print(f"  Approved slots: {len(approved)}")
+        print("")
+
+        # Create executor
+        executor = RecoveryExecutor(
+            manifest=manifest,
+            run_config=config,
+            output_dir=output_dir,
+        )
+
+        # Execute recovery
+        result = asyncio.run(executor.execute())
+
+        # Report results
+        print("\n" + "=" * 70)
+        print(f"Recovery Execution Complete: {result.recovery_run_name}")
+        print("=" * 70)
+        print(f"Total slots: {result.total_slots}")
+        print(f"Executed: {result.executed}")
+        print(f"Succeeded: {result.succeeded}")
+        print(f"Failed: {result.failed}")
+        print(f"Skipped: {result.skipped}")
+        print("=" * 70)
+
+        # Show per-slot details
+        if result.slot_results:
+            print("\nSlot Results:")
+            for slot_result in result.slot_results:
+                if slot_result.success:
+                    status = "✓"
+                elif slot_result.executed:
+                    status = "✗"
+                else:
+                    status = "⊘"
+                print(f"  {status} {slot_result.slot_id}")
+                if slot_result.error:
+                    print(f"      Error: {slot_result.error}")
+                if slot_result.recovery_job_dir:
+                    print(f"      Job: {slot_result.recovery_job_dir}")
+
+        # Save recovery result summary
+        result_path = output_dir / "recovery-result.json"
+        with open(result_path, "w") as f:
+            import json
+            json.dump(result.to_dict(), f, indent=2)
+
+        print(f"\n✓ Recovery result saved to: {result_path}")
+
+        # Return success if all executed slots succeeded
+        if result.executed > 0 and result.failed == 0:
+            return 0
+        elif result.failed > 0:
+            print(f"\n⚠ {result.failed} recovery attempts failed")
+            return 1
+        else:
+            print("\n⚠ No slots were executed")
+            return 1
 
     raise AssertionError(f"unhandled command: {args.command}")
 
