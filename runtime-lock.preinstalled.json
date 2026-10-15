@@ -344,10 +344,10 @@
       "version": "0.162.1"
     },
     "hermes": {
-      "digest": "sha256:128a4c81515452248a5c27248204be274432e3625fb11d3b52dee6d7aa23876c",
-      "manifest_sha256": "8137e35004db71f4ebfd081e0c060c06eed25ea68e2c7e6acc891b86ea5eafb2",
+      "digest": "sha256:6a5985d929602fee0905c2548afab5058192dc812e4538e3b8b57d93042444bb",
+      "manifest_sha256": "feb46d876533bf730a674e64e1ed5311edfc6f6cee5036f331ab12f23ae26ed1",
       "platform": "linux/arm64",
-      "reference": "hai-candidate-hermes-providers-20261016",
+      "reference": "hai-harness-hermes-wire-20261016",
       "source_commit": "818c13be1dc4fd28987e1e881a9408224afd4535",
       "version": "0.21.6"
     },
