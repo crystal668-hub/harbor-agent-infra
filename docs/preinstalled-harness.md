@@ -37,6 +37,16 @@ uv run --locked --python 3.12 python scripts/build_preinstalled_image.py codex \
 四个执行镜像；不传时读取仓库原锁。输出包含各镜像清单、构建元数据及候选锁文件。
 脚本不更新仓库默认锁文件，不自动推送 Registry。
 
+Hermes 会冻结 `/tmp/hermes/installs` 中实际选中的应用依赖和 PM 环境，并使用该固定
+commit 原生支持的 `HERMES_DISABLE_LAZY_INSTALLS=1` 禁止首次启动自动重建依赖。
+实际校验同时记录系统 Python、应用 Python 与依赖环境路径，并执行普通 `sessions list`
+启动，避免只通过 `--version` 的元数据路径。仅上游明确生成的字节码指纹与进程租约/锁
+文件不参加不可变文件比较；源码、工具、依赖选择记录和应用包仍严格检查。
+
+如已有通过校验的 Hermes 候选需要补齐清单，可用 `--reuse-installed --lock <候选锁>`
+生成另一个新名称、新 digest 的修订镜像；原候选不覆盖。此路径先验证原清单，复用
+固定安装产物并重新进行离线验收，不改变发布版本或源码 commit。
+
 基础 RepoDigest 必须先在本地通过验证。BuildKit 使用指向该已验证 image ID 的唯一
 临时构建名称，结束时核对并移除名称；实际运行仍使用不可变 RepoDigest。
 
@@ -105,6 +115,9 @@ uv run --locked --python 3.12 hai run \
 实现了工具调用上限；原模型、推理、输出上限、资源和任务时限保持模板设置。
 原 VGB prompt 和最终答案格式仍保留，矩阵快照与实际 task 文件记录完整输入。
 运行前后校验版本与安装产物；零分可为有效结果，不用分数筛选或反复重试验收样本。
+矩阵入口 `scripts/verify_preinstalled_matrix.py` 支持显式 `--harness` 子集，用于代码
+修复后的受影响组合复验。子集报告不代表全部 16 项通过；最终报告必须关联对应镜像
+身份和全部来源，保留先前失败/取消记录，不把复验样本写回正式实验。
 
 ## 证据、历史兼容与切换
 

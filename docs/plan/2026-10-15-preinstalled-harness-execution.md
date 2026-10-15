@@ -77,3 +77,35 @@ Registry 发布、主目录默认切换和正式实验派发不属于本次开�
 - 协议桥接使用本 worktree 的独立 4142 端口；只在验收进程内改变对应 endpoint 环境变量。
 - 输出：`outputs/preinstalled/provider-matrix/`；不写入原正式实验或补跑目录。
 - Registry 发布、默认切换和新正式批次尚未执行。
+
+### 运行期发现与修正
+
+- 原始完整任务矩阵保存为 `provider-matrix/`：OpenClaw GPT/Qwen 完成；Claude 遇到
+  provider DNS 故障；DeepSeek 的长任务被工程验收取消。结果及原始异常未覆盖。
+- 统一工程 smoke 提示保存为 `provider-smoke-matrix/matrix.json`：请求少量终端调用、
+  快速候选/估计并保留 VGB 答案格式；这是提示约束，不是实现了强制工具调用预算。
+  不把这些工程样本纳入正式实验。OpenClaw 四个路由均通过评分、投影及运行后身份校验。
+- Hermes GPT 首次完成回答后，最终校验发现新增 `.bytecode-fingerprint`；现场核查确认
+  该文件由上游字节码缓存代码生成。只排除确切根目录缓存标记，不忽略任意新增源码。
+- 发现实际应用 venv 位于 `/tmp/hermes/installs`，原候选清单遗漏；修订版新增完整依赖
+  目录及选择记录校验，只排除已核实的进程锁/租约。启用固定 commit 原生支持的
+  `HERMES_DISABLE_LAZY_INSTALLS=1`，防止首次普通启动自动修复 PM 环境。
+- Hermes 身份探测新增普通 `sessions list` 启动、实际应用 Python 版本和 venv 路径。
+  系统 Python 3.11.2 与应用 Python 3.14.7 分别记录，不能用系统版本冒充应用运行时。
+- Hermes Claude 原失败为自定义 endpoint 未传入容器导致默认服务 401；只对新预装模式
+  显式传递 `ANTHROPIC_BASE_URL` 环境引用，旧安装模式序列化不变。新增契约测试。
+- 新 Hermes 候选：`hai-candidate-hermes-final-20261015@sha256:e373c15c9aae846f753c51ff1ad9518a605212dc83a59a5bf3b7c6e4e30cb623`。
+  候选锁位于 `outputs/preinstalled/hermes-final/hermes-runtime-lock.json`，包含其余三个镜像。
+- `hermes-refined/docker-gates.log`：修订清单后完整 Docker 门禁 33 passed；最终新增普通
+  启动探测后的镜像还需最终 Docker 复核，不把旧门禁结果冒充最终镜像验收。
+- 剩余三种 harness 的有限复验输出为 `provider-remaining-matrix/`；每个组合一个 Trial、
+  retry 为 0，保留原模板资源/时限。Hermes GPT 期间发现 provider 504，尚待完整结果。
+- 当前 provider-free：415 passed / 73 deselected（随后新增镜像选择契约测试另行通过）。
+
+### 镜像清理
+
+用户要求及时删除确认不用的镜像。已删除淘汰的初版 Hermes 与中间 refined 候选，
+保留最终四种候选、现有基础/测试/VGB 镜像及当前容器。按 `/opt/hai/build` 描述定向
+清理本次不再使用的构建缓存，回收约 52.71 MB；共享层仍由最终镜像引用，不能按
+旧镜像显示的总大小宣称已释放。历史安装清单、构建日志和失败证据仍保留。
+清理报告：`outputs/preinstalled/cleanup-report.json`。未进行全局 image/cache prune。
