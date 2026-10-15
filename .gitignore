@@ -11,6 +11,7 @@ configs/resources/local.yaml
 run-artifacts/
 outputs/
 logs/
+reports/
 dist/
 build/
 *.egg-info/
