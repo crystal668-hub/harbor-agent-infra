@@ -141,27 +141,17 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
             evidence = stage / "evidence" / "original-events.jsonl"
             evidence.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(original_events, evidence)
+        recovery_job_targets = {}
         for recovery in plan.recoveries:
             for job in (recovery / "jobs").iterdir():
                 if not job.is_dir():
                     continue
-                target = stage / "jobs" / job.name
+                copied_name = f"{job.name}--{recovery.name}"
+                target = stage / "jobs" / copied_name
                 if target.exists():
-                    # Replayed inputs must be identical, never silently overwrite evidence.
-                    before = {
-                        str(p.relative_to(target)): p.read_bytes()
-                        for p in target.rglob("*")
-                        if p.is_file()
-                    }
-                    after = {
-                        str(p.relative_to(job)): p.read_bytes()
-                        for p in job.rglob("*")
-                        if p.is_file()
-                    }
-                    if before != after:
-                        raise ValueError(f"Conflicting native Job name: {job.name}")
-                else:
-                    shutil.copytree(job, target, symlinks=True)
+                    raise ValueError(f"Duplicate recovery Job snapshot name: {copied_name}")
+                shutil.copytree(job, target, symlinks=True)
+                recovery_job_targets[(recovery, job.name)] = target
             evidence_dir = stage / "evidence" / recovery.name
             evidence_dir.mkdir(parents=True, exist_ok=True)
             for name in ("recovery-manifest.json", "recovery-result.json", "recovery-state.json"):
@@ -169,6 +159,10 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
                     shutil.copy2(recovery / name, evidence_dir / name)
         mappings = [(str(root), str(output)) for root in roots]
         mappings.append((str(stage), str(output)))
+        for (recovery, source_name), target in recovery_job_targets.items():
+            mappings.append(
+                (str(recovery / "jobs" / source_name), str(output / "jobs" / target.name))
+            )
         for slot in plan.slots:
             # Historical directory aliases are discovered from validated original trial references.
             old_path = str(slot.record.get("trial_result_path") or "")
@@ -183,7 +177,9 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
             seen = {str(a.get("trial_id")) for a in attempts}
             projections = {}
             for candidate in sorted(slot.candidates, key=lambda c: c.ordinal):
-                path = stage / candidate.path.relative_to(candidate.root)
+                source_job = candidate.path.parent.parent
+                target_job = recovery_job_targets[(candidate.root, source_job.name)]
+                path = target_job / candidate.path.relative_to(source_job)
                 record, event = project_attempt(path, base, plan.run_id)
                 record = rebase(record, mappings)
                 event = rebase(event, mappings)
