@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=scratch
 FROM ${BASE_IMAGE}
 COPY . /opt/hai/build/
 RUN python3 /opt/hai/build/install.py \

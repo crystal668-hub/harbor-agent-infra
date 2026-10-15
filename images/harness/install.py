@@ -154,9 +154,16 @@ def main():
         if f"/{pin['source_commit']}/scripts/install.sh" not in item["url"]:
             raise ValueError("Hermes installer does not match the runtime lock")
         installer = verified_asset(item, "hermes-install.sh")
-        run(["bash", str(installer), "--skip-setup", "--branch", pin["install_branch"],
-             "--commit", pin["source_commit"]],
-            env={**os.environ, "HERMES_HOME": "/tmp/hermes", "CI": "1"})
+        for attempt in range(3):
+            try:
+                run(["bash", str(installer), "--skip-setup", "--branch", pin["install_branch"],
+                     "--commit", pin["source_commit"]],
+                    env={**os.environ, "HERMES_HOME": "/tmp/hermes", "CI": "1"}, timeout=2400)
+                break
+            except subprocess.CalledProcessError:
+                if attempt == 2:
+                    raise
+                time.sleep(2 ** attempt)
         roots = ["/tmp/hermes/hermes-agent", "/tmp/hermes/tools", "/root/.local/bin/hermes"]
         managed = Path.home() / ".local/share/uv/python"
         if managed.exists():
