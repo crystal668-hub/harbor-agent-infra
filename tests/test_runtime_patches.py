@@ -15,6 +15,17 @@ def test_hermes_model_id_patch_preserves_only_exact_id_for_custom_endpoint(tmp_p
 
     root = tmp_path / "hermes-agent"
     (root / "hermes_cli").mkdir(parents=True)
+    (root / "agent").mkdir()
+    wire = root / "agent/anthropic_adapter.py"
+    wire.write_text(
+        "def _is_third_party_anthropic_endpoint(url): return url == 'https://gateway.example'\n"
+        "def normalize_model_name(model, preserve_dots=False):\n"
+        "    return model if preserve_dots else model.replace('.', '-')\n"
+        "def build_anthropic_kwargs(model, base_url, preserve_dots=False):\n"
+        "    if True:\n"
+        "        model = normalize_model_name(model, preserve_dots=preserve_dots)\n"
+        "    return {'model': model}\n"
+    )
     file = root / "hermes_cli/model_normalize.py"
     file.write_text(
         "def _normalize_provider_alias(provider): return provider\n"
@@ -46,6 +57,12 @@ def test_hermes_model_id_patch_preserves_only_exact_id_for_custom_endpoint(tmp_p
     assert normalize("claude-sonnet-4.6", "anthropic") == "claude-sonnet-4-6"
     monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
     assert normalize("claude-opus-5.5", "anthropic") == "claude-opus-5-5"
+    wire_namespace = {}
+    exec(wire.read_text(), wire_namespace)
+    build = wire_namespace["build_anthropic_kwargs"]
+    assert build("claude-opus-5.5", "https://gateway.example")["model"] == "claude-opus-5.5"
+    assert build("claude-opus-5.5", "https://api.anthropic.com")["model"] == "claude-opus-5-5"
+    assert build("claude-sonnet-4.6", "https://gateway.example")["model"] == "claude-sonnet-4-6"
     monkeypatch.delenv("ANTHROPIC_BASE_URL")
     assert normalize("claude-opus-5.5", "anthropic") == "claude-opus-5-5"
     with pytest.raises(RuntimeError, match="source commit"):

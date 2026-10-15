@@ -82,5 +82,14 @@ if after not in text:
     if text.count(before) != 1:
         raise RuntimeError('Unexpected Hermes model normalization contract')
     file.write_text(text.replace(before, after))
+file = root / 'agent/anthropic_adapter.py'
+text = file.read_text()
+before = '        model = normalize_model_name(model, preserve_dots=preserve_dots)'
+after = ('        preserve_dots = preserve_dots or (model == "claude-opus-5.5"\n'
+         '            and _is_third_party_anthropic_endpoint(base_url))\n' + before)
+if after not in text:
+    if text.count(before) != 1:
+        raise RuntimeError('Unexpected Hermes Anthropic request contract')
+    file.write_text(text.replace(before, after))
 """.replace("SOURCE_COMMIT", json.dumps(source_commit))
     return "python3 -c " + shlex.quote(script)

@@ -154,3 +154,35 @@ def test_real_hermes_rejects_modified_application_dependency():
     report = json.loads(result.stdout)
     assert report["status"] == "failed"
     assert "artifact mismatch" in report["error"]
+
+
+def test_real_hermes_preserves_gateway_model_in_anthropic_request():
+    import shlex
+
+    from adapters.runtime_patches import hermes_model_id_patch_command
+
+    _, lock, image = candidate("hermes")
+    patch = hermes_model_id_patch_command(lock.hermes.source_commit)
+    script = (
+        "import json,sys; from pathlib import Path; "
+        "sys.path.insert(0,'/tmp/hermes/hermes-agent'); "
+        "from agent.anthropic_adapter import build_anthropic_kwargs; "
+        "args=build_anthropic_kwargs('claude-opus-5.5',"
+        "[{'role':'user','content':'fixture'}],None,64000,None,"
+        "base_url='https://gateway.example'); "
+        "assert args['model']=='claude-opus-5.5', args['model']; "
+        "print(json.dumps({'model':args['model'],'max_tokens':args['max_tokens']}))"
+    )
+    invoke = (
+        "import json,subprocess; from pathlib import Path; "
+        "facts=next(Path('/tmp/hermes/installs').glob('*/facts.json')); "
+        "venv=Path(json.loads(facts.read_text())['packages']['venv']['environment']); "
+        f"subprocess.run([str(venv/'bin/python'),'-c',{script!r}],check=True)"
+    )
+    result = subprocess.run([
+        "docker", "run", "--rm", "--pull=never", "--network=none", "--cpus=1", "--memory=2g",
+        "--entrypoint", "bash", image.immutable_reference,
+        "-c", patch + " && python3 -c " + shlex.quote(invoke),
+    ], capture_output=True, text=True, timeout=180)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["model"] == "claude-opus-5.5"

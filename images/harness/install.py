@@ -97,6 +97,7 @@ def capture_patches(name: str, roots: list[str], commit: str | None) -> dict:
         candidates = (list(Path(shell(name, "npm root -g")).joinpath("openclaw/dist").glob("*.js"))
                       if name == "openclaw" else
                       [Path("/tmp/hermes/hermes-agent/agent/agent_init.py"),
+                       Path("/tmp/hermes/hermes-agent/agent/anthropic_adapter.py"),
                        Path("/tmp/hermes/hermes-agent/hermes_cli/model_normalize.py")])
         snapshots = {str(path): path.read_bytes() for path in candidates}
         try:
