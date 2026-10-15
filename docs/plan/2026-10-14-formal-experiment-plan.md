@@ -1,13 +1,13 @@
 # 正式实验方案
 **制定日期**: 2026-10-14  
-**状态**: 待审核  
+**状态**: 2026-10-15 用户已确认本轮设计调整；执行与恢复按冻结协议推进
 **Git 基线**: `74e2b2e` (docs: record 64000 matrix validation and adaptive thinking fix)
 
 ---
 
 ## 1. 实验目标
 
-在固定环境与预算下，系统性测量 4 种 Agent harness 与 4 种模型组合在 VGB 化学任务上的表现，以 VGB 得分为主要评估指标。
+在固定环境与执行时限下，系统性测量 4 种 Agent harness 与 4 种模型组合在 VGB 化学任务上的表现，以 VGB 得分为主要评估指标。
 
 ### 1.1 测量对象
 - **系统能力**: Agent harness、模型及其自身行为的综合表现
@@ -15,7 +15,7 @@
 - **次要指标**: 执行覆盖率、任务完成状态、工程可靠性、成本与耗时
 
 ### 1.2 实验原则
-- 固定环境与预算下的能力观测
+- 固定环境与执行时限下的系统能力观测；不要求各组合消耗相同的累计 tokens 或费用
 - 正常任务失败、超时、低分均为有效观测，保留记录
 - 工程故障单独处理，允许在恢复条件后替代执行
 - 每个 slot 至多一条主执行代表，优先原始有效结果
@@ -149,6 +149,8 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 - **任务数**: 71 (20 advanced + 51 basic)
 - **重复次数**: 3
 - **总 slot 数**: 16 × 71 × 3 = **3,408 slots**
+- **原始 run 数**: 16 × 3 = **48 个**，每个 run 对应一个组合的一次 repeat，包含 71 slots
+- **轮次顺序**: 完成所有 16 个组合的 repeat1，再运行 repeat2、repeat3；轮内保持现有 harness/model 顺序
 
 ### 4.3 Slot 身份
 每个 slot 由以下要素唯一确定：
@@ -169,7 +171,11 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 | 参数 | 值 | 说明 |
 |------|-----|------|
 | 思考强度 | `high` | OpenClaw: `thinking: high`<br>Hermes: `reasoning: high`<br>Codex/Claude Code: `reasoning_effort: high` |
-| 最大输出 | `64000` tokens | `experiment.agent.max_output_tokens: 64000` |
+| 单 turn 最大输出请求参数 | `64000` tokens | `experiment.agent.max_output_tokens: 64000` |
+
+64,000 是 agent 单 turn（单次模型响应）的输出约束，通常不会触及；不是整个任务的累计 token 预算。
+比较目标是固定时间下的系统能力，保留当前设置。参数传递与网关实际强制执行能力的区别见
+[模型验证记录](../model-matrix.md)，不将该参数视为已验证的严格总预算。
 
 ### 5.2 资源与超时配置
 
@@ -208,10 +214,16 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 | Codex | 0.162.1 | 通过本地 protocol bridge 配置输出上限 |
 | Claude Code | 2.1.296 | Native CLI |
 
+预装镜像方案待执行：先完成当前实验补跑，再实施并验收预装方案、切换后续新实验。
+切换时冻结新的镜像 digest 与执行条件；原始 run、补跑及其结果保留原冻结身份，
+不得自动将不同环境的结果作为同条件替代。详见
+[预装镜像实施计划](2026-10-15-preinstalled-harness-migration-plan.md)。
+
 ### 5.5 技能配置
 - **Group**: 仅运行 `skills_off`
 - **Skills enabled**: `false`
 - **Skill allowlist**: `null`
+- 本地正式配置的 `experiment.groups` 仅声明 `skills_off`，不保留 `skills_on`；执行入口仍显式选择 `--group skills_off`
 
 不运行配对的 `skills_on` 组，除非后续明确需要比较。
 
@@ -321,7 +333,7 @@ run-artifacts/
 | 产物 | 内容 | 用途 |
 |------|------|------|
 | `protocol.json` | 冻结条件、规则与哈希 | 确保补跑使用相同条件 |
-| `slots.jsonl` | 完整预定 slot 矩阵 | 派发前即存在，3408 条 |
+| `slots.jsonl` | 完整预定 slot 矩阵 | 每个原始 run 派发前即存在，71 条；48 个 run 共 3,408 条 |
 | `attempts.jsonl` | Slot、ordinal、Harbor ID、证据索引 | 追溯每次执行 |
 | `decisions.jsonl` | 分层状态、reason、证据、规则版本 | 判定依据与修订历史 |
 | `recovery-plan.json` | 精确 slot/attempt 清单、条件、预算 | 审查后执行补跑 |
@@ -357,7 +369,7 @@ configs/experiments/
 
 ```yaml
 run:
-  output_dir: run-artifacts/formal/<experiment-id>-<harness>-<model>
+  output_dir: run-artifacts/formal/<harness>-<provider>-repeat<N>
   vgb_python: .vgb-runtime/bin/python
 
 experiment:
@@ -433,16 +445,25 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
 
 ### 9.2 执行阶段
 
-对每个 harness × model 组合：
+按 repeat1 → repeat2 → repeat3 推进；每轮执行全部 16 个 harness × model 组合。
+推荐使用统一入口预览或执行：
 
 ```bash
-# 示例: OpenClaw + GPT
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
-  --group skills_off
+bash scripts/run_formal_experiments.sh --dry-run
+bash scripts/run_formal_experiments_interactive.sh
 ```
 
-串行或并行执行 16 组实验（注意本机资源和 provider 配额）。
+单个原始 run 示例（provider 使用 `openai`/`anthropic`/`qwen`/`deepseek`）：
+
+```bash
+# 示例: OpenClaw + GPT，repeat1
+uv run --locked --python 3.12 hai run \
+  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
+  --group skills_off --formal-provider openai --formal-repeat 1
+```
+
+统一入口串行调度 48 个原始 run，每个 Job 内并发 2 Trials。已有目录会保留并跳过，
+目录存在不代表完成；进入下一轮前须核对本轮全部 run 的结束状态，处理未完成或误跳过的 run。
 
 ### 9.3 监控与验收
 
@@ -490,11 +511,11 @@ uv run --locked hai aggregate \
 ### 10.1 必须交付的产物
 
 1. **实验协议**:
-   - `protocol.json` (16 个 run，每个一份)
+   - `protocol.json` (48 个原始 run，每个一份)
    - 本文档及其冻结版本
 
 2. **执行记录**:
-   - `slots.jsonl` (16 × 3408 = 54,528 预定 slots)
+   - `slots.jsonl` (48 份 × 71 条 = 3,408 预定 slots)
    - `attempts.jsonl` (所有执行记录，包括原始和替代)
    - Harbor 原生 Trial 产物 (result, trajectory, logs)
 
@@ -523,7 +544,9 @@ uv run --locked hai aggregate \
 
 最终分析报告必须包含：
 
-1. **主结果**: 按 track 和执行条件的 VGB 分数
+1. **主结果**: basic（51 题）与 advanced（20 题）必须分别统计和报告，按 harness、model、repeat 区分
+   - 两个 track 分别给出样本数、已评分数、缺失原因和 VGB 得分；不以混合均分替代两个 track 的主结果
+   - `hai formal-summary` 提供 `track` 和 `run_track` 分项，原有 `summary` 仅为兼容的整体辅助统计
    - 均值、中位数、标准差
    - 分数分布（如适用）
    - 标注覆盖率和缺失原因
@@ -625,9 +648,10 @@ uv run --locked hai aggregate \
 
 ### 14.2 变更历史
 - 2026-10-14: 初始版本，待审核
+- 2026-10-15: 用户确认固定时间能力比较、单 turn 64,000 输出约束、分 track 报告、按 repeat 轮次执行、当前补跑后再切换预装镜像；修正为 48 个原始 run / 3,408 slots，并收敛本地单组配置
 
 ### 14.3 审批
-- [ ] 实验设计审批
+- [x] 本轮实验设计调整确认（2026-10-15，见变更历史）
 - [ ] 资源与预算审批
 - [ ] 风险评估审批
 - [ ] 最终执行批准

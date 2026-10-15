@@ -1,5 +1,5 @@
 # 正式实验方案总结
-**日期**: 2026-10-14  
+**日期**: 2026-10-15（按用户确认修订）
 **完整方案**: [2026-10-14-formal-experiment-plan.md](2026-10-14-formal-experiment-plan.md)
 
 ---
@@ -11,17 +11,20 @@
 - **第一阶段任务**: 2 tracks, **71 tasks** (20 advanced + 51 basic)
 - **重复次数**: 每组合每任务 **3 次**
 - **总 slots**: 16 × 71 × 3 = **3,408 slots**
+- **原始 run**: 48 个，每个 71 slots；先完成全部组合的 repeat1，再运行 repeat2、repeat3
 
 ### 执行配置（统一）
 ```yaml
 思考强度: high
-最大输出: 64,000 tokens
+单 turn 最大输出请求参数: 64,000 tokens
 Agent 超时: 7,200 秒 (2小时)
 资源: 4 CPU / 6144 MB
 并发: 2 trials
 Group: skills_off (仅)
 重试: max_retries=0 (关闭内部重试)
 ```
+
+比较目标为固定时间下的系统能力；64,000 是单次响应约束，不是每任务累计 token 预算。
 
 ### Harness × Model 矩阵
 |  | GPT 6.1-sol | Claude Opus 5.5 | Qwen 3.8-max | DeepSeek v4-pro |
@@ -202,20 +205,16 @@ uv run hai doctor
 uv run pytest -m 'not integration'
 ```
 
-### 执行实验（示例）
+### 执行实验
 ```bash
-# OpenClaw + GPT
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
-  --group skills_off
+# 仅预览 48 个原始 run，顺序为 repeat1 → repeat2 → repeat3
+bash scripts/run_formal_experiments.sh --dry-run
 
-# Hermes + Claude
-uv run --locked hai run \
-  --config configs/experiments/hermes/vgb-claude.config.yaml \
-  --group skills_off
-
-# ... 依次执行所有 16 组
+# 按上述顺序交互执行
+bash scripts/run_formal_experiments_interactive.sh
 ```
+
+已有目录被保留并跳过；进入下一轮前核对本轮所有 run 的结束状态，不能以目录存在代替完成。
 
 ### 监控
 ```bash
@@ -248,8 +247,8 @@ uv run --locked hai aggregate \
 ## 交付物核心清单
 
 ### 必须交付
-- [ ] 16 个 `protocol.json` (每个 harness×model 组合)
-- [ ] 16 个 `slots.jsonl` (共 54,528 预定 slots)
+- [ ] 48 个 `protocol.json` (每个 harness×model×repeat 原始 run)
+- [ ] 48 个 `slots.jsonl` (每份 71 条，共 3,408 预定 slots)
 - [ ] 所有执行的 `attempts.jsonl`
 - [ ] 所有判定的 `decisions.jsonl`
 - [ ] 所有评分的 `assessments/`
@@ -257,7 +256,7 @@ uv run --locked hai aggregate \
 - [ ] 最终 `analysis/` 报告
 
 ### 最终报告必须包含
-1. VGB 分数汇总（按 track, harness, model）
+1. basic 与 advanced 分别统计和报告 VGB 分数、样本数与评分覆盖情况，按 harness、model、repeat 区分；混合均分仅作辅助
 2. 执行覆盖率（≥90%）
 3. 评分覆盖率（≥95%，基于有效执行）
 4. 工程可靠性统计
@@ -297,7 +296,9 @@ uv run --locked hai aggregate \
 2. **不要改协议**: 执行中途不得修改模型、镜像、预算等条件
 3. **保全证据**: 任何删除或恢复前，必须先保全现场
 4. **人工审查**: 所有补跑必须经过人工审查批准
-5. **串行建议**: 首次执行建议串行或小批量并行，避免资源/配额问题
+5. **执行顺序**: 按 repeat 轮次串行调度，每轮覆盖 16 个组合；每个 Job 内并发 2 Trials
+6. **预装镜像**: 待当前实验补跑完成后实施、验收并切换后续新实验；旧 run 保留冻结环境身份
+7. **单组声明**: 本地正式配置仅保留 `skills_off`，由 `scripts/update_experiment_configs.py` 维护
 
 ---
 

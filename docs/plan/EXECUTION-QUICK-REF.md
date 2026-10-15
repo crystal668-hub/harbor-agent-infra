@@ -1,68 +1,50 @@
 # 正式实验执行快速参考
 
+更新：2026-10-15。
+
+## 规模与顺序
+
+- 16 组合 × 3 repeats = **48 个原始 run**。
+- 每 run 71 slots（basic 51、advanced 20），共 **3,408 slots**。
+- 先完成所有组合 repeat1，再运行 repeat2、repeat3。
+- 每轮 harness 顺序：claude-code → codex → hermes → openclaw。
+- 每个 harness 的模型顺序：deepseek → qwen → gpt → claude。
+- 仅 `skills_off`；每 Job 内并发 2；每个 run 使用独立冻结身份。
+
 ## 执行命令
 
-### 交互式执行（推荐）
 ```bash
+# 预览 48 个命令，不启动实验
+bash scripts/run_formal_experiments.sh --dry-run
+
+# 交互式执行
 bash scripts/run_formal_experiments_interactive.sh
-```
 
-### 自动批量执行
-```bash
-# 后台运行
-nohup bash scripts/run_formal_experiments.sh > run.log 2>&1 &
-
-# 或使用 tmux
-tmux new -s formal-exp
+# 自动按轮次串行执行
 bash scripts/run_formal_experiments.sh
+
+# 单个 run 示例
+uv run --locked --python 3.12 hai run \
+  --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
+  --group skills_off --formal-provider deepseek --formal-repeat 1
+
+# 启动监控
+uv run --locked --python 3.12 hai view
 ```
 
-### 单个子实验
-```bash
-uv run hai run \
-  --config configs/experiments/<harness>/vgb-<model>.config.yaml \
-  --group skills_off
-```
+GPT 模板对应 provider `openai`；Claude 模板对应 `anthropic`。
+输出目录为 `run-artifacts/formal/<harness>-<provider>-repeat<N>/`。
+已有目录会被保留并跳过，不表示已完成；进入下一轮前核对本轮全部 run 的终态。
 
-### 检查进度
-```bash
-bash scripts/check_experiment_progress.sh
-```
+## 统计与切换
 
-### 启动监控
-```bash
-uv run hai view
-# 访问 http://127.0.0.1:8080
-```
-
-## 16 个子实验列表
-
-| # | Harness | Model | 命令 |
-|---|---------|-------|------|
-| 1 | claude-code | deepseek | `uv run hai run --config configs/experiments/claude-code/vgb-deepseek.config.yaml --group skills_off` |
-| 2 | claude-code | qwen | `uv run hai run --config configs/experiments/claude-code/vgb-qwen.config.yaml --group skills_off` |
-| 3 | claude-code | gpt | `uv run hai run --config configs/experiments/claude-code/vgb-gpt.config.yaml --group skills_off` |
-| 4 | claude-code | claude | `uv run hai run --config configs/experiments/claude-code/vgb-claude.config.yaml --group skills_off` |
-| 5 | codex | deepseek | `uv run hai run --config configs/experiments/codex/vgb-deepseek.config.yaml --group skills_off` |
-| 6 | codex | qwen | `uv run hai run --config configs/experiments/codex/vgb-qwen.config.yaml --group skills_off` |
-| 7 | codex | gpt | `uv run hai run --config configs/experiments/codex/vgb-gpt.config.yaml --group skills_off` |
-| 8 | codex | claude | `uv run hai run --config configs/experiments/codex/vgb-claude.config.yaml --group skills_off` |
-| 9 | hermes | deepseek | `uv run hai run --config configs/experiments/hermes/vgb-deepseek.config.yaml --group skills_off` |
-| 10 | hermes | qwen | `uv run hai run --config configs/experiments/hermes/vgb-qwen.config.yaml --group skills_off` |
-| 11 | hermes | gpt | `uv run hai run --config configs/experiments/hermes/vgb-gpt.config.yaml --group skills_off` |
-| 12 | hermes | claude | `uv run hai run --config configs/experiments/hermes/vgb-claude.config.yaml --group skills_off` |
-| 13 | openclaw | deepseek | `uv run hai run --config configs/experiments/openclaw/vgb-deepseek.config.yaml --group skills_off` |
-| 14 | openclaw | qwen | `uv run hai run --config configs/experiments/openclaw/vgb-qwen.config.yaml --group skills_off` |
-| 15 | openclaw | gpt | `uv run hai run --config configs/experiments/openclaw/vgb-gpt.config.yaml --group skills_off` |
-| 16 | openclaw | claude | `uv run hai run --config configs/experiments/openclaw/vgb-claude.config.yaml --group skills_off` |
-
-## 规模
-- 每个子实验: 213 slots (71 tasks × 3 repeats)
-- 总计: 3,408 slots
-- 预估单个子实验: 53-72 小时
-- 预估全部: ~40 天（串行）
+basic 与 advanced 分别统计和报告，混合均分仅作辅助。
+`hai formal-summary` 输出 `track` 与 `run_track`；每个原始 run 只选一个代表快照。
+预装镜像方案待执行，当前实验补跑完成后再实施、验收并切换后续新实验。
 
 ## 关键文档
+
 - [执行计划](2026-10-14-experiment-execution-plan.md)
-- [环境检查](2026-10-14-experiment-readiness-check.md)
-- [实验方案](2026-10-14-formal-experiment-plan.md)
+- [正式方案](2026-10-14-formal-experiment-plan.md)
+- [恢复与合并约定](2026-10-15-native-recovery-concurrency-and-merge-plan.md)
+- [预装镜像计划](2026-10-15-preinstalled-harness-migration-plan.md)

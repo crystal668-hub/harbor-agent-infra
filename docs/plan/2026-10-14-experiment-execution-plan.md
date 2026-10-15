@@ -1,471 +1,115 @@
 # 正式实验执行计划
-**制定日期**: 2026-10-14  
-**基线**: `788230f` (docs: add formal experiment readiness check report)
 
----
+制定日期：2026-10-14；最后更新：2026-10-15（按用户确认修订）。
 
-## 1. 执行策略
+## 1. 规模与执行顺序
 
-将完整实验拆分为 **16 个独立子实验**，每个子实验对应一个 harness × model 组合。
+第一阶段为 4 harness × 4 model × 71 tasks × 3 repeats，共 **3,408 slots**。
+16 个组合各拆成 3 个独立原始 run，共 **48 个 run**，每个 run 71 slots。
+仅运行 `skills_off`，本地正式配置也仅声明该组。
 
-### 1.1 拆分原因
-- **可控性**: 每个子实验独立运行，便于监控和中断
-- **故障隔离**: 单个组合失败不影响其他组合
-- **灵活调度**: 可以根据资源和配额情况调整执行顺序
-- **渐进验证**: 可以在早期子实验中发现问题并调整
+先完成全部 16 个组合的 **repeat1**，再运行 **repeat2**，最后 **repeat3**。
+每轮内保持以下顺序：
 
-### 1.2 执行顺序
+| 层次 | 顺序 |
+| --- | --- |
+| Harness | claude-code → codex → hermes → openclaw |
+| Model 模板 | deepseek → qwen → gpt → claude |
+| 对应 provider 身份 | deepseek → qwen → openai → anthropic |
 
-按照以下顺序执行 16 个子实验：
+统一入口串行调度原始 run，每个 Job 内并发 2 Trials。
+不将 `n_attempts` 改为 3；重复由显式的 `--formal-repeat` 分别启动，初始尝试仍为 1、内部重试为 0。
 
-**Harness 优先级**: claude-code → codex → hermes → openclaw  
-**Model 优先级**: deepseek → qwen → gpt → claude
+## 2. 执行入口
 
----
-
-## 2. 子实验清单
-
-| # | Harness | Model | 配置文件 | Experiment ID | 状态 |
-|---|---------|-------|----------|---------------|------|
-| 1 | claude-code | deepseek | configs/experiments/claude-code/vgb-deepseek.config.yaml | cc-deepseek | ⏸ 待执行 |
-| 2 | claude-code | qwen | configs/experiments/claude-code/vgb-qwen.config.yaml | cc-qwen | ⏸ 待执行 |
-| 3 | claude-code | gpt | configs/experiments/claude-code/vgb-gpt.config.yaml | cc-gpt | ⏸ 待执行 |
-| 4 | claude-code | claude | configs/experiments/claude-code/vgb-claude.config.yaml | cc-claude | ⏸ 待执行 |
-| 5 | codex | deepseek | configs/experiments/codex/vgb-deepseek.config.yaml | codex-deepseek | ⏸ 待执行 |
-| 6 | codex | qwen | configs/experiments/codex/vgb-qwen.config.yaml | codex-qwen | ⏸ 待执行 |
-| 7 | codex | gpt | configs/experiments/codex/vgb-gpt.config.yaml | codex-gpt | ⏸ 待执行 |
-| 8 | codex | claude | configs/experiments/codex/vgb-claude.config.yaml | codex-claude | ⏸ 待执行 |
-| 9 | hermes | deepseek | configs/experiments/hermes/vgb-deepseek.config.yaml | hermes-deepseek | ⏸ 待执行 |
-| 10 | hermes | qwen | configs/experiments/hermes/vgb-qwen.config.yaml | hermes-qwen | ⏸ 待执行 |
-| 11 | hermes | gpt | configs/experiments/hermes/vgb-gpt.config.yaml | hermes-gpt | ⏸ 待执行 |
-| 12 | hermes | claude | configs/experiments/hermes/vgb-claude.config.yaml | hermes-claude | ⏸ 待执行 |
-| 13 | openclaw | deepseek | configs/experiments/openclaw/vgb-deepseek.config.yaml | openclaw-deepseek | ⏸ 待执行 |
-| 14 | openclaw | qwen | configs/experiments/openclaw/vgb-qwen.config.yaml | openclaw-qwen | ⏸ 待执行 |
-| 15 | openclaw | gpt | configs/experiments/openclaw/vgb-gpt.config.yaml | openclaw-gpt | ⏸ 待执行 |
-| 16 | openclaw | claude | configs/experiments/openclaw/vgb-claude.config.yaml | openclaw-claude | ⏸ 待执行 |
-
-**每个子实验包含**:
-- 71 个任务（20 advanced + 51 basic）
-- 每个任务重复 3 次
-- 每个子实验 = 71 × 3 = **213 slots**
-
----
-
-## 3. 单个子实验执行流程
-
-### 3.1 执行命令模板
+### 2.1 预览与批量执行
 
 ```bash
-# 设置实验标识
-HARNESS="<harness-name>"
-MODEL="<model-name>"
-EXPERIMENT_ID="${HARNESS}-${MODEL}"
-CONFIG="configs/experiments/${HARNESS}/vgb-${MODEL}.config.yaml"
+# 仅打印 48 个命令，不启动 Trial
+bash scripts/run_formal_experiments.sh --dry-run
 
-# 启动实验
-uv run hai run \
-  --config ${CONFIG} \
-  --group skills_off \
-  2>&1 | tee logs/${EXPERIMENT_ID}.log
+# 按轮次交互执行
+bash scripts/run_formal_experiments_interactive.sh
+
+# 按相同轮次自动串行执行
+bash scripts/run_formal_experiments.sh
 ```
 
-### 3.2 执行前检查
+两个 shell 入口均调用 `scripts/run_formal_matrix.py`，使用 Python 3.12 与 locked uv 环境。
+已有规范输出目录会保留并跳过，不隐式恢复；命令非零退出时自动入口停止。
+**目录存在不代表已完成**：进入下一轮前须核对本轮全部 run 的结束状态，处理交互跳过、
+中断或仍在运行的任务。历史目录别名按恢复契约核对，不重复派发相同 slot。
 
-在启动每个子实验前：
-1. ✅ 确认配置文件存在且正确
-2. ✅ 确认对应 Provider 配额充足
-3. ✅ 确认系统资源充足（CPU、内存、磁盘空间）
-4. ✅ 启动 Harbor Viewer 监控
-5. ✅ 记录开始时间
-
-### 3.3 执行中监控
+### 2.2 单个原始 run
 
 ```bash
-# 启动 Harbor Viewer（如果尚未启动）
-uv run hai view &
-
-# 访问 http://127.0.0.1:8080 监控进度
+# 示例：Claude Code × DeepSeek，repeat1
+uv run --locked --python 3.12 hai run \
+  --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
+  --group skills_off --formal-provider deepseek --formal-repeat 1
 ```
 
-定期检查：
-- 任务完成数量和进度
-- 失败任务数量和类型
-- 资源使用情况（CPU、内存）
-- API 调用情况和配额剩余
-- 日志文件中的错误信息
+GPT 模板使用 `--formal-provider openai`，Claude 模板使用 `--formal-provider anthropic`。
+repeat 参数为 1、2、3，对应内部索引 0、1、2。正式入口生成规范名称：
 
-### 3.4 执行后操作
+```text
+run-artifacts/formal/<harness>-<provider>-repeat<N>/
+logs/formal-experiments/<harness>-<provider>-repeat<N>.log
+```
 
-每个子实验完成后：
-1. ✅ 检查输出目录结构完整性
-2. ✅ 运行初步统计（成功/失败数量）
-3. ✅ 备份日志文件
-4. ✅ 更新执行计划状态
-5. ✅ 如有需要，运行 `audit` 生成初步恢复计划
+每个原始 run 派发前冻结协议、原生 JobConfig 和 71 条 slot 身份。
+恢复与 merged 快照沿用原 slot，不增加 3,408 的预定样本总量。
 
----
+## 3. 启动、监控与验收
 
-## 4. 批量执行脚本
-
-### 4.1 串行执行脚本
-
-创建 `scripts/run_formal_experiments.sh`:
+启动前检查配置、provider 配额、主机资源与输出目录；本地配置统一由
+`uv run --locked --python 3.12 python scripts/update_experiment_configs.py` 维护。
+比较目标为固定时间下的系统能力：每 Trial 4 CPU / 6144 MB，Agent 7200 秒，Verifier 120 秒，
+思考强度 high，单 turn 输出请求上限 64,000 tokens。它不是每任务累计 token 预算。
 
 ```bash
-#!/bin/bash
-set -e
-
-# 日志目录
-LOG_DIR="logs/formal-experiments"
-mkdir -p ${LOG_DIR}
-
-# 执行计划
-declare -a EXPERIMENTS=(
-  "claude-code:deepseek"
-  "claude-code:qwen"
-  "claude-code:gpt"
-  "claude-code:claude"
-  "codex:deepseek"
-  "codex:qwen"
-  "codex:gpt"
-  "codex:claude"
-  "hermes:deepseek"
-  "hermes:qwen"
-  "hermes:gpt"
-  "hermes:claude"
-  "openclaw:deepseek"
-  "openclaw:qwen"
-  "openclaw:gpt"
-  "openclaw:claude"
-)
-
-# 执行每个子实验
-for exp in "${EXPERIMENTS[@]}"; do
-  IFS=':' read -r harness model <<< "$exp"
-  
-  echo "========================================"
-  echo "开始子实验: ${harness} × ${model}"
-  echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
-  echo "========================================"
-  
-  # 配置文件路径
-  CONFIG="configs/experiments/${harness}/vgb-${model}.config.yaml"
-  
-  # 检查配置文件
-  if [ ! -f "${CONFIG}" ]; then
-    echo "❌ 配置文件不存在: ${CONFIG}"
-    continue
-  fi
-  
-  # 实验 ID
-  EXPERIMENT_ID="${harness}-${model}"
-  LOG_FILE="${LOG_DIR}/${EXPERIMENT_ID}.log"
-  
-  echo "配置文件: ${CONFIG}"
-  echo "日志文件: ${LOG_FILE}"
-  echo ""
-  
-  # 执行实验
-  uv run hai run \
-    --config ${CONFIG} \
-    --group skills_off \
-    2>&1 | tee ${LOG_FILE}
-  
-  EXIT_CODE=${PIPESTATUS[0]}
-  
-  if [ ${EXIT_CODE} -eq 0 ]; then
-    echo "✅ 子实验完成: ${EXPERIMENT_ID}"
-  else
-    echo "❌ 子实验失败: ${EXPERIMENT_ID} (exit code: ${EXIT_CODE})"
-  fi
-  
-  echo ""
-  echo "========================================"
-  echo ""
-  
-  # 短暂休息，避免连续高负载
-  sleep 10
-done
-
-echo "所有子实验执行完毕"
-echo "完成时间: $(date '+%Y-%m-%d %H:%M:%S')"
+uv run --locked --python 3.12 hai view
+# http://127.0.0.1:8080
 ```
 
-### 4.2 交互式执行脚本
+监控完成数量、错误类型、CPU/内存/磁盘和 provider 配额。
+旧 `check_experiment_progress.sh` 仍采用组合级目录匹配，不作为 48 个原始 run 的完成验收依据。
+每个 run 结束后核对 Harbor Jobs/Trials、冻结协议、slot 台账、日志与评分产物，保全证据。
+正式结果应为 48 个原始 run、合计 3,408 个唯一预定 slots；未完成与 BLOCKED 单独说明。
 
-创建 `scripts/run_formal_experiments_interactive.sh`:
+## 4. 恢复与环境切换
+
+正常超时、预算耗尽、错误答案和零分是有效观测，保留；工程故障经审查后补跑，
+评分工程故障仅重评。每个原 slot 的执行替代与评分替代各最多 2 次，跨批次累计。
+恢复、原生目录合并与首条有效代表选择遵循
+[正式恢复约定](2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
+
+**预装镜像待执行，先完成当前实验补跑，再实施、验收并切换后续新实验。**
+切换记录新的镜像 digest 与执行条件；原始及恢复 run 保留原冻结环境身份。
+预装实施与验收范围见[预装计划](2026-10-15-preinstalled-harness-migration-plan.md)。
+
+## 5. 分 track 统计与报告
+
+basic（51 题）和 advanced（20 题）分别报告，按 harness、model、repeat 区分。
+每个 track 展示样本数、已评分数、VGB 分数与缺失原因；混合均分仅作辅助，不能替代分 track 主结果。
+每个原始 run 仅选择一个原始或 merged 代表快照参加正式汇总：
 
 ```bash
-#!/bin/bash
-set -e
-
-# 日志目录
-LOG_DIR="logs/formal-experiments"
-mkdir -p ${LOG_DIR}
-
-# 执行计划
-declare -a EXPERIMENTS=(
-  "claude-code:deepseek"
-  "claude-code:qwen"
-  "claude-code:gpt"
-  "claude-code:claude"
-  "codex:deepseek"
-  "codex:qwen"
-  "codex:gpt"
-  "codex:claude"
-  "hermes:deepseek"
-  "hermes:qwen"
-  "hermes:gpt"
-  "hermes:claude"
-  "openclaw:deepseek"
-  "openclaw:qwen"
-  "openclaw:gpt"
-  "openclaw:claude"
-)
-
-# 执行计数
-TOTAL=${#EXPERIMENTS[@]}
-CURRENT=0
-
-for exp in "${EXPERIMENTS[@]}"; do
-  CURRENT=$((CURRENT + 1))
-  IFS=':' read -r harness model <<< "$exp"
-  
-  echo ""
-  echo "========================================"
-  echo "子实验 ${CURRENT}/${TOTAL}: ${harness} × ${model}"
-  echo "========================================"
-  
-  # 询问是否执行
-  read -p "是否执行此子实验? (y/n/q): " choice
-  
-  case "$choice" in
-    y|Y)
-      CONFIG="configs/experiments/${harness}/vgb-${model}.config.yaml"
-      EXPERIMENT_ID="${harness}-${model}"
-      LOG_FILE="${LOG_DIR}/${EXPERIMENT_ID}.log"
-      
-      echo "开始执行: ${EXPERIMENT_ID}"
-      echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
-      
-      uv run hai run \
-        --config ${CONFIG} \
-        --group skills_off \
-        2>&1 | tee ${LOG_FILE}
-      
-      EXIT_CODE=${PIPESTATUS[0]}
-      
-      if [ ${EXIT_CODE} -eq 0 ]; then
-        echo "✅ 完成"
-      else
-        echo "❌ 失败 (exit code: ${EXIT_CODE})"
-      fi
-      ;;
-    q|Q)
-      echo "退出执行"
-      exit 0
-      ;;
-    *)
-      echo "⏭️  跳过"
-      ;;
-  esac
-done
-
-echo ""
-echo "所有子实验处理完毕"
+uv run --locked --python 3.12 hai formal-summary \
+  <selected-run-or-merged-path-1> <selected-run-or-merged-path-2>
 ```
 
----
+输出 `track` 为跨 run 的分 track 统计，`run_track` 为各原始 run 的分 track 统计，
+`summary` 保留兼容的整体辅助统计。未知评分保留缺失，不作为零分。
+完整报告要求见[正式方案](2026-10-14-formal-experiment-plan.md)。
 
-## 5. 监控与日志
+## 6. 时间估算
 
-### 5.1 日志组织
+若每题平均执行 30 分钟、同时执行 2 Trials：
 
-```
-logs/
-  formal-experiments/
-    claude-code-deepseek.log
-    claude-code-qwen.log
-    claude-code-gpt.log
-    claude-code-claude.log
-    codex-deepseek.log
-    ...
-```
+- 一个原始 run：71 × 30 / 2 ≈ 17.75 小时。
+- 一轮全部组合：16 × 17.75 = 284 小时，约 11.8 天。
+- 三轮全部组合：852 小时，约 35.5 天。
 
-### 5.2 进度追踪
-
-创建 `scripts/check_experiment_progress.sh`:
-
-```bash
-#!/bin/bash
-
-echo "正式实验进度检查"
-echo "================"
-echo ""
-
-# 检查输出目录
-OUTPUT_BASE="run-artifacts/formal"
-
-if [ ! -d "${OUTPUT_BASE}" ]; then
-  echo "输出目录不存在: ${OUTPUT_BASE}"
-  exit 1
-fi
-
-# 统计已完成的子实验
-declare -a EXPERIMENTS=(
-  "claude-code-deepseek"
-  "claude-code-qwen"
-  "claude-code-gpt"
-  "claude-code-claude"
-  "codex-deepseek"
-  "codex-qwen"
-  "codex-gpt"
-  "codex-claude"
-  "hermes-deepseek"
-  "hermes-qwen"
-  "hermes-gpt"
-  "hermes-claude"
-  "openclaw-deepseek"
-  "openclaw-qwen"
-  "openclaw-gpt"
-  "openclaw-claude"
-)
-
-COMPLETED=0
-TOTAL=${#EXPERIMENTS[@]}
-
-for exp in "${EXPERIMENTS[@]}"; do
-  # 查找匹配的输出目录（可能有时间戳后缀）
-  DIRS=$(find ${OUTPUT_BASE} -maxdepth 1 -type d -name "*${exp}*" 2>/dev/null)
-  
-  if [ -n "${DIRS}" ]; then
-    echo "✅ ${exp}"
-    COMPLETED=$((COMPLETED + 1))
-    
-    # 统计 slots（如果 slots.jsonl 存在）
-    for dir in ${DIRS}; do
-      if [ -f "${dir}/slots.jsonl" ]; then
-        SLOT_COUNT=$(wc -l < "${dir}/slots.jsonl")
-        echo "   Slots: ${SLOT_COUNT}"
-      fi
-    done
-  else
-    echo "⏸️  ${exp}"
-  fi
-done
-
-echo ""
-echo "进度: ${COMPLETED}/${TOTAL} ($(awk "BEGIN {printf \"%.1f\", ${COMPLETED}/${TOTAL}*100}")%)"
-```
-
----
-
-## 6. 故障处理
-
-### 6.1 子实验失败处理
-
-如果某个子实验失败：
-
-1. **保全现场**: 不要删除输出目录和日志
-2. **诊断原因**: 检查日志文件，确定失败类型
-3. **决定策略**:
-   - 工程故障 → 修复后重新执行
-   - 配额耗尽 → 补充配额后继续
-   - 配置错误 → 修正配置后重新执行
-4. **记录处理**: 在本文档中更新状态和处理记录
-
-### 6.2 恢复执行
-
-从特定子实验开始执行：
-
-```bash
-# 修改执行脚本，注释掉已完成的子实验
-# 或者手动执行剩余的子实验
-
-HARNESS="hermes"
-MODEL="gpt"
-CONFIG="configs/experiments/${HARNESS}/vgb-${MODEL}.config.yaml"
-
-uv run hai run --config ${CONFIG} --group skills_off
-```
-
----
-
-## 7. 完成标准
-
-### 7.1 单个子实验完成标准
-- ✅ 所有 213 slots 已执行（或标记为 BLOCKED）
-- ✅ 输出目录包含 `slots.jsonl` 和 `attempts.jsonl`
-- ✅ Harbor Jobs 全部完成（无卡住的 Trial）
-- ✅ 日志文件已保存
-
-### 7.2 全部实验完成标准
-- ✅ 所有 16 个子实验状态为"已完成"
-- ✅ 总计 3,408 slots 已执行
-- ✅ 每个子实验的输出目录完整
-- ✅ 准备运行聚合的 `audit` 和 `recover`
-
----
-
-## 8. 时间估算
-
-基于以下假设：
-- 单个任务平均执行时间: 30 分钟（保守估计）
-- 并发 trials: 2
-- 每个子实验: 71 tasks × 3 repeats = 213 slots
-
-**单个子实验预估时间**:
-- 理想情况: 213 slots × 30 min / 2 (并发) = 3,195 min ≈ **53 小时**
-- 考虑启动开销和超时: ≈ **60-72 小时**
-
-**全部 16 个子实验**:
-- 串行执行: 16 × 60 小时 = **960 小时** ≈ **40 天**
-- 实际可能更短（大部分任务会快于 30 分钟）
-
----
-
-## 9. 执行日志
-
-### 子实验 #1: claude-code × deepseek
-- **开始时间**: 
-- **结束时间**: 
-- **状态**: 
-- **Notes**: 
-
-### 子实验 #2: claude-code × qwen
-- **开始时间**: 
-- **结束时间**: 
-- **状态**: 
-- **Notes**: 
-
-（其余子实验记录...）
-
----
-
-## 10. 附录
-
-### 10.1 快速命令参考
-
-```bash
-# 启动单个子实验
-uv run hai run --config configs/experiments/<harness>/vgb-<model>.config.yaml --group skills_off
-
-# 启动 Harbor Viewer
-uv run hai view
-
-# 检查进度
-bash scripts/check_experiment_progress.sh
-
-# 查看日志
-tail -f logs/formal-experiments/<harness>-<model>.log
-```
-
-### 10.2 相关文档
-- [正式实验方案](2026-10-14-formal-experiment-plan.md)
-- [环境检查报告](2026-10-14-experiment-readiness-check.md)
-- [失败恢复计划](2026-10-12-failure-recovery-migration-plan.md)
-
----
-
-**文档版本**: 1.0  
-**最后更新**: 2026-10-14
+以上仅为假设下的执行时间，不含安装、评分、暂停与补跑开销，不是交付时间承诺。
+成本与实际耗时按全部尝试记录，包含失败和恢复开销。
