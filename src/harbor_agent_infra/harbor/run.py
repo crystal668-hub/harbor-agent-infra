@@ -312,8 +312,10 @@ class RunEventSink:
         run_id: str,
         harnesses: dict[str, str] | None = None,
         network_policies: dict[str, dict[str, dict[str, object]]] | None = None,
+        slot_bindings: dict[str, dict[str, dict]] | None = None,
     ):
         self.path = path
+        self.slot_bindings = slot_bindings or {}
         self.run_id = run_id
         self.harness_runners: dict[str, HarnessRunner] = {
             group_id: harness_runner_for(agent_name)
@@ -465,6 +467,11 @@ class RunEventSink:
             ),
             "trial_result_path": str(trial_dir / "result.json"),
         }
+        binding = self.slot_bindings.get(group_id, {}).get(event.task_name, {})
+        for key in ("slot_id", "repeat_index", "provider", "public_task_sha256"):
+            if key in binding:
+                record_payload[key] = binding[key]
+                event_payload[key] = binding[key]
         payload = {
             **record_payload,
             "trial_result": trial_dump,
@@ -510,10 +517,11 @@ async def run_paired_jobs(
     job_name_suffix: str = "",
     allow_task_selection_change: bool = False,
     source_experiment_sha256: str | None = None,
+    formal_context: dict | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
     print(f"Starting run_paired_jobs for group_id={group_id}", flush=True)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root.mkdir(parents=True, exist_ok=formal_context is None)
     run_id = output_root.name
     print(f"Run ID: {run_id}", flush=True)
     lock_path = Path(spec.benchmark.package_lock)
@@ -614,9 +622,17 @@ async def run_paired_jobs(
             group_id=group_id,
             task_names=replace_group_task_names,
         )
+    slot_bindings = None
+    if formal_context is not None:
+        from harbor_agent_infra.formal import freeze_formal_slots
+
+        slot_bindings = freeze_formal_slots(
+            output_root, formal_context, materialized, spec.model_dump(mode="json")
+        )
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
+        slot_bindings=slot_bindings,
         harnesses={group_id: group.agent_name for group_id, group in materialized.groups.items()},
         network_policies={
             group_id: {str(policy["task_name"]): policy for policy in group.network_policies}

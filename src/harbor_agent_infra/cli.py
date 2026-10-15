@@ -54,7 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--group",
         choices=("skills_on", "skills_off"),
-        help="run only one experiment group instead of the paired run",
+        default="skills_off",
+        help="run one group (default: skills_off)",
     )
     run.add_argument(
         "--rerun-failed",
@@ -73,6 +74,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SUFFIX",
         help="append -SUFFIX to the job name when using --task-name",
     )
+    run.add_argument("--formal-repeat", type=int, help="formal repeat number, starting at 1")
+    run.add_argument("--formal-provider", choices=("openai", "anthropic", "qwen", "deepseek"))
+    run.add_argument("--formal-root", type=Path, default=Path("run-artifacts/formal"))
+    formal_summary = subparsers.add_parser(
+        "formal-summary", help="summarize chosen formal snapshots"
+    )
+    formal_summary.add_argument("runs", type=Path, nargs="+")
+
     viewer = subparsers.add_parser("view", help="browse all Harbor runs on one port")
     viewer.add_argument("--artifacts-dir", type=Path, default=Path("run-artifacts"))
     viewer.add_argument("--port", type=int, default=8080)
@@ -282,6 +291,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(output)
         return 0
+    if args.command == "formal-summary":
+        from harbor_agent_infra.formal import aggregate_formal_snapshots
+
+        print(json.dumps(aggregate_formal_snapshots(args.runs), indent=2))
+        return 0
     if args.command == "run":
         if args.config:
             print(f"Loading config from {args.config}...", flush=True)
@@ -311,6 +325,33 @@ def main(argv: list[str] | None = None) -> int:
             delete_containers = True
         if not isinstance(spec, ExperimentSpecV2):
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
+        formal_context = None
+        if args.formal_repeat is not None or args.formal_provider is not None:
+            from harbor_agent_infra.formal import formal_run_name
+
+            if args.formal_repeat is None or args.formal_provider is None or args.config is None:
+                raise ValueError(
+                    "Formal execution requires --config, --formal-repeat and --formal-provider"
+                )
+            if (spec.agent.provider is not None and spec.agent.provider != args.formal_provider):
+                raise ValueError("Formal provider differs from experiment provider")
+            if (args.group != "skills_off" or args.rerun_failed or args.task_name
+                    or args.job_name_suffix or spec.retry.n_attempts != 1
+                    or spec.retry.max_retries != 0
+                    or resources.capacity.max_concurrent_trials != 2):
+                raise ValueError(
+                    "Formal repeat requires skills_off, one attempt, no retries and concurrency 2"
+                )
+            name = formal_run_name(spec.agent.adapter, args.formal_provider, args.formal_repeat)
+            expected_output = args.formal_root / name
+            if (args.output_dir is not None
+                    and args.output_dir.resolve() != expected_output.resolve()):
+                raise ValueError("Formal output must match harness-provider-repeatN naming")
+            if expected_output.exists():
+                raise FileExistsError(f"Formal run already exists: {expected_output}")
+            output_dir = expected_output
+            formal_context = {"run_id": name, "harness": spec.agent.adapter,
+                              "provider": args.formal_provider, "repeat": args.formal_repeat}
         print("Computing experiment SHA256...", flush=True)
         source_experiment_sha256 = experiment_sha256(spec)
         print(f"Experiment SHA256: {source_experiment_sha256}", flush=True)
@@ -348,6 +389,7 @@ def main(argv: list[str] | None = None) -> int:
                 job_name_suffix=job_name_suffix,
                 allow_task_selection_change=bool(explicit_task_names),
                 source_experiment_sha256=source_experiment_sha256,
+                formal_context=formal_context,
             )
         )
         print(output_dir)
@@ -414,12 +456,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         print(f"\n✓ Recovery manifest saved to: {output_path}")
-        print(f"\nFailure Summary:")
+        print("\nFailure Summary:")
         print(f"  Total failed slots: {total}")
         print(f"  - Capability failures: {capability} (agent limitations)")
         print(f"  - Engineering failures: {engineering} (infrastructure)")
         print(f"  - Scoring failures: {scoring} (verifier errors)")
-        print(f"\nRecovery Status:")
+        print("\nRecovery Status:")
         print(f"  Substitutable slots: {substitutable}")
         print(f"  Approved for recovery: {approved}")
         print(f"  Pending review: {total - approved}")
@@ -427,9 +469,11 @@ def main(argv: list[str] | None = None) -> int:
         if approved > 0:
             print(f"\n→ Run 'hai recover {output_path}' to execute recovery")
         elif substitutable > 0 and not args.auto_approve_substitutable:
-            print(f"\n→ Run 'hai audit {args.run_name} --auto-approve-substitutable' to auto-approve")
+            print(
+                f"\n→ Run 'hai audit {args.run_name} --auto-approve-substitutable' to auto-approve"
+            )
         else:
-            print(f"\n→ No approved recovery slots (all failures are capability/scoring)")
+            print("\n→ No approved recovery slots (all failures are capability/scoring)")
 
         return 0
     if args.command == "recover":
@@ -488,7 +532,7 @@ def main(argv: list[str] | None = None) -> int:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             output_dir = Path(config.run.output_dir).parent / f"recovery-{timestamp}"
 
-        print(f"\nStarting recovery execution...")
+        print("\nStarting recovery execution...")
         print(f"  Manifest: {args.manifest}")
         print(f"  Output: {output_dir}")
         print(f"  Approved slots: {len(approved)}")
@@ -561,7 +605,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Error: Recovery run not found: {recovery_run}")
                 return 1
 
-        print(f"\nMerging recovery results...")
+        print("\nMerging recovery results...")
         print(f"  Original run: {args.original_run}")
         print(f"  Recovery runs: {len(args.recovery_runs)}")
         for recovery_run in args.recovery_runs:
