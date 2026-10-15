@@ -60,6 +60,8 @@ def main() -> int:
     parser.add_argument("--inputs", type=Path, default=ROOT / "images/harness/build-inputs.json")
     parser.add_argument("--reference", required=True, help="Unique local candidate build handle")
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--reuse-installed", action="store_true",
+                        help="Reseal the locked Hermes candidate without reinstalling")
     args = parser.parse_args()
     # This entry point deliberately has no implicit push or default-config mutation.
     require_idle_docker()
@@ -72,9 +74,13 @@ def main() -> int:
         "-build-metadata.json", "-installation.json", "-runtime-lock.json",
     )):
         raise ValueError("candidate artifacts already exist; choose a new output directory")
+    base = lock.agent_base_image
+    if args.reuse_installed:
+        if args.name != "hermes":
+            raise ValueError("installation reuse is only supported for the Hermes refinement")
+        base = lock.execution_image(args.name, "preinstalled")
     parent = inspect_image(
-        lock.agent_base_image.reference, digest=lock.agent_base_image.digest,
-        platform=lock.agent_base_image.platform,
+        base.reference, digest=base.digest, platform=base.platform,
     )
     # BuildKit may resolve a local RepoDigest remotely. A unique private build
     # handle refers to the verified image ID; it is never a runtime identity.
@@ -83,7 +89,13 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="hai-harness-build-") as temp:
             directory = Path(temp)
-            build_context(directory, args.name, args.lock, args.inputs)
+            build = build_context(directory, args.name, args.lock, args.inputs)
+            if args.reuse_installed:
+                build["reuse_installed"] = {
+                    "manifest_sha256": base.manifest_sha256,
+                    "image": base.immutable_reference,
+                }
+                (directory / "build.json").write_text(json.dumps(build, sort_keys=True))
             subprocess.run([
                 "docker", "buildx", "build", "--load", "--platform", lock.agent_base_image.platform,
                 "--build-arg", "BASE_IMAGE=" + parent_handle,

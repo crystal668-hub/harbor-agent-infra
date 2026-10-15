@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -179,3 +180,23 @@ def test_run_completion_checks_actual_artifacts_and_preserves_setup_evidence(tmp
     final = json.loads((agent.logs_dir / "harness-final.json").read_text())
     assert final["status"] == "failed"
     assert len(final["probes"]) == 1
+
+
+def test_hermes_inventory_only_excludes_documented_runtime_markers(tmp_path):
+    root = tmp_path / "hermes-agent"
+    root.mkdir()
+    (root / ".bytecode-fingerprint").write_text("cache")
+    (root / "agent.py").write_text("original")
+    # Exact container roots are intentional: unrelated installations do not
+    # inherit these exclusions just because a file has the same basename.
+    files = probe.inventory([str(root)])
+    assert str(root / ".bytecode-fingerprint") in files
+    assert str(root / "agent.py") in files
+    source = Path("/tmp/hermes/hermes-agent")
+    installs = Path("/tmp/hermes/installs")
+    assert probe.runtime_marker(source, Path(".bytecode-fingerprint"))
+    assert not probe.runtime_marker(source, Path("agent/.bytecode-fingerprint"))
+    assert not probe.runtime_marker(source, Path("agent/agent_init.py"))
+    assert probe.runtime_marker(installs, Path("selected/environments/generation/.leases/pid"))
+    assert not probe.runtime_marker(installs, Path("selected/facts.json"))
+    assert not probe.runtime_marker(installs, Path("selected/venv/lib/package.py"))

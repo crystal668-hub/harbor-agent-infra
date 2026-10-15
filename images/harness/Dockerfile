@@ -6,4 +6,4 @@ RUN python3 /opt/hai/build/install.py \
     && rm -rf /opt/hai/build
 # The pinned native Claude binary supports this switch; the per-Trial native
 # configuration also already disables nonessential traffic.
-ENV DISABLE_AUTOUPDATER=1
+ENV DISABLE_AUTOUPDATER=1 HERMES_DISABLE_LAZY_INSTALLS=1

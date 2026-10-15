@@ -56,9 +56,30 @@ def actual_identity(name: str) -> dict:
     elif name == "hermes":
         result["source_commit"] = shell(name, "git -C /tmp/hermes/hermes-agent rev-parse HEAD")
         result["runtimes"] = {"python": shell(name, "python3 --version")}
+        if os.environ.get("HERMES_DISABLE_LAZY_INSTALLS") != "1":
+            raise ValueError("Hermes lazy installation must be disabled")
+        facts = list(Path("/tmp/hermes/installs").glob("*/facts.json"))
+        if len(facts) != 1:
+            raise ValueError("ambiguous Hermes dependency selection")
+        environment = Path(json.loads(facts[0].read_text())["packages"]["venv"]["environment"])
+        if not environment.is_relative_to("/tmp/hermes/installs"):
+            raise ValueError("Hermes dependency environment outside installation")
+        result["application_python"] = subprocess.check_output(
+            [str(environment / "bin/python"), "--version"], text=True,
+        ).strip()
+        result["dependency_environment"] = str(environment)
+        shell(name, "hermes sessions list >/dev/null")
     else:
         result["runtimes"] = {}
     return result
+
+
+def runtime_marker(base: Path, relative: Path) -> bool:
+    if str(base) == "/tmp/hermes/hermes-agent":
+        return relative.as_posix() in {".bytecode-fingerprint", ".bytecode-fingerprint.tmp"}
+    if str(base) == "/tmp/hermes/installs":
+        return ".leases" in relative.parts or relative.name in {".install.lock", ".prepare.lock"}
+    return False
 
 
 def inventory(roots: list[str]) -> dict[str, dict[str, str]]:
@@ -70,6 +91,8 @@ def inventory(roots: list[str]) -> dict[str, dict[str, str]]:
         paths = [base] if base.is_file() else base.rglob("*")
         for path in paths:
             relative = path.relative_to(base) if path != base else Path(path.name)
+            if runtime_marker(base, relative):
+                continue
             if any(part in {".git", "__pycache__"} for part in relative.parts):
                 continue
             if path.suffix in {".pyc", ".pyo"}:
@@ -104,6 +127,9 @@ def verify(expected: dict, *, manifest_path: str = MANIFEST) -> dict:
     for field in ("entry", "realpath", "runtimes"):
         if actual[field] != manifest[field]:
             raise ValueError(f"actual harness {field} mismatch")
+    for field in ("application_python", "dependency_environment"):
+        if field in manifest and actual.get(field) != manifest[field]:
+            raise ValueError(f"actual harness {field} mismatch")
     patches = manifest.get("patches", {})
     allowed = {}
     for name, definition in expected.get("patches", {}).items():
@@ -118,7 +144,9 @@ def verify(expected: dict, *, manifest_path: str = MANIFEST) -> dict:
             allowed[file] = hashes
     files = inventory(manifest["roots"])
     if files.keys() != manifest["files"].keys():
-        raise ValueError("installation file set mismatch")
+        missing = sorted(manifest["files"].keys() - files.keys())[:8]
+        added = sorted(files.keys() - manifest["files"].keys())[:8]
+        raise ValueError(f"installation file set mismatch; missing={missing}; added={added}")
     patch_state = {}
     for path, original in manifest["files"].items():
         found = files[path]

@@ -13,7 +13,15 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from preinstalled_probe import SCHEMA, actual_identity, digest, inventory, shell, shell_prefix
+from preinstalled_probe import (
+    SCHEMA,
+    actual_identity,
+    digest,
+    inventory,
+    shell,
+    shell_prefix,
+    verify,
+)
 from runtime_patches import hermes_output_patch_command, openclaw_adaptive_patch_command
 
 ROOT = Path(__file__).parent
@@ -110,7 +118,20 @@ def main():
     source = {}
     roots = []
     dependencies = {}
-    if name in {"openclaw", "codex"}:
+    if build.get("reuse_installed"):
+        verify({
+            "manifest_sha256": build["reuse_installed"]["manifest_sha256"],
+            "name": name, "version": pin["package_version"],
+            "source_commit": pin["source_commit"], "parent_image": build["parent_image"],
+            "platform": inputs["platform"], "patches": {}, "phase": "before",
+        })
+        original = json.loads(Path("/opt/hai/harness-manifest.json").read_text())
+        if original["name"] != name or original["parent_image"] != build["parent_image"]:
+            raise ValueError("reused installation identity mismatch")
+        roots = original["roots"]
+        source = original["source"]
+        dependencies = original["dependencies"]
+    elif name in {"openclaw", "codex"}:
         roots = install_node(inputs)
         integrity = pin["package_integrity"]
         if not integrity.startswith("sha512-"):
@@ -173,6 +194,13 @@ def main():
             Path("/tmp/hermes/hermes-agent/pm/lock.json").read_bytes())}
     else:
         raise ValueError("unsupported harness")
+    if name == "hermes":
+        os.environ["HERMES_DISABLE_LAZY_INSTALLS"] = "1"
+        if "/tmp/hermes/installs" not in roots:
+            roots.append("/tmp/hermes/installs")
+        # A metadata-only version probe bypasses normal activation. Exercise
+        # a normal command with lazy repair disabled before freezing files.
+        shell(name, "hermes sessions --help >/dev/null")
     identity = actual_identity(name)
     version = pin["package_version"] if name == "hermes" else pin["version"]
     if identity["version"] != version:
@@ -188,6 +216,7 @@ def main():
         "schema_version": SCHEMA, "name": name, **identity, "platform": inputs["platform"],
         "parent_image": build["parent_image"], "source": source, "dependencies": dependencies,
         "build_inputs": inputs, "roots": roots, "files": inventory(roots), "patches": patches,
+        **({"refined_from": build["reuse_installed"]} if build.get("reuse_installed") else {}),
     }
     Path("/opt/hai/harness-manifest.json").write_text(json.dumps(manifest, sort_keys=True) + "\n")
 
