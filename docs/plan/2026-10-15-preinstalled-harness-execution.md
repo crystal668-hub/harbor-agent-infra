@@ -44,3 +44,36 @@ Registry 发布、主目录默认切换和正式实验派发不属于本次开�
 - 断网验收使用测试任务的 Compose `network_mode: none`；Harbor 原生 egress sidecar 的外部基础镜像拉取失败，不作为 harness 失败。控制探针检查无可用非 loopback 接口、无 IPv4 路由且外部 TCP 连接失败。
 - Codex 成功证据：worktree `outputs/preinstalled/codex-offline-3/report.json`。前两次失败证据保留，不覆盖。
 - 当前全量 provider-free：407 passed / 40 deselected；本次构建与校验模块 Ruff 通过。
+
+## G3/G4 结果
+
+四个候选均已构建并验证；候选锁保存在独立 worktree 的
+`outputs/preinstalled/candidate-runtime-lock.json`，未替换默认 `runtime-lock.json`。
+
+| Harness | 实际版本 | 候选镜像 digest |
+| --- | --- | --- |
+| OpenClaw | 2026.6.34 | `sha256:083e6590790627b6f35dc4b771d89d635e724b5b28f29037ea55746c9e05f54f` |
+| Hermes | 0.21.6，commit 与计划一致 | `sha256:2d2adae70304cd7b736bcd0b3593d21f243698add908c28e38c2ddf5b7237978` |
+| Codex | 0.162.1 | `sha256:ae908ae8e55477ef999c5c4f1a18fe017146f057ab813c8646a2d606ac8ac41e` |
+| Claude Code | 2.1.296 | `sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16` |
+
+- Docker 验收：33 passed，8 项 Harbor 的 checksum 弃用警告，无 skip。
+- 覆盖四种双并发离线 setup、化学基线、共同基础层复用、其他 harness 不暴露、实际
+  错版/错清单/入口缺失/路径漂移/文件篡改，以及 Hermes 错 commit。
+- 证据：`outputs/preinstalled/docker-gates.log`、`docker-gates.xml` 和各 Trial setup/network 文件。
+- Hermes 首次构建因锁定 uv 的 GitHub TLS 下载失败；有限重试后按原来源和校验值成功。
+- Hermes 官方安装器报告可选 cua-driver 缺少 libX11、未安装；未为此升级基础镜像或
+  改变安装器参数。四种目标 provider 路由仍需 G5 验证，不能把 optional tool 警告隐去。
+- Hermes 执行镜像约 5.3 GB（本地显示大小，非代理流量）；其余候选约 1.4～1.9 GB。
+  保留其固定 commit 官方安装器的默认工具行为，没有为缩小镜像擅自裁剪工具。
+- 当前 provider-free：412 passed / 73 deselected；本次修改模块 Ruff 通过。
+
+## G5 有限 provider/VGB 验收（进行中）
+
+- 入口：`scripts/verify_preinstalled_matrix.py`；执行前保存 16 项矩阵快照。
+- 每个 harness × provider 一项，轮换四种 VGB track；仅执行 `skills_off`，retry 为 0。
+- 保留现有模板模型、推理设置、输出上限和资源/时限，不以分数高低决定通过。
+- 只读使用已有隔离 VGB runtime；provider 凭据仅从原 `.env` 加载到进程环境，不复制到镜像。
+- 协议桥接使用本 worktree 的独立 4142 端口；只在验收进程内改变对应 endpoint 环境变量。
+- 输出：`outputs/preinstalled/provider-matrix/`；不写入原正式实验或补跑目录。
+- Registry 发布、默认切换和新正式批次尚未执行。
