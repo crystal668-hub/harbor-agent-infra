@@ -257,7 +257,10 @@ def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
     indexed = trial_index(root)
     matched = set()
     for approved_slot in approved:
-        if not approved_slot.can_substitute:
+        if (
+            not approved_slot.can_substitute
+            or approved_slot.failure_classification.category.value != "engineering"
+        ):
             raise ValueError(f"Invalid approval or exhausted budget: {approved_slot.slot_id}")
         original_run = approved_slot.original_run
         if original_run not in ("", "unknown", plan.run_id):
@@ -331,6 +334,8 @@ def _select(slot: SlotPlan, plan: NativeMergePlan) -> None:
     slot.substitution_count += len(fresh)
     validity, _ = assessment(slot.original_path, slot.original_trial)
     if validity in ("valid", "scoring_pending"):
+        if validity == "scoring_pending":
+            slot.action = "scoring_pending"
         if slot.candidates:
             plan.conflicts.append(
                 f"Recovery cannot replace valid original: {slot.record['task_name']}"

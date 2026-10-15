@@ -616,7 +616,11 @@ def main(argv: list[str] | None = None) -> int:
         if (args.original_run / "results.json").is_file():
             from harbor_agent_infra.recovery.native_plan import plan_native_merge
 
-            plan = plan_native_merge(args.original_run, args.recovery_runs)
+            try:
+                plan = plan_native_merge(args.original_run, args.recovery_runs)
+            except (ValueError, KeyError, OSError) as exc:
+                print(f"Conflict: {exc}")
+                return 1
             if args.dry_run:
                 print(json.dumps(plan.to_dict(), indent=2, ensure_ascii=False))
                 return 1 if plan.conflicts else 0
@@ -635,7 +639,11 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.output_dir,
         )
 
-        result = merger.merge()
+        try:
+            result = merger.merge()
+        except (ValueError, OSError) as exc:
+            print(f"Merge not published: {exc}")
+            return 1
 
         # Report results
         print("\n" + "=" * 70)

@@ -258,7 +258,7 @@ class RecoveryExecutor:
 
         Shared with dry-run validation; never creates a Job or writes files.
         """
-        if not slot.can_substitute:
+        if not slot.can_substitute or slot.failure_classification.category.value != "engineering":
             raise ValueError(
                 f"Cannot substitute: count={slot.substitution_count}, max={slot.max_substitutions}"
             )

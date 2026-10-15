@@ -439,3 +439,25 @@ def test_snapshot_projection_supports_each_harness(tmp_path, harness):
     assert record["agent_name"] == harness
     assert record["runner"] == f"harbor_{harness}"
     assert record["observability"]["totals"]["tokens"]["cost_usd"] is None
+
+
+def test_original_scoring_gap_is_preserved_for_reassessment(native_runs, tmp_path):
+    from harbor_agent_infra.recovery.auditor import audit_run
+    from harbor_agent_infra.recovery.merger import ResultMerger
+
+    original, _ = native_runs
+    result_path = original / "results.json"
+    envelope = json.loads(result_path.read_text())
+    record = envelope["results"][0]
+    record["run_lifecycle_status"] = "completed"
+    trial_path = Path(record["trial_result_path"])
+    trial = json.loads(trial_path.read_text())
+    trial["exception_info"] = None
+    write(trial_path, trial)
+    write(result_path, envelope)
+    output = tmp_path / "merged"
+    ResultMerger(original, [], output).merge()
+    audited = audit_run(output)
+    slot = next(s for s in audited.slots if s.task_id == record["task_name"])
+    assert slot.failure_classification.category.value == "scoring"
+    assert not slot.can_substitute
