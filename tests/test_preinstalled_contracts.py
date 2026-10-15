@@ -14,6 +14,16 @@ from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 NAMES = ("openclaw", "hermes", "codex", "claude-code")
 
 
+def test_saved_candidate_lock_preserves_original_release_and_chemistry_identities():
+    original = json.loads(Path("runtime-lock.json").read_text())
+    candidate = json.loads(Path("runtime-lock.preinstalled.json").read_text())
+    images = candidate.pop("harness_images")
+    assert candidate == original
+    assert set(images) == set(NAMES)
+    lock = load_runtime_lock(Path("runtime-lock.preinstalled.json"))
+    assert len({lock.execution_image(name, "preinstalled").digest for name in NAMES}) == 4
+
+
 def candidate_lock(tmp_path):
     raw = json.loads(Path("runtime-lock.json").read_text())
     versions = load_runtime_lock(Path("runtime-lock.json"))

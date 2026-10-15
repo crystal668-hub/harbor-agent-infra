@@ -4,6 +4,11 @@
 必要的本地初始化；缺失、错版、错路径或产物变化均失败，不自动联网补装。
 默认配置与旧锁文件继续使用 `runtime_install`。
 
+本次本地候选的四个实际镜像身份另存为 `runtime-lock.preinstalled.json`。
+它保持默认锁中的发布版本、父镜像和化学身份完全相同，仅增加 `harness_images`。
+这些是本地可用镜像引用，尚未发布到 Registry；在其他 Docker 主机使用前须先发布并
+核对对应 RepoDigest，不能仅复制配置后假定远端可拉取。
+
 ## 镜像与锁定
 
 共同基础镜像保持原 digest，四种 harness 使用独立派生执行镜像。
