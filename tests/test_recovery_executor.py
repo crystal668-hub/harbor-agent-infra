@@ -155,9 +155,7 @@ class TestRecoveryExecutor:
             mock_job_class.create = AsyncMock(return_value=mock_job)
 
             # Mock original job config loading
-            with patch.object(
-                executor, "_load_original_job_config"
-            ) as mock_load_config:
+            with patch.object(executor, "_load_original_job_config") as mock_load_config:
                 mock_load_config.return_value = JobConfig(
                     job_name="test-job",
                     jobs_dir=tmp_path / "jobs",
@@ -264,20 +262,19 @@ def native_recovery(tmp_path, mock_run_config, sample_manifest):
     original = tmp_path / "formal" / "native-run"
     job_dir = original / "jobs" / "native-run-skills_off"
     job_dir.mkdir(parents=True)
-    tasks = [
-        {"path": tmp_path / "tasks" / f"track__task-{i}"}
-        for i in range(3)
-    ]
+    tasks = [{"path": tmp_path / "tasks" / f"track__task-{i}"} for i in range(3)]
     snapshot = JobConfig(
         job_name=job_dir.name,
         jobs_dir=job_dir.parent,
         tasks=tasks,
-        agents=[{
-            "name": "claude-code",
-            "model_name": "fixture-model",
-            "kwargs": {"version": "2.1.296", "reasoning_effort": "high"},
-            "env": {"ANTHROPIC_API_KEY": "${FIXTURE_PROVIDER_KEY}"},
-        }],
+        agents=[
+            {
+                "name": "claude-code",
+                "model_name": "fixture-model",
+                "kwargs": {"version": "2.1.296", "reasoning_effort": "high"},
+                "env": {"ANTHROPIC_API_KEY": "${FIXTURE_PROVIDER_KEY}"},
+            }
+        ],
         environment={"override_cpus": 4, "override_memory_mb": 6144},
         retry={"max_retries": 0},
         n_attempts=1,
@@ -321,9 +318,7 @@ async def test_native_recovery_loads_snapshot_and_runs_each_failed_task_once(
 
     jobs = [AsyncMock(), AsyncMock()]
     for job in jobs:
-        job.run.return_value = MagicMock(
-            stats=MagicMock(n_errored_trials=0, n_cancelled_trials=0)
-        )
+        job.run.return_value = MagicMock(stats=MagicMock(n_errored_trials=0, n_cancelled_trials=0))
     with patch("harbor_agent_infra.recovery.executor.Job.create", new_callable=AsyncMock) as create:
         create.side_effect = jobs
         result = await executor.execute()
@@ -334,8 +329,14 @@ async def test_native_recovery_loads_snapshot_and_runs_each_failed_task_once(
     assert len({config.job_name for config in configs}) == 2
     for i, config in enumerate(configs):
         assert config.tasks == [snapshot.tasks[i]]
-        for field in ("agents", "environment", "verifier", "retry", "n_attempts",
-                      "n_concurrent_trials"):
+        for field in (
+            "agents",
+            "environment",
+            "verifier",
+            "retry",
+            "n_attempts",
+            "n_concurrent_trials",
+        ):
             assert getattr(config, field) == getattr(snapshot, field)
         jobs[i].run.assert_awaited_once()
         metadata_path = config.jobs_dir / config.job_name / "recovery-metadata.json"
@@ -366,14 +367,22 @@ def test_recover_dry_run_validates_snapshots_without_creating_jobs(
     executor, _, _ = native_recovery
     manifest_path = tmp_path / "manifest.json"
     executor.manifest.save(manifest_path)
-    monkeypatch.setattr(
-        "harbor_agent_infra.cli.load_run_config", lambda _: executor.run_config
-    )
+    monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: executor.run_config)
     with patch("harbor_agent_infra.recovery.executor.Job.create", new_callable=AsyncMock) as create:
-        assert main([
-            "recover", str(manifest_path), "--config", "original.yaml",
-            "--output-dir", str(executor.output_dir), "--dry-run",
-        ]) == 0
+        assert (
+            main(
+                [
+                    "recover",
+                    str(manifest_path),
+                    "--config",
+                    "original.yaml",
+                    "--output-dir",
+                    str(executor.output_dir),
+                    "--dry-run",
+                ]
+            )
+            == 0
+        )
     assert capsys.readouterr().out.count("Validated Job:") == 2
     assert not executor.output_dir.exists()
     create.assert_not_awaited()
@@ -388,14 +397,22 @@ def test_recover_dry_run_fails_when_snapshot_is_missing(
     (original / "jobs" / snapshot.job_name / "config.json").unlink()
     manifest_path = tmp_path / "manifest.json"
     executor.manifest.save(manifest_path)
-    monkeypatch.setattr(
-        "harbor_agent_infra.cli.load_run_config", lambda _: executor.run_config
-    )
+    monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: executor.run_config)
     with patch("harbor_agent_infra.recovery.executor.Job.create", new_callable=AsyncMock) as create:
-        assert main([
-            "recover", str(manifest_path), "--config", "original.yaml",
-            "--output-dir", str(executor.output_dir), "--dry-run",
-        ]) == 1
+        assert (
+            main(
+                [
+                    "recover",
+                    str(manifest_path),
+                    "--config",
+                    "original.yaml",
+                    "--output-dir",
+                    str(executor.output_dir),
+                    "--dry-run",
+                ]
+            )
+            == 1
+        )
     assert "Could not load original job config" in capsys.readouterr().out
     assert not executor.output_dir.exists()
     create.assert_not_awaited()
@@ -434,3 +451,87 @@ class TestRecoveryResult:
         assert data["succeeded"] == 1
         assert len(data["slot_results"]) == 1
         assert data["slot_results"][0]["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_recovery_uses_two_shared_slots_and_preserves_input_order(native_recovery):
+    import asyncio
+
+    executor, _, _ = native_recovery
+    first = executor.manifest.slots[0]
+    for index in range(2, 5):
+        executor.manifest.slots.append(
+            RecoverySlot(
+                job_name=first.job_name,
+                task_id=f"extra-{index}",
+                original_trial_id=f"trial-{index}",
+                failure_classification=first.failure_classification,
+                original_run=first.original_run,
+                approved=True,
+            )
+        )
+    active = 0
+    peak = 0
+    pair_started = asyncio.Event()
+
+    async def run_slot(slot):
+        nonlocal active, peak
+        from harbor_agent_infra.recovery.executor import SlotExecutionResult
+
+        active += 1
+        peak = max(peak, active)
+        if active == 2:
+            pair_started.set()
+        await asyncio.wait_for(pair_started.wait(), 1)
+        await asyncio.sleep(0)
+        active -= 1
+        return SlotExecutionResult(
+            slot.slot_id,
+            slot.job_name,
+            slot.task_id,
+            True,
+            slot is not first,
+            error="fixture failure" if slot is first else None,
+        )
+
+    with patch.object(executor, "_execute_slot", side_effect=run_slot):
+        result = await executor.execute()
+    assert peak == 2
+    assert result.executed == 5 and result.failed == 1 and result.succeeded == 4
+    assert [r.slot_id for r in result.slot_results] == [s.slot_id for s in executor.manifest.slots]
+    state = json.loads((executor.output_dir / "recovery-state.json").read_text())
+    assert state["status"] == "finished" and state["concurrency"] == 2
+    with pytest.raises(FileExistsError):
+        await executor.execute()
+
+
+@pytest.mark.asyncio
+async def test_recovery_cancellation_waits_for_active_cleanup(native_recovery):
+    import asyncio
+
+    executor, _, _ = native_recovery
+    entered = asyncio.Event()
+    active = 0
+    cleaned = []
+
+    async def run_slot(slot):
+        nonlocal active
+        active += 1
+        if active == 2:
+            entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await asyncio.sleep(0)
+            cleaned.append(slot.slot_id)
+
+    with patch.object(executor, "_execute_slot", side_effect=run_slot):
+        task = asyncio.create_task(executor.execute())
+        await asyncio.wait_for(entered.wait(), 1)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert len(cleaned) == 2
+    state = json.loads((executor.output_dir / "recovery-state.json").read_text())
+    assert state["status"] == "interrupted"
+    assert set(state["slots"].values()) == {"interrupted"}

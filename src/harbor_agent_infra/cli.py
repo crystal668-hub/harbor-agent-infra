@@ -447,6 +447,8 @@ def main(argv: list[str] | None = None) -> int:
                     run_config=load_run_config(args.config),
                     output_dir=args.output_dir or args.manifest.parent / "recovery-dry-run",
                 )
+            if executor is not None:
+                print(f"Frozen recovery concurrency: {asyncio.run(executor.concurrency_limit())}")
             print(f"Dry run: would recover {len(approved)} approved slots:")
             for slot in approved:
                 print(f"  - {slot.job_name} :: {slot.task_id}")
@@ -480,8 +482,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             output_dir = Path(config.run.output_dir).parent / f"recovery-{timestamp}"
-
-        output_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"\nStarting recovery execution...")
         print(f"  Manifest: {args.manifest}")
