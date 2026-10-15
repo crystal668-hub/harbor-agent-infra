@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -52,18 +54,54 @@ class RecoveryExecutor:
                 slot_results=[],
             )
 
-        # Create recovery run directory
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        concurrency = await self.concurrency_limit()
+        # Exclusive directory creation is the batch lock. A crash leaves evidence;
+        # never resume a partial batch by silently submitting its slots again.
+        self.output_dir.mkdir(parents=True, exist_ok=False)
+        self.manifest.save(self.output_dir / "recovery-manifest.json")
+        semaphore = asyncio.Semaphore(concurrency)
+        outcomes = {}
+        states = {slot.slot_id: "pending" for slot in approved_slots}
 
-        # Save manifest copy to recovery run
-        manifest_copy_path = self.output_dir / "recovery-manifest.json"
-        self.manifest.save(manifest_copy_path)
+        def persist(status):
+            payload = {
+                "status": status,
+                "pid": os.getpid(),
+                "concurrency": concurrency,
+                "slots": states,
+                "slot_results": [
+                    outcomes[s.slot_id].to_dict() for s in approved_slots if s.slot_id in outcomes
+                ],
+            }
+            temporary = self.output_dir / "recovery-state.json.tmp"
+            temporary.write_text(json.dumps(payload, indent=2) + "\n")
+            temporary.replace(self.output_dir / "recovery-state.json")
 
-        # Execute each approved slot
-        slot_results = []
-        for slot in approved_slots:
-            result = await self._execute_slot(slot)
-            slot_results.append(result)
+        async def execute_one(slot):
+            async with semaphore:
+                states[slot.slot_id] = "running"
+                persist("running")
+                try:
+                    outcomes[slot.slot_id] = await self._execute_slot(slot)
+                    states[slot.slot_id] = "finished"
+                except asyncio.CancelledError:
+                    states[slot.slot_id] = "interrupted"
+                    raise
+                finally:
+                    persist("running")
+
+        persist("running")
+        tasks = [asyncio.create_task(execute_one(slot)) for slot in approved_slots]
+        try:
+            await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            persist("interrupted")
+            raise
+        persist("finished")
+        slot_results = [outcomes[slot.slot_id] for slot in approved_slots]
 
         # Summarize
         executed = sum(1 for r in slot_results if r.executed)
@@ -80,6 +118,25 @@ class RecoveryExecutor:
             skipped=skipped,
             slot_results=slot_results,
         )
+
+    async def concurrency_limit(self) -> int:
+        """Read the frozen batch limit without creating Jobs or writing files."""
+        limits = set()
+        identities = set()
+        for slot in self.manifest.get_approved_slots():
+            identities.add(
+                slot.original_run
+                if slot.original_run not in ("", "unknown")
+                else self.manifest.run_name
+            )
+            if not slot.can_substitute:
+                continue
+            config = await self._load_original_job_config(slot)
+            if config is not None:
+                limits.add(config.n_concurrent_trials)
+        if len(identities) > 1 or len(limits) > 1:
+            raise ValueError("Recovery batch must have one original run and concurrency limit")
+        return next(iter(limits), 1)
 
     async def _execute_slot(self, slot: RecoverySlot) -> SlotExecutionResult:
         """Execute a single recovery slot.
@@ -103,14 +160,15 @@ class RecoveryExecutor:
             )
 
         job_dir = recovery_job_config.jobs_dir / recovery_job_config.job_name
-        job_dir.mkdir(parents=True, exist_ok=True)
+        job_dir.mkdir(parents=True, exist_ok=False)
 
         recovery_metadata = {
             "slot_id": slot.slot_id,
             "is_recovery": True,
             "original_run": (
                 self.manifest.run_name
-                if slot.original_run in ("", "unknown") else slot.original_run
+                if slot.original_run in ("", "unknown")
+                else slot.original_run
             ),
             "original_job": slot.job_name,
             "original_trial_id": slot.original_trial_id,
@@ -121,15 +179,17 @@ class RecoveryExecutor:
             "recovery_timestamp": datetime.now().isoformat(),
         }
 
-        # Execute the job using Harbor
+        recovery_metadata_path = job_dir / "recovery-metadata.json"
+        recovery_metadata_path.write_text(json.dumps(recovery_metadata, indent=2) + "\n")
+        # A Job.create failure has not started a Trial and consumes no attempt.
+        started = False
         try:
             job = await Job.create(recovery_job_config)
 
             recovery_metadata_path = job_dir / "recovery-metadata.json"
-            recovery_metadata_path.write_text(
-                json.dumps(recovery_metadata, indent=2) + "\n"
-            )
+            recovery_metadata_path.write_text(json.dumps(recovery_metadata, indent=2) + "\n")
 
+            started = True
             result = await job.run()
 
             # Check if execution succeeded
@@ -139,9 +199,7 @@ class RecoveryExecutor:
                     harbor_data = json.load(f)
 
                 trials = harbor_data.get("trials", [])
-                has_success = any(
-                    t.get("result", {}).get("success", False) for t in trials
-                )
+                has_success = any(t.get("result", {}).get("success", False) for t in trials)
 
                 if has_success:
                     return SlotExecutionResult(
@@ -189,7 +247,7 @@ class RecoveryExecutor:
                 slot_id=slot.slot_id,
                 job_name=slot.job_name,
                 task_id=slot.task_id,
-                executed=True,
+                executed=started,
                 success=False,
                 error=f"Execution exception: {type(e).__name__}: {e}",
                 recovery_job_dir=str(job_dir),
@@ -200,7 +258,7 @@ class RecoveryExecutor:
 
         Shared with dry-run validation; never creates a Job or writes files.
         """
-        if not slot.can_substitute:
+        if not slot.can_substitute or slot.failure_classification.category.value != "engineering":
             raise ValueError(
                 f"Cannot substitute: count={slot.substitution_count}, max={slot.max_substitutions}"
             )
@@ -212,11 +270,13 @@ class RecoveryExecutor:
 
         original_config = original_job_config.model_dump(mode="python")
         matching_tasks = [
-            task for task in original_config.get("tasks", [])
-            if _task_matches(task, slot.task_id)
+            task for task in original_config.get("tasks", []) if _task_matches(task, slot.task_id)
         ]
         if (
             len(matching_tasks) != 1
+            or original_job_config.n_attempts != 1
+            or len(original_job_config.agents) != 1
+            or original_job_config.retry.max_retries != 0
             or original_job_config.datasets
             or original_job_config.source_jobs
         ):
@@ -254,12 +314,15 @@ class RecoveryExecutor:
         run_dirs = []
         if manifest_run_dir := self.manifest.metadata.get("run_dir"):
             run_dirs.append(Path(manifest_run_dir))
-        if output_dir.name == run_name:
+        manifest_path = output_dir / "run-manifest.json"
+        saved_id = (
+            json.loads(manifest_path.read_text()).get("run_id") if manifest_path.is_file() else None
+        )
+        if output_dir.name == run_name or saved_id == run_name:
             run_dirs.append(output_dir)
         artifacts_root = output_dir.parent
         run_dirs.extend(
-            artifacts_root / category / run_name
-            for category in ("formal", "temporary")
+            artifacts_root / category / run_name for category in ("formal", "temporary")
         )
         run_dirs.append(artifacts_root / run_name)
 

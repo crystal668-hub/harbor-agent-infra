@@ -6,6 +6,8 @@ Merges recovery execution results back into original run results.
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -63,6 +65,50 @@ class ResultMerger:
         Returns:
             MergedResult with merge statistics
         """
+        if (self.original_run_dir / "results.json").is_file():
+            from harbor_agent_infra.recovery.native_plan import plan_native_merge
+            from harbor_agent_infra.recovery.native_snapshot import publish_native_snapshot
+
+            plan = plan_native_merge(self.original_run_dir, self.recovery_dirs)
+            metadata = publish_native_snapshot(plan, self.output_dir)
+            merged = sum(slot.selected is not None for slot in plan.slots)
+            total = sum(bool(slot.candidates) for slot in plan.slots)
+            return MergedResult(
+                plan.run_id,
+                [r.name for r in plan.recoveries],
+                total,
+                merged,
+                [],
+                Path(metadata["output_dir"]),
+            )
+
+        output = self.output_dir.absolute()
+        original = self.original_run_dir.resolve()
+        inputs = [original, *(root.resolve() for root in self.recovery_dirs)]
+        if output.exists():
+            raise FileExistsError(f"Merge output already exists: {output}")
+        if any(
+            output.resolve().is_relative_to(root) or root.is_relative_to(output.resolve())
+            for root in inputs
+        ):
+            raise ValueError("Merge output must be separate from all inputs")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".legacy-merge-", dir=output.parent) as temp:
+            copy = Path(temp) / "source"
+            shutil.copytree(original, copy)
+            self.original_run_dir = copy
+            self.output_dir = Path(temp) / "output"
+            try:
+                result = self._merge_legacy()
+                self.output_dir.rename(output)
+                result.original_run = original.name
+                result.merged_output_path = output
+                return result
+            finally:
+                self.original_run_dir = original
+                self.output_dir = output
+
+    def _merge_legacy(self) -> MergedResult:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Load original results
@@ -93,6 +139,9 @@ class ResultMerger:
                         with open(metadata_path) as f:
                             metadata = json.load(f)
                             slot_id = metadata["slot_id"]
+                            if slot_id not in {s.slot_id for s in manifest.get_approved_slots()}:
+                                self.conflicts.append(f"Unapproved recovery slot: {slot_id}")
+                                continue
                             recovery_results[slot_id] = job_dir
 
         # Merge results
@@ -103,9 +152,7 @@ class ResultMerger:
             # Find original job directory
             original_job_dir = original_jobs.get(job_name)
             if not original_job_dir:
-                self.conflicts.append(
-                    f"Original job not found for slot: {slot_id}"
-                )
+                self.conflicts.append(f"Original job not found for slot: {slot_id}")
                 continue
 
             # Copy recovery trial to original job
@@ -192,9 +239,7 @@ class ResultMerger:
         # Trial name pattern: {task_id}__trial-{N}
         trials_dir = original_job_dir / "trials"
         if not trials_dir.exists():
-            self.conflicts.append(
-                f"Trials directory not found: {original_job_dir}"
-            )
+            self.conflicts.append(f"Trials directory not found: {original_job_dir}")
             return False
 
         # Find failed trial for this task
@@ -219,21 +264,22 @@ class ResultMerger:
         # Find recovery trial
         recovery_trials_dir = recovery_job_dir / "trials"
         if not recovery_trials_dir.exists():
-            self.conflicts.append(
-                f"Recovery trials not found: {recovery_job_dir}"
-            )
+            self.conflicts.append(f"Recovery trials not found: {recovery_job_dir}")
             return False
 
         recovery_trial_dir = None
         for trial_dir in recovery_trials_dir.iterdir():
             if trial_dir.is_dir() and trial_dir.name.startswith(f"{task_id}__"):
-                recovery_trial_dir = trial_dir
-                break
+                result_path = trial_dir / "result.json"
+                if (
+                    result_path.is_file()
+                    and json.loads(result_path.read_text()).get("outcome") == "success"
+                ):
+                    recovery_trial_dir = trial_dir
+                    break
 
         if not recovery_trial_dir:
-            self.conflicts.append(
-                f"Recovery trial not found for task {task_id}"
-            )
+            self.conflicts.append(f"Recovery trial not found for task {task_id}")
             return False
 
         # Replace failed trial with recovery trial

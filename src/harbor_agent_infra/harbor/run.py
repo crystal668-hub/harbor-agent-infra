@@ -312,8 +312,10 @@ class RunEventSink:
         run_id: str,
         harnesses: dict[str, str] | None = None,
         network_policies: dict[str, dict[str, dict[str, object]]] | None = None,
+        slot_bindings: dict[str, dict[str, dict]] | None = None,
     ):
         self.path = path
+        self.slot_bindings = slot_bindings or {}
         self.run_id = run_id
         self.harness_runners: dict[str, HarnessRunner] = {
             group_id: harness_runner_for(agent_name)
@@ -322,7 +324,8 @@ class RunEventSink:
         self.network_policies = network_policies or {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def __call__(self, event: TrialHookEvent, *, group_id: str) -> None:
+    def project(self, event: TrialHookEvent, *, group_id: str) -> tuple[Path, dict, dict]:
+        """Project an existing native result without writing or scoring it."""
         result = event.result
         record_name = f"{event.trial_name}__{event.trial_id}"
         record_path = self.path.parent.parent / "per-record" / group_id / f"{record_name}.json"
@@ -464,10 +467,19 @@ class RunEventSink:
             ),
             "trial_result_path": str(trial_dir / "result.json"),
         }
+        binding = self.slot_bindings.get(group_id, {}).get(event.task_name, {})
+        for key in ("slot_id", "repeat_index", "provider", "public_task_sha256"):
+            if key in binding:
+                record_payload[key] = binding[key]
+                event_payload[key] = binding[key]
         payload = {
             **record_payload,
             "trial_result": trial_dump,
         }
+        return record_path, payload, event_payload
+
+    async def __call__(self, event: TrialHookEvent, *, group_id: str) -> None:
+        record_path, payload, event_payload = self.project(event, group_id=group_id)
         await asyncio.to_thread(self._commit, record_path, payload, event_payload)
 
     def _commit(
@@ -505,10 +517,11 @@ async def run_paired_jobs(
     job_name_suffix: str = "",
     allow_task_selection_change: bool = False,
     source_experiment_sha256: str | None = None,
+    formal_context: dict | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
     print(f"Starting run_paired_jobs for group_id={group_id}", flush=True)
-    output_root.mkdir(parents=True, exist_ok=True)
+    output_root.mkdir(parents=True, exist_ok=formal_context is None)
     run_id = output_root.name
     print(f"Run ID: {run_id}", flush=True)
     lock_path = Path(spec.benchmark.package_lock)
@@ -609,9 +622,17 @@ async def run_paired_jobs(
             group_id=group_id,
             task_names=replace_group_task_names,
         )
+    slot_bindings = None
+    if formal_context is not None:
+        from harbor_agent_infra.formal import freeze_formal_slots
+
+        slot_bindings = freeze_formal_slots(
+            output_root, formal_context, materialized, spec.model_dump(mode="json")
+        )
     events = RunEventSink(
         output_root / "events" / "trials.jsonl",
         run_id=run_id,
+        slot_bindings=slot_bindings,
         harnesses={group_id: group.agent_name for group_id, group in materialized.groups.items()},
         network_policies={
             group_id: {str(policy["task_name"]): policy for policy in group.network_policies}

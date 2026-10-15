@@ -125,7 +125,7 @@ class RecoveryManifest:
     def approve_all_substitutable(self) -> None:
         """Auto-approve all substitutable slots."""
         for slot in self.slots:
-            if slot.can_substitute:
+            if slot.can_substitute and slot.failure_classification.confidence >= 0.8:
                 self.approve_slot(slot.slot_id)
 
     def get_approved_slots(self) -> list[RecoverySlot]:
