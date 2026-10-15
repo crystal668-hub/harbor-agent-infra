@@ -60,7 +60,8 @@ async def verify_image(name: str, lock_path: Path, output: Path, *, concurrent: 
         f'command = {json.dumps(healthcheck)}\nretries = 1\n'
     )
     spec = AgentSpec(
-        adapter=name, model="anthropic/claude-opus-5.5" if name == "openclaw" else "openai/fixture",
+        adapter=name,
+        model="anthropic/claude-opus-5.5" if name in {"openclaw", "hermes"} else "openai/fixture",
         installation_mode="preinstalled",
         **({"max_output_tokens": 64000} if name == "hermes" else {}),
     )

@@ -205,7 +205,13 @@ def test_acceptance_matrix_is_finite_and_freezes_all_tracks_and_routes(tmp_path,
                    for entry in selected)
 
 
-def test_acceptance_cancellation_persists_terminal_status_and_stops_dispatch(tmp_path, monkeypatch):
+@pytest.mark.parametrize("selection,harness", [
+    ({}, "openclaw"),
+    ({"names": ("hermes",), "providers": ("claude",)}, "hermes"),
+])
+def test_acceptance_cancellation_persists_terminal_status_and_stops_dispatch(
+    tmp_path, monkeypatch, selection, harness,
+):
     import asyncio
     from unittest.mock import AsyncMock
 
@@ -220,11 +226,12 @@ def test_acceptance_cancellation_persists_terminal_status_and_stops_dispatch(tmp
     monkeypatch.setattr(module, "run_group_jobs", execute)
     output = tmp_path / "cancelled-matrix"
     with pytest.raises(asyncio.CancelledError):
-        asyncio.run(module.run_matrix(path, Path("examples/experiments"), output))
+        asyncio.run(module.run_matrix(path, Path("examples/experiments"), output, **selection))
     report = json.loads((output / "report.json").read_text())
     assert report["status"] == "cancelled"
     assert len(report["entries"]) == 1
     assert report["entries"][0]["status"] == "cancelled"
+    assert report["entries"][0]["harness"] == harness
     assert execute.await_count == 1
 
 
