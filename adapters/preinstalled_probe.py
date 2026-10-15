@@ -130,6 +130,14 @@ def verify(expected: dict, *, manifest_path: str = MANIFEST) -> dict:
     for field in ("application_python", "dependency_environment"):
         if field in manifest and actual.get(field) != manifest[field]:
             raise ValueError(f"actual harness {field} mismatch")
+    if expected["name"] == "hermes" and manifest.get("dependencies", {}).get("provider_modules"):
+        if manifest["dependencies"]["provider_modules"] != ["openai", "anthropic"]:
+            raise ValueError("unsupported Hermes provider dependency contract")
+        subprocess.run(
+            [str(Path(actual["dependency_environment"]) / "bin/python"),
+             "-c", "import openai, anthropic"],
+            capture_output=True, timeout=30, check=True,
+        )
     patches = manifest.get("patches", {})
     allowed = {}
     for name, definition in expected.get("patches", {}).items():

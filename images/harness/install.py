@@ -196,11 +196,19 @@ def main():
         raise ValueError("unsupported harness")
     if name == "hermes":
         os.environ["HERMES_DISABLE_LAZY_INSTALLS"] = "1"
+        # The pinned release intentionally excludes Anthropic from [all] and
+        # otherwise installs it lazily on its first provider request.
+        run(["bash", "-c", shell_prefix(name) + "hermes pm install --extra anthropic"],
+            timeout=1800)
         if "/tmp/hermes/installs" not in roots:
             roots.append("/tmp/hermes/installs")
         # A metadata-only version probe bypasses normal activation. Exercise
         # a normal command with lazy repair disabled before freezing files.
         shell(name, "hermes sessions --help >/dev/null")
+        for facts in Path("/tmp/hermes/installs").glob("*/facts.json"):
+            environment = Path(json.loads(facts.read_text())["packages"]["venv"]["environment"])
+            run([str(environment / "bin/python"), "-c", "import openai, anthropic"])
+        dependencies["provider_modules"] = ["openai", "anthropic"]
     identity = actual_identity(name)
     version = pin["package_version"] if name == "hermes" else pin["version"]
     if identity["version"] != version:
