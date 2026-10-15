@@ -119,13 +119,14 @@ def test_candidate_config_preserves_source_and_only_changes_new_run(tmp_path, mo
 
 
 def test_acceptance_matrix_is_finite_and_freezes_all_tracks_and_routes(tmp_path, monkeypatch):
-    from scripts.verify_preinstalled_matrix import CASES, PROVIDERS, matrix
+    from scripts.verify_preinstalled_matrix import ACCEPTANCE_PREFIX, CASES, PROVIDERS, matrix
 
     monkeypatch.setenv("OPENCLAW_SKILLS_ROOT", "/fixture/skills")
     monkeypatch.setenv("VGB_PYTHON", "/fixture/vgb/python")
     path, _ = candidate_lock(tmp_path)
     entries = matrix(path, Path("examples/experiments"), tmp_path / "matrix")
     assert len(entries) == 16
+    assert all(entry["instruction_prefix"] == ACCEPTANCE_PREFIX for entry in entries)
     for name in NAMES:
         selected = [entry for entry in entries if entry["harness"] == name]
         assert {entry["provider"] for entry in selected} == set(PROVIDERS)
@@ -134,3 +135,26 @@ def test_acceptance_matrix_is_finite_and_freezes_all_tracks_and_routes(tmp_path,
                    for entry in selected)
         assert all(entry["config"]["experiment"]["retry"]["max_retries"] == 0
                    for entry in selected)
+
+
+def test_acceptance_cancellation_persists_terminal_status_and_stops_dispatch(tmp_path, monkeypatch):
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    from scripts import verify_preinstalled_matrix as module
+
+    monkeypatch.setenv("OPENCLAW_SKILLS_ROOT", "/fixture/skills")
+    monkeypatch.setenv("VGB_PYTHON", "/fixture/vgb/python")
+    path, _ = candidate_lock(tmp_path)
+    execute = AsyncMock(side_effect=asyncio.CancelledError())
+    monkeypatch.setattr(module, "require_idle_docker", lambda: None)
+    monkeypatch.setattr(module.VgbRuntime, "from_executable", lambda _: None)
+    monkeypatch.setattr(module, "run_group_jobs", execute)
+    output = tmp_path / "cancelled-matrix"
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(module.run_matrix(path, Path("examples/experiments"), output))
+    report = json.loads((output / "report.json").read_text())
+    assert report["status"] == "cancelled"
+    assert len(report["entries"]) == 1
+    assert report["entries"][0]["status"] == "cancelled"
+    assert execute.await_count == 1

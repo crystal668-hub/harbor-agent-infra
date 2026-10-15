@@ -27,6 +27,15 @@ CASES = (
      "property_calculation_basic_002_ethanol_aqueous_solvation_free_energy"),
     ("property_calculation_advanced", "property_calculation_advanced_001_free_energy"),
 )
+ACCEPTANCE_PREFIX = (
+    "This is a harness execution and scoring acceptance check. "
+    "First verify your terminal tool with one short command. "
+    "Use at most three terminal calls and the already installed tools. "
+    "Choose one small, quick candidate for a generation task. "
+    "For a numeric task, use a brief estimate if a calculation is not immediately available. "
+    "Finish with a syntactically valid answer in the task's required format. "
+    "Avoid extended optimization, literature search or new dependency installation.\n\n"
+)
 
 
 def matrix(lock_path: Path, templates: Path, output: Path) -> list[dict]:
@@ -49,7 +58,8 @@ def matrix(lock_path: Path, templates: Path, output: Path) -> list[dict]:
             payload["run"]["output_dir"] = str(output / f"{name}-{provider}")
             config = RunConfig.model_validate(expand_required(payload))
             entries.append({"harness": name, "provider": provider, "track": track,
-                            "task_id": task, "config": config.model_dump(mode="json")})
+                            "task_id": task, "instruction_prefix": ACCEPTANCE_PREFIX,
+                            "config": config.model_dump(mode="json")})
     return entries
 
 
@@ -72,7 +82,9 @@ async def run_matrix(lock_path: Path, templates: Path, output: Path) -> dict:
             await run_group_jobs(
                 config.experiment, config.resources, runtime, output_root=run_output,
                 group_id="skills_off",
-                task_settings=TaskRuntimeSettings(**config.task.model_dump()),
+                task_settings=TaskRuntimeSettings(
+                    **config.task.model_dump(), instruction_prefix=entry["instruction_prefix"],
+                ),
                 delete_containers=True,
             )
             results = json.loads((run_output / "results.json").read_text())
@@ -86,6 +98,12 @@ async def run_matrix(lock_path: Path, templates: Path, output: Path) -> dict:
             ):
                 raise RuntimeError("actual harness identity evidence is incomplete or failed")
             item.update(status="passed", setup_evidence=str(setup[0]), final_evidence=str(final[0]))
+        except asyncio.CancelledError:
+            item["status"] = "cancelled"
+            report["status"] = "cancelled"
+            report["entries"].append(item)
+            (output / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            raise
         except Exception as exc:
             item["error"] = type(exc).__name__ + ": " + str(exc)
         report["entries"].append(item)

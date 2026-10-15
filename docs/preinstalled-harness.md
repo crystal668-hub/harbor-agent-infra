@@ -60,6 +60,7 @@ LITELLM_LOCAL_MODEL_COST_MAP=True uv run --locked --python 3.12 \
 ```bash
 RUN_PREINSTALLED_IMAGE_GATES=1 \
 PREINSTALLED_RUNTIME_LOCK=/absolute/path/to/candidate-runtime-lock.json \
+PREINSTALLED_GATE_OUTPUT_DIR=outputs/preinstalled/docker-gates \
 LITELLM_LOCAL_MODEL_COST_MAP=True \
 uv run --locked --python 3.12 pytest -m integration \
   tests/test_preinstalled_image_integration.py
@@ -68,6 +69,8 @@ uv run --locked --python 3.12 pytest -m integration \
 这是 provider-free Docker 门禁，包括两个新容器离线 setup、原有化学基线和实际
 错版/错清单/入口缺失/路径漂移/文件篡改负例。候选锁没有某 harness 时对应项会 skip；
 完整验收不接受这类缺项作为成功。默认单元测试不创建容器或发模型请求。
+`PREINSTALLED_GATE_OUTPUT_DIR` 指定持久化证据目录，避免验收报告随 pytest 临时目录清理。
+目录内每个 harness 的目标子目录必须尚不存在。
 
 ## 生成独立运行配置
 
@@ -97,6 +100,10 @@ uv run --locked --python 3.12 hai run \
 
 运行命令属于显式验收/新实验启动动作；生成配置不会运行任务。Provider/VGB 验收
 按照已审批计划的 16 个有限 `skills_off` Trial 矩阵执行，且各 harness 覆盖四种 track。
+矩阵专用入口保存统一的工程验收 instruction prefix：先验证终端工具、请求至多三次
+终端调用、快速生成候选或给出估计值。该提示不是强制执行的步数预算，不能据此声称
+实现了工具调用上限；原模型、推理、输出上限、资源和任务时限保持模板设置。
+原 VGB prompt 和最终答案格式仍保留，矩阵快照与实际 task 文件记录完整输入。
 运行前后校验版本与安装产物；零分可为有效结果，不用分数筛选或反复重试验收样本。
 
 ## 证据、历史兼容与切换
