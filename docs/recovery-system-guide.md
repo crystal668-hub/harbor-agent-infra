@@ -8,6 +8,93 @@ The recovery system enables you to identify, classify, and recover from failures
 2. **Recover**: Execute approved recovery attempts
 3. **Merge**: Integrate successful recoveries back into the original results
 
+## Native formal runs: current contract
+
+All 16 harness/provider combinations and all three formal repeats use the same flow.
+Original directories are `run-artifacts/formal/<harness>-<provider>-repeat<N>/`;
+providers are `openai`, `anthropic`, `qwen`, and `deepseek`. Recovery and merged
+outputs append `-recovery-batch<M>` and `-merged-batch<M>` to that original name.
+
+Start future formal repeats with explicit identity. The local consolidated config
+must contain the frozen protocol settings: one attempt, no internal retry, and
+concurrency 2. Existing original directories are never silently resumed:
+
+```bash
+uv run --locked --python 3.12 hai run \
+  --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
+  --formal-provider deepseek --formal-repeat 2 --group skills_off
+
+# Print the complete 48-run matrix without starting any experiment.
+bash scripts/run_formal_experiments.sh --dry-run
+```
+
+The runner saves `protocol.json`, `slots.jsonl`, and `frozen-jobs/<group>.json`
+before starting a Harbor Job. Repeat indices are explicit; display repeat 1 maps
+to internal repeat_index 0. Model and task versions remain in the frozen protocol.
+
+`hai recover` reads the saved native JobConfig and runs at most the frozen number
+of single-task Jobs concurrently (2 for the current formal protocol). It writes
+`recovery-state.json` while running. Reusing an existing recovery output directory
+is rejected; a cancelled or crashed batch must be reconciled from its artifacts
+before creating a new approved batch. Separate processes do not share a global
+scheduler, so dispatch only one approved recovery batch for an original run at a time.
+
+```bash
+uv run --locked --python 3.12 hai recover \
+  run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
+  --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
+  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch2 \
+  --dry-run
+```
+
+The example uses a new output directory. Omit `--dry-run` only to start a separately
+approved next batch; do not reuse an old approval after consuming its replacement budget.
+Normal zero scores and budget timeouts are valid observations. Ambiguous SIGKILL
+requires review; auto-approval excludes classifications below confidence 0.8.
+Scoring repair keeps the original execution and never invokes the Agent through recover.
+
+Native merges require a final recovery-result covering every approved slot, complete
+native trials, consistent task/config identities, and matching VGB artifact/reward scores.
+`recover` never invokes `merge` automatically:
+
+```bash
+uv run --locked --python 3.12 hai merge \
+  run-artifacts/formal/claude-code-deepseek-repeat1 \
+  run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
+  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1 \
+  --dry-run
+```
+
+After reviewing the preview, omit `--dry-run` to publish a new snapshot. This leaves
+both source runs untouched. Native Job/Trial evidence retains its UUID and original
+content; projected per-record/events/results point to the copied artifacts. Historical
+path aliases are resolved separately from the original run identity. Earlier valid
+attempts have priority over later attempts, regardless of score; pending review blocks
+selection of later success. Every actual failed replacement also consumes budget.
+
+The output keeps exactly the original slot set and an attempts chain per slot. It
+contains `merge-metadata.json` with selection reasons, source hashes, and statistics
+for all attempts/costs. Harbor JobStats describe actual executions; Infra summaries
+describe one representative per original slot. Unscored observations remain unscored.
+Re-audit the derived snapshot to obtain remaining failures and their consumed budgets;
+new approvals are not inherited automatically.
+
+For complete-experiment reporting, explicitly select one view per original run:
+
+```bash
+uv run --locked --python 3.12 hai formal-summary \
+  run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1 \
+  run-artifacts/formal/claude-code-deepseek-repeat2
+```
+
+Passing the original and a merged snapshot of that same original run together is
+rejected, as is passing multiple merged versions of one original. This prevents
+recovery or merge directories from inflating the 3,408 planned first-stage slots.
+
+The sections below also show the older `trials/` layout for compatibility. Native
+runs use `jobs/<job>/<trial>/` and preserve all attempts without renaming a recovered
+Trial into its predecessor's native identity.
+
 ## Quick Start
 
 ### 1. Audit a Run
@@ -57,14 +144,14 @@ Open the generated manifest and review each failure:
 **Approval Guidelines:**
 - **Engineering failures** (network, image, auth): Set `approved: true` - these are substitutable
 - **Capability failures** (timeout, wrong answer): Leave `approved: false` - these are valid results
-- **Scoring failures** (verifier errors): Review evidence and approve if verifier issue
+- **Scoring failures** (verifier errors): Preserve Agent output and repair scoring separately; do not approve a new Agent execution
 
 **Auto-approve option:**
 ```bash
 hai audit <run-name> --auto-approve-substitutable
 ```
 
-This automatically approves all engineering failures.
+This approves substitutable failures with confidence at least 0.8; ambiguous failures remain for review.
 
 ### 3. Execute Recovery
 
@@ -72,7 +159,7 @@ Run approved recovery attempts:
 
 ```bash
 hai recover recovery-manifest.json \
-  --config configs/experiment.toml \
+  --config configs/experiment.yaml \
   --output-dir run-artifacts/recovery-2026-10-14
 ```
 
@@ -225,7 +312,7 @@ To prevent infinite retry loops, the system enforces limits:
 - Recovery manifest tracks `n_previous_attempts`
 - Slots exceeding limit are marked non-substitutable
 
-### Merged Run Structure
+### Legacy Merged Run Structure
 
 After merging, the output directory contains:
 
@@ -332,7 +419,7 @@ hai merge original-run recovery-pass-1 recovery-pass-2 \
 
 ```bash
 # 1. Run experiment
-hai run --config configs/experiment.toml \
+hai run --config configs/experiment.yaml \
   --output run-artifacts/formal/exp-2026-10-14
 
 # 2. Wait for completion, then audit
@@ -342,7 +429,7 @@ hai audit exp-2026-10-14 --artifacts-dir run-artifacts/formal
 
 # 4. Execute recovery
 hai recover run-artifacts/formal/exp-2026-10-14/recovery-manifest.json \
-  --config configs/experiment.toml \
+  --config configs/experiment.yaml \
   --output-dir run-artifacts/recovery-2026-10-14
 
 # 5. Merge results
@@ -401,7 +488,7 @@ for run in run-artifacts/formal/*; do
   hai audit "$run"
   # Review and approve...
   hai recover "$run/recovery-manifest.json" \
-    --config configs/experiment.toml \
+    --config configs/experiment.yaml \
     --output-dir "run-artifacts/recovery-$(basename $run)"
 done
 ```

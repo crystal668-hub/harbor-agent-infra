@@ -1,7 +1,7 @@
 # 正式实验原生恢复、双并发与按 slot 合并适配计划
 
 日期：2026-10-15（Asia/Shanghai）  
-状态：待用户审核；本文为实施计划，不表示功能已实现  
+状态：用户已审核；已在独立 worktree 实现并通过 provider-free 验证，尚未部署至进行中的补跑环境
 代码核对基线：`e2d4b15`（原生 JobConfig 加载与单任务恢复修复）
 
 ## 1. 目标与范围
@@ -350,7 +350,7 @@ VGB artifact 中的 score 必须与该 TrialResult verifier reward 一致。
 
 ## 10. CLI 交付示例（通用接口，以首个案例展示）
 
-以下为适配完成后的目标接口；merge 的 `--dry-run` 当前尚未实现。
+以下接口已在独立 worktree 实现；实际发布仍需先审核 dry-run，当前进行中的补跑不使用新代码。
 
 ```bash
 # 恢复启动前验证配置；适配后同时展示有效并发上限 2
@@ -441,7 +441,7 @@ git diff --check
 
 ## 13. 审核结论填写
 
-- 计划状态：待审核。
+- 计划状态：已审核并在独立 worktree 实现；真实 Docker 并发／取消验证待空闲环境执行。
 - 适用范围：当前及后续完整正式实验，包括全部 harness/provider 组合、全部 repeat、
   恢复批次与合并快照；本轮 Claude Code × DeepSeek Repeat 1 仅为首个验收案例。
 - 已确定范围：双并发 recover、原生目录合并、原 slot 唯一关联、证据保留、
@@ -454,3 +454,23 @@ git diff --check
 - [正式实验协议](2026-10-14-formal-experiment-plan.md)
 - [失败恢复迁移计划](2026-10-12-failure-recovery-migration-plan.md)
 - [恢复系统使用说明](../recovery-system-guide.md)
+
+
+## 14. 实施与隔离验证记录
+
+实施分支：`codex/formal-recovery-merge`。独立 worktree 使用独立 Python 3.12 uv 环境，
+不修改主 checkout、`.env`、正在运行的配置或 `run-artifacts/`，不重启当前恢复进程。
+已完成恢复并发、原生合并预览与快照、预算／再审计、全矩阵命名／槽位冻结及汇总入口。
+
+验收证据：
+
+- Provider-free 测试覆盖 48 个组合/repeat 的原生选择、四种 harness 投影、
+  3,408 个 slot 汇总、0 分替代、多批次预算、失败中断及原始输入哈希不变。
+- Docker 测试已提供：`tests/test_recovery_docker_integration.py`。启动前检测已有容器，
+  本次因正式实验仍运行而跳过两项，未增加主机容器负载；不能据此宣称真实双容器验收已通过。
+- 对本轮真实数据的只读预览识别 71 个原 slot 及迁移前历史身份；由于恢复批次仍无最终汇总，
+  返回“active or incomplete batch”并阻止发布，未修改任何输入。
+- 并发修改不会切换已经启动的旧进程；主 checkout 的部署、真实合并发布和当前批次切换
+  均未执行。当前兼容符号链接保持有效。
+
+运行说明及已实现命令见 [恢复系统使用说明](../recovery-system-guide.md)。
