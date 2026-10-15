@@ -21,7 +21,7 @@ Claude Code × DeepSeek Repeat 1 作为唯一支持对象，也不能逐组合�
 - 4 个模型 provider：`openai`、`anthropic`、`qwen`、`deepseek`。
 - 每个组合独立执行 `repeat1`、`repeat2`、`repeat3`，共 48 个原始正式 run。
 - 每个 run 71 个任务，共 3,408 个预定 slot；默认均为 `skills_off`。
-- 每个 run 的 `recovery-batch<M>` 和 `merged-batch<M>` 都遵循同一套规则；
+- 每个 run 的 `recovery-batch<M>` 和 `merged` 都遵循同一套规则；
   恢复预算按原 slot 累计，不因更换恢复批次、合并快照或路径而重置。
 
 后续增加任务 track、模型 provider、harness 或正式 repeat 时继续使用同一契约，
@@ -42,7 +42,7 @@ Claude Code × DeepSeek Repeat 1 作为唯一支持对象，也不能逐组合�
 | --- | --- |
 | 原始 Repeat 1 | `run-artifacts/formal/claude-code-deepseek-repeat1/` |
 | 本轮补跑 | `run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1/` |
-| 建议合并输出 | `run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1/` |
+| 建议合并输出 | `run-artifacts/formal/claude-code-deepseek-repeat1-merged/` |
 | 原始配置 | `configs/experiments/claude-code/vgb-deepseek.config.yaml` |
 | Harness／模型 | Claude Code 2.1.296／DeepSeek V4 Pro |
 | 分组 | 仅 `skills_off` |
@@ -180,7 +180,7 @@ GPT 和 Claude 的 provider 名分别写为 `openai` 和 `anthropic`；模型具
 
 ```text
 run-artifacts/formal/<harness>-<provider>-repeat<N>-recovery-batch<M>/
-run-artifacts/formal/<harness>-<provider>-repeat<N>-merged-batch<M>/
+run-artifacts/formal/<harness>-<provider>-repeat<N>-merged/
 ```
 
 其中 `M` 是恢复或合并批次号，不改变原 repeat 身份。
@@ -364,14 +364,14 @@ uv run --locked --python 3.12 hai recover \
 uv run --locked --python 3.12 hai merge \
   run-artifacts/formal/claude-code-deepseek-repeat1 \
   run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
-  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1 \
+  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged \
   --dry-run
 
 # 审查预览后，使用同样输入实际发布新快照
 uv run --locked --python 3.12 hai merge \
   run-artifacts/formal/claude-code-deepseek-repeat1 \
   run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
-  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1
+  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged
 ```
 
 `recover` 不自动调用 `merge`；完成补跑与发布合并快照仍是两个明确动作。
@@ -474,3 +474,18 @@ git diff --check
   均未执行。当前兼容符号链接保持有效。
 
 运行说明及已实现命令见 [恢复系统使用说明](../recovery-system-guide.md)。
+
+
+## Consolidated merged view
+
+The canonical merged output is `<harness>-<provider>-repeat<N>-merged/`, without
+a batch suffix. Its `jobs/` contains one consolidated Harbor Job per group, and
+one representative Trial per original slot. Complete native attempt evidence is
+archived under `evidence/attempts/`, outside the Viewer Job scan.
+Job config, locks, JobStats, per-record, events and manifests are rebuilt for the
+representative view. Trial UUIDs, scores and real lifecycle exceptions remain
+unchanged; failed predecessors no longer appear as separate Viewer tasks.
+All-attempt costs and execution counts remain in merge metadata. Merging does
+not run Agents or convert valid timeouts to successful executions. If recovery
+budget is exhausted with no valid representative, the last failed attempt is shown.
+This section supersedes earlier descriptions of stacked Jobs in merged outputs.

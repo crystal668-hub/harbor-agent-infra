@@ -30,7 +30,7 @@ def write_json(path: Path, payload: dict) -> None:
 
 def rebase(value, mappings):
     if isinstance(value, str):
-        for source, target in mappings:
+        for source, target in sorted(mappings, key=lambda pair: len(pair[0]), reverse=True):
             if value == source or value.startswith(source + "/"):
                 return target + value[len(source) :]
         return value
@@ -204,6 +204,9 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
                     seen.add(tid)
             if slot.selected:
                 base = projections[slot.selected.trial["id"]]
+            elif slot.action == "unrecovered" and slot.candidates:
+                latest = max(slot.candidates, key=lambda candidate: candidate.ordinal)
+                base = projections[latest.trial["id"]]
             else:
                 # Include an existing score even for a valid original timeout.
                 validity, domain = assessment(slot.original_path, slot.original_trial)
@@ -225,6 +228,10 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
                 base["final_attempt"] = next(
                     a for a in attempts if a.get("trial_id") == slot.selected.trial["id"]
                 )
+            elif slot.action == "unrecovered" and slot.candidates:
+                base["final_attempt"] = next(
+                    a for a in attempts if a.get("trial_id") == latest.trial["id"]
+                )
             records.append(base)
             # Write the representative record as a view; all attempt records remain available.
             write_json(
@@ -243,6 +250,10 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
         events.extend(new_events)
         original_events.parent.mkdir(parents=True, exist_ok=True)
         original_events.write_text("".join(json.dumps(e, sort_keys=True) + "\n" for e in events))
+        execution_statistics = _execution_statistics(stage)
+        from harbor_agent_infra.recovery.consolidated_job import consolidate_jobs
+
+        consolidated = consolidate_jobs(stage, output, plan, records)
         envelope = rebase(read_json(plan.original / "results.json"), mappings)
         envelope.update(results=records, records=len(records), source_run_id=plan.run_id)
         grouped = defaultdict(list)
@@ -279,14 +290,11 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
                 status="partial" if any(s["errors"] for s in summaries.values()) else "completed",
                 recovery_sources=[str(r) for r in plan.recoveries],
             )
-            for group in manifest.get("groups", []):
-                gid = group.get("group_id")
-                if gid in summaries:
-                    group.update(
-                        status=summaries[gid]["status"],
-                        n_trials=summaries[gid]["records"],
-                        n_errors=summaries[gid]["errors"],
-                    )
+            manifest["groups"] = list(consolidated.values())
+            manifest["jobs_root"] = str(output / "jobs")
+            manifest["partial_run"] = any(s["errors"] for s in summaries.values())
+            manifest["events_path"] = str(output / "events" / "trials.jsonl")
+            manifest["per_record_root"] = str(output / "per-record")
             write_json(stage / name, manifest)
         from harbor_agent_infra.recovery.auditor import audit_run
 
@@ -299,7 +307,8 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
             output_dir=str(output),
             input_sha256=plan.fingerprints,
             statistical_unit="original_slot",
-            execution_statistics=_execution_statistics(stage),
+            execution_statistics=execution_statistics,
+            consolidated_jobs=consolidated,
         )
         write_json(stage / "merge-metadata.json", metadata)
         for record in records:

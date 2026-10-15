@@ -270,7 +270,9 @@ def test_publish_native_snapshot_preserves_inputs_and_zero_score(native_runs, tm
     audit = audit_run(output)
     assert len(audit.slots) == 2
     assert record["task_name"] not in [s.task_id for s in audit.slots]
-    assert len(list(output.glob("jobs/*/*/result.json"))) == 4
+    assert len(list(output.glob("jobs/*/*/result.json"))) == 3
+    assert len(list((output / "jobs").iterdir())) == 1
+    assert len(list(output.glob("evidence/attempts/jobs/*/*/result.json"))) == 4
     with pytest.raises(FileExistsError):
         ResultMerger(original, [recovery], output).merge()
 
@@ -480,3 +482,59 @@ def test_valid_original_is_not_replaced_even_when_recovery_is_approved(native_ru
     plan = plan_native_merge(original, [recovery])
     assert any("valid original" in conflict for conflict in plan.conflicts)
     assert plan.slots[0].selected is None
+
+
+def test_consolidated_viewer_has_one_job_and_one_trial_per_slot(native_runs, tmp_path):
+    from fastapi.testclient import TestClient
+    from harbor.viewer import create_app
+
+    from harbor_agent_infra.recovery.merger import ResultMerger
+
+    original, recovery = native_runs
+    output = tmp_path / "claude-code-deepseek-repeat1-merged"
+    ResultMerger(original, [recovery], output).merge()
+    jobs = list((output / "jobs").iterdir())
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job.name == "claude-code-deepseek-repeat1-merged-skills_off"
+    viewer = TestClient(create_app(output / "jobs", mode="jobs"))
+    result = viewer.get(f"/api/jobs/{job.name}").json()
+    assert result["n_total_trials"] == 3
+    assert result["stats"]["n_completed_trials"] == 3
+    assert result["stats"]["n_errored_trials"] == 2
+    tasks = viewer.get(f"/api/jobs/{job.name}/tasks").json()["items"]
+    assert len(tasks) == 3 and all(t["n_trials"] == 1 for t in tasks)
+    recovered = next(t for t in tasks if t["task_name"] == "track__task-0")
+    assert recovered["n_errors"] == 0 and recovered["avg_reward"] == 0
+    envelope = json.loads((output / "results.json").read_text())
+    assert len(list(output.glob("per-record/*/*.json"))) == 3
+    assert len((output / "events/trials.jsonl").read_text().splitlines()) == 3
+    for row in envelope["results"]:
+        assert Path(row["record_path"]).is_file()
+        assert Path(row["final_attempt"]["trial_result_path"]).is_file()
+        assert Path(row["recovery_origin"]["original_trial_result_path"]).is_file()
+        assert all(Path(a["trial_result_path"]).is_file() for a in row["attempts"])
+    manifest = json.loads((output / "run-manifest.json").read_text())
+    assert manifest["groups"][0]["job_dir"] == str(job)
+
+
+def test_consolidated_timeout_keeps_exception_and_zero_score(native_runs, tmp_path):
+    from harbor_agent_infra.recovery.merger import ResultMerger
+
+    original, recovery = native_runs
+    source = next(recovery.glob("jobs/*/*/result.json"))
+    trial = json.loads(source.read_text())
+    trial["exception_info"] = {
+        "exception_type": "AgentTimeoutError",
+        "exception_message": "Budget exhausted",
+        "exception_traceback": "fixture",
+        "occurred_at": "2026-10-15T00:01:00Z",
+    }
+    write(source, trial)
+    output = tmp_path / "merged"
+    ResultMerger(original, [recovery], output).merge()
+    row = json.loads((output / "results.json").read_text())["results"][0]
+    projected = json.loads(Path(row["trial_result_path"]).read_text())
+    assert projected["exception_info"]["exception_type"] == "AgentTimeoutError"
+    assert row["run_lifecycle_status"] == "failed" and row["scored"]
+    assert row["vgb_domain_result"]["scores"]["score"] == 0

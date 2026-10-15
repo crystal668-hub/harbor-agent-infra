@@ -13,7 +13,7 @@ The recovery system enables you to identify, classify, and recover from failures
 All 16 harness/provider combinations and all three formal repeats use the same flow.
 Original directories are `run-artifacts/formal/<harness>-<provider>-repeat<N>/`;
 providers are `openai`, `anthropic`, `qwen`, and `deepseek`. Recovery and merged
-outputs append `-recovery-batch<M>` and `-merged-batch<M>` to that original name.
+outputs append `-recovery-batch<M>` and `-merged` to that original name.
 
 Start future formal repeats with explicit identity. The local consolidated config
 must contain the frozen protocol settings: one attempt, no internal retry, and
@@ -61,7 +61,7 @@ native trials, consistent task/config identities, and matching VGB artifact/rewa
 uv run --locked --python 3.12 hai merge \
   run-artifacts/formal/claude-code-deepseek-repeat1 \
   run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
-  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1 \
+  --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged \
   --dry-run
 ```
 
@@ -83,7 +83,7 @@ For complete-experiment reporting, explicitly select one view per original run:
 
 ```bash
 uv run --locked --python 3.12 hai formal-summary \
-  run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1 \
+  run-artifacts/formal/claude-code-deepseek-repeat1-merged \
   run-artifacts/formal/claude-code-deepseek-repeat2
 ```
 
@@ -512,3 +512,18 @@ else
   exit 1
 fi
 ```
+
+
+## Consolidated merged view
+
+The canonical merged output is `<harness>-<provider>-repeat<N>-merged/`, without
+a batch suffix. Its `jobs/` contains one consolidated Harbor Job per group, and
+one representative Trial per original slot. Complete native attempt evidence is
+archived under `evidence/attempts/`, outside the Viewer Job scan.
+Job config, locks, JobStats, per-record, events and manifests are rebuilt for the
+representative view. Trial UUIDs, scores and real lifecycle exceptions remain
+unchanged; failed predecessors no longer appear as separate Viewer tasks.
+All-attempt costs and execution counts remain in merge metadata. Merging does
+not run Agents or convert valid timeouts to successful executions. If recovery
+budget is exhausted with no valid representative, the last failed attempt is shown.
+This section supersedes earlier descriptions of stacked Jobs in merged outputs.

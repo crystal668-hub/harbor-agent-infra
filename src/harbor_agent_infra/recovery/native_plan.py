@@ -216,16 +216,28 @@ def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan
             or (record.get("trial_result") or {}).get("id")
             or ""
         )
-        if trial_id not in indexed:
+        if trial_id not in indexed and not anchor.get("original_trial_result_path"):
             raise ValueError(f"Original trial not found: {trial_id}")
-        path, trial = indexed[trial_id]
+        path, trial = indexed.get(trial_id, (None, None))
+        if origin_path := anchor.get("original_trial_result_path"):
+            archived_path = Path(origin_path).resolve()
+            if not archived_path.is_relative_to(original):
+                raise ValueError("Original slot evidence escapes merged snapshot")
+            trial = read_json(archived_path)
+            if str(trial.get("id")) != trial_id:
+                raise ValueError("Original slot evidence UUID mismatch")
+            path = archived_path
         if trial.get("task_name") != record["task_name"]:
             raise ValueError("Original task identity mismatch")
         slot = SlotPlan(
             record, path, trial, substitution_count=int(record.get("substitution_count", 0))
         )
         plan.slots.append(slot)
-        anchor_key = (path.parent.parent.name, record["task_name"], trial_id)
+        anchor_key = (
+            anchor.get("original_job") or path.parent.parent.name,
+            record["task_name"],
+            trial_id,
+        )
         if anchor_key in by_anchor:
             raise ValueError("One original trial cannot represent multiple slots or groups")
         by_anchor[anchor_key] = slot
