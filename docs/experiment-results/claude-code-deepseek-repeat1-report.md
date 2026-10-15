@@ -209,7 +209,7 @@ c. **使用镜像或 CDN**
 
 ## 数据文件位置
 
-- **结果目录**: `run-artifacts/formal/claude-code-vgb-deepseek-cross-provider`
+- **结果目录**: `run-artifacts/formal/claude-code-deepseek-repeat1`
 - **Job 结果**: `jobs/claude-code-vgb-deepseek-cross-provider-skills_off/result.json`
 - **实验日志**: `logs/formal-experiments/claude-code-deepseek-test.log`
 - **本报告**: `docs/experiment-results/claude-code-deepseek-repeat1-report.md`

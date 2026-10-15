@@ -24,7 +24,7 @@ import json
 import yaml
 
 # Load recovery manifest
-with open('run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json') as f:
+with open('run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json') as f:
     manifest = json.load(f)
 
 # Get approved tasks
@@ -75,10 +75,10 @@ uv run hai run \
 1. **先手动调查几个失败任务**
    ```bash
    # 查看一个网络失败任务的详细日志
-   ls run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/jobs/*/property_calculation_advanced__p__*
+   ls run-artifacts/formal/claude-code-deepseek-repeat1/jobs/*/property_calculation_advanced__p__*
    
    # 检查是否真的是网络问题
-   grep -r "NetworkConnectionError" run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/jobs/
+   grep -r "NetworkConnectionError" run-artifacts/formal/claude-code-deepseek-repeat1/jobs/
    ```
 
 2. **确认网络已稳定**
@@ -152,6 +152,6 @@ uv run hai run \
 ---
 
 **当前文件**:
-- 恢复清单: `run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json`
+- 恢复清单: `run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json`
 - 详细计划: `docs/experiment-results/recovery-plan-20261015.md`
 - 失败任务列表: `recovery-tasks.txt` (待生成)

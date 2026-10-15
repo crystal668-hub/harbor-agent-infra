@@ -489,3 +489,13 @@ All-attempt costs and execution counts remain in merge metadata. Merging does
 not run Agents or convert valid timeouts to successful executions. If recovery
 budget is exhausted with no valid representative, the last failed attempt is shown.
 This section supersedes earlier descriptions of stacked Jobs in merged outputs.
+
+
+## 16. 历史路径兼容层清理
+
+Repeat 1 结束且全部合并完成后，已按用户授权将旧目录前缀迁移为
+`run-artifacts/formal/claude-code-deepseek-repeat1`。历史 manifest、日志、嵌套原生
+配置及证据引用均更新路径；run_id、Job 名、Trial UUID、评分和时间戳不变。
+兼容符号链接不再作为运行前提，旧堆叠式 merged-batch1 目录予以删除。
+本地 reports/path-migrations 保存迁移前字节备份、校验和和验证记录；此前关于
+持续保留该符号链接的说明仅描述迁移过程，现由本节取代。

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 # 找到所有任务目录
-job_dir = Path('run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/jobs/claude-code-vgb-deepseek-cross-provider-skills_off')
+job_dir = Path('run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off')
 
 # 收集成功任务的分数
 scores = []

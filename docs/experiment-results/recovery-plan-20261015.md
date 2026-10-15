@@ -90,7 +90,7 @@ NonZeroAgentExitCodeError: Command failed (exit 1): set -euo pipefail...
 ### 第一步: 审核并批准额外失败
 ```bash
 # 检查recovery-manifest.json
-cat run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json
+cat run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json
 
 # 手动审核SCORING和UNKNOWN失败
 # 对于需要批准的，编辑manifest将approved字段设为true
@@ -103,7 +103,7 @@ cat run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manife
 ```bash
 # 创建专门的补跑配置，只包含已批准的16个任务
 python3 scripts/create_recovery_config.py \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json \
+  run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
   --output configs/recovery/claude-code-deepseek-recovery-1.config.yaml
 ```
 
@@ -111,7 +111,7 @@ python3 scripts/create_recovery_config.py \
 ```bash
 # 批准SCORING失败
 python3 scripts/approve_substitutable.py \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json \
+  run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
   ENGINEERING SCORING
 
 # 这将批准21个任务（16 ENGINEERING + 5 SCORING）
@@ -121,7 +121,7 @@ python3 scripts/approve_substitutable.py \
 ```bash
 # 启动补跑
 uv run hai recover \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json \
+  run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
   --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
   --output-dir run-artifacts/recovery/claude-code-deepseek-recovery-20261015 \
   2>&1 | tee logs/formal-experiments/recovery-1.log
@@ -140,7 +140,7 @@ python3 scripts/analyze_recovery.py \
 ### 第五步: 合并结果（如果成功）
 ```bash
 uv run hai merge \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider \
+  run-artifacts/formal/claude-code-deepseek-repeat1 \
   run-artifacts/recovery/claude-code-deepseek-recovery-20261015 \
   --output-dir run-artifacts/formal/claude-code-vgb-deepseek-merged
 ```
@@ -191,7 +191,7 @@ uv run hai merge \
 # 查看当前批准状态
 python3 -c "
 import json
-m = json.load(open('run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json'))
+m = json.load(open('run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json'))
 approved = [s for s in m['slots'] if s['approved']]
 print(f'已批准: {len(approved)}/{len(m[\"slots\"])}')
 for s in approved[:5]:
@@ -208,7 +208,7 @@ for s in approved[:5]:
 
 **恢复清单位置**:
 ```
-run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json
+run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json
 ```
 
 **已批准任务**: 16/36 (44.4%)

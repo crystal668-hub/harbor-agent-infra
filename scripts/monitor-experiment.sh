@@ -1,7 +1,7 @@
 #!/bin/bash
 # 实验监控脚本
 
-RESULT_FILE="run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/result.json"
+RESULT_FILE="run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/result.json"
 
 echo "=========================================="
 echo "实验监控 - $(date '+%Y-%m-%d %H:%M:%S')"
@@ -34,8 +34,8 @@ echo
 
 # 检查最近的日志
 echo "📝 最新日志 (最后 5 行)："
-if [ -f "run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/job.log" ]; then
-    tail -5 "run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/job.log"
+if [ -f "run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/job.log" ]; then
+    tail -5 "run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/job.log"
 fi
 echo
 
