@@ -637,20 +637,122 @@ uv run --locked hai aggregate \
 
 ---
 
-## 14. 附录
+## 14. 实验进度与分 track 得分台账
 
-### 14.1 参考文档
+**最后核对日期**：2026-10-16。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已记录 1 个子实验的合并快照，余下 47 个尚未在本地 `run-artifacts/formal/` 发现规范目录，启动状态待核对。
+
+### 14.1 更新与统计口径
+
+- 按 repeat1 → repeat2 → repeat3 跟踪，每轮列出全部 16 个组合；repeat 对应内部索引 0、1、2。
+- 两个 track 独立统计。得分单元格格式为 **已评分数 / 预定数；VGB 均分**，advanced 每次 20 slots，basic 每次 51 slots；均分保留 6 位小数。
+- 均分仅使用入选代表中已评分的 `vgb_score`，正常零分保留；未评分不补零。`—` 表示尚无可核实的分 track 统计，不代表零分或已确认未启动。
+- 状态随执行更新为运行中、待恢复、补跑中、已合并待验收、已验收或阻塞；不能仅凭目录存在或已评分数判定完成。部分结果须在备注中记录缺失数和原因。
+- 每个原始 run 只选一个原始或 merged 快照；补跑不新增子实验，不与原始结果重复计数。变更镜像或其他冻结条件时记录条件身份，按第 5.4 节处理。
+- 每次更新同步维护第 14.5 节的来源与备注；分数由 `hai formal-summary` 的 `run_track` 核对，不使用混合 track 均分替代。
+
+### 14.2 Repeat 1
+
+| Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 已合并待验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
+| Claude Code | Qwen | 未发现产物，待核对 | — | — |
+| Claude Code | GPT | 未发现产物，待核对 | — | — |
+| Claude Code | Claude | 未发现产物，待核对 | — | — |
+| Codex | DeepSeek | 未发现产物，待核对 | — | — |
+| Codex | Qwen | 未发现产物，待核对 | — | — |
+| Codex | GPT | 未发现产物，待核对 | — | — |
+| Codex | Claude | 未发现产物，待核对 | — | — |
+| Hermes | DeepSeek | 未发现产物，待核对 | — | — |
+| Hermes | Qwen | 未发现产物，待核对 | — | — |
+| Hermes | GPT | 未发现产物，待核对 | — | — |
+| Hermes | Claude | 未发现产物，待核对 | — | — |
+| OpenClaw | DeepSeek | 未发现产物，待核对 | — | — |
+| OpenClaw | Qwen | 未发现产物，待核对 | — | — |
+| OpenClaw | GPT | 未发现产物，待核对 | — | — |
+| OpenClaw | Claude | 未发现产物，待核对 | — | — |
+
+### 14.3 Repeat 2
+
+| Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 未发现产物，待核对 | — | — |
+| Claude Code | Qwen | 未发现产物，待核对 | — | — |
+| Claude Code | GPT | 未发现产物，待核对 | — | — |
+| Claude Code | Claude | 未发现产物，待核对 | — | — |
+| Codex | DeepSeek | 未发现产物，待核对 | — | — |
+| Codex | Qwen | 未发现产物，待核对 | — | — |
+| Codex | GPT | 未发现产物，待核对 | — | — |
+| Codex | Claude | 未发现产物，待核对 | — | — |
+| Hermes | DeepSeek | 未发现产物，待核对 | — | — |
+| Hermes | Qwen | 未发现产物，待核对 | — | — |
+| Hermes | GPT | 未发现产物，待核对 | — | — |
+| Hermes | Claude | 未发现产物，待核对 | — | — |
+| OpenClaw | DeepSeek | 未发现产物，待核对 | — | — |
+| OpenClaw | Qwen | 未发现产物，待核对 | — | — |
+| OpenClaw | GPT | 未发现产物，待核对 | — | — |
+| OpenClaw | Claude | 未发现产物，待核对 | — | — |
+
+### 14.4 Repeat 3
+
+| Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 未发现产物，待核对 | — | — |
+| Claude Code | Qwen | 未发现产物，待核对 | — | — |
+| Claude Code | GPT | 未发现产物，待核对 | — | — |
+| Claude Code | Claude | 未发现产物，待核对 | — | — |
+| Codex | DeepSeek | 未发现产物，待核对 | — | — |
+| Codex | Qwen | 未发现产物，待核对 | — | — |
+| Codex | GPT | 未发现产物，待核对 | — | — |
+| Codex | Claude | 未发现产物，待核对 | — | — |
+| Hermes | DeepSeek | 未发现产物，待核对 | — | — |
+| Hermes | Qwen | 未发现产物，待核对 | — | — |
+| Hermes | GPT | 未发现产物，待核对 | — | — |
+| Hermes | Claude | 未发现产物，待核对 | — | — |
+| OpenClaw | DeepSeek | 未发现产物，待核对 | — | — |
+| OpenClaw | Qwen | 未发现产物，待核对 | — | — |
+| OpenClaw | GPT | 未发现产物，待核对 | — | — |
+| OpenClaw | Claude | 未发现产物，待核对 | — | — |
+
+### 14.5 结果来源与后续更新
+
+| 来源 | 子实验 / 原始 run 目录名 | 本次入选快照（相对 `run-artifacts/formal/`） | 核对日期 | 缺失与验收备注 |
+| --- | --- | --- | --- | --- |
+| A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | advanced 缺失 0，basic 缺失 0；basic 有 3 条 lifecycle 为 failed 但已评分的记录，保留其分数，验收时核对失败分类 |
+
+来源 A 的 `formal-summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
+与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
+当前统计仅表示已有快照的评分情况，最终有效性与完成状态仍须按恢复协议验收。
+
+核对现有结果的只读命令：
+
+```bash
+uv run --locked --python 3.12 hai formal-summary \
+  run-artifacts/formal/claude-code-deepseek-repeat1-merged
+```
+
+新增子实验时，规范目录名为 `<harness>-<provider>-repeat<N>`；GPT 对应 `openai`，Claude 对应 `anthropic`。
+将其选定快照加入命令，并在对应 repeat 行填写两个 track 的已评分数与均分；
+若存在未评分项，在来源表注明数量、原因及恢复状态。跨 repeat 汇总时继续按 track、harness、model 分开统计，
+同时报告各 repeat 的覆盖情况。
+
+---
+
+## 15. 附录
+
+### 15.1 参考文档
 - [失败恢复迁移计划](failure-recovery-migration-plan.md)
 - [模型矩阵](model-matrix.md)
 - [配置文档](configuration.md)
 - [化学环境](chemistry.md)
 - [架构文档](architecture.md)
 
-### 14.2 变更历史
+### 15.2 变更历史
 - 2026-10-14: 初始版本，待审核
 - 2026-10-15: 用户确认固定时间能力比较、单 turn 64,000 输出约束、分 track 报告、按 repeat 轮次执行、当前补跑后再切换预装镜像；修正为 48 个原始 run / 3,408 slots，并收敛本地单组配置
+- 2026-10-16: 新增实验进度与分 track 得分台账，覆盖 48 个子实验，并记录已核对的 Claude Code × DeepSeek repeat1 合并快照结果
 
-### 14.3 审批
+### 15.3 审批
 - [x] 本轮实验设计调整确认（2026-10-15，见变更历史）
 - [ ] 资源与预算审批
 - [ ] 风险评估审批
