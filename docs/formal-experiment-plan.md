@@ -640,7 +640,8 @@ uv run --locked hai aggregate \
 ## 14. 实验进度与分 track 得分台账
 
 **最后核对日期**：2026-10-16。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已记录 1 个子实验的合并快照，余下 47 个尚未在本地 `run-artifacts/formal/` 发现规范目录，启动状态待核对。
+当前 1 个子实验已验收，Claude Code × Qwen repeat1 正在运行；Claude Code × GPT、Claude repeat1 已获准按顺序接续，尚未启动。
+其余 44 个子实验尚未在本地 `run-artifacts/formal/` 发现规范目录，启动状态待核对。
 
 ### 14.1 更新与统计口径
 
@@ -656,9 +657,9 @@ uv run --locked hai aggregate \
 | Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
-| Claude Code | Qwen | 未发现产物，待核对 | — | — |
-| Claude Code | GPT | 未发现产物，待核对 | — | — |
-| Claude Code | Claude | 未发现产物，待核对 | — | — |
+| Claude Code | Qwen | 运行中（见来源 B） | — | — |
+| Claude Code | GPT | 待串行启动 | — | — |
+| Claude Code | Claude | 待串行启动 | — | — |
 | Codex | DeepSeek | 未发现产物，待核对 | — | — |
 | Codex | Qwen | 未发现产物，待核对 | — | — |
 | Codex | GPT | 未发现产物，待核对 | — | — |
@@ -719,6 +720,7 @@ uv run --locked hai aggregate \
 | 来源 | 子实验 / 原始 run 目录名 | 本次入选快照（相对 `run-artifacts/formal/`） | 核对日期 | 缺失与验收备注 |
 | --- | --- | --- | --- | --- |
 | A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | 已验收；advanced/basic 缺失均为 0。3 条 basic 记录为 7200 秒正常超时，属于有效能力观测，保留分数且不再补跑；其余工程失败已由 recovery batch1/2 处理 |
+| B | `claude-code-qwen-repeat1` | 尚未形成最终快照 | 2026-10-16 | 原安装模式、71 个冻结 slots、并发 2；运行中已出现网络安装失败和非零退出，结束后审计，不能据此填写最终均分。每小时检查；遇需恢复的问题时暂停后续接续并通知 |
 
 来源 A 的 `formal-summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
 与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
