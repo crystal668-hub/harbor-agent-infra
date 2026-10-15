@@ -152,3 +152,30 @@ def test_conditional_patches_are_applied_between_verification_probes(tmp_path, n
     asyncio.run(agent.install(env))
     patch = next(iter(selected_patches(agent).values()))
     assert agent.exec_as_agent.await_args_list[0].kwargs["command"] == patch
+
+
+def test_run_completion_checks_actual_artifacts_and_preserves_setup_evidence(tmp_path):
+    from adapters.preinstalled import verify_after_run
+
+    path, _ = candidate_lock(tmp_path)
+    agent = AgentFactory.create_agent_from_config(
+        harness_runner_for("codex").build_agent_config(
+            AgentSpec(adapter="codex", model="fixture", installation_mode="preinstalled"),
+            load_runtime_lock(path),
+        ), logs_dir=tmp_path / "agent",
+    )
+    agent.logs_dir.mkdir()
+    setup = agent.logs_dir / "harness-setup.json"
+    setup.write_text('{"status":"passed"}')
+    original = AsyncMock(return_value="run-result")
+    wrapped = verify_after_run(original)
+    env = SimpleNamespace(exec=AsyncMock(return_value=SimpleNamespace(
+        return_code=1, stdout='{"status":"failed","error":"artifact mismatch"}',
+    )))
+    with pytest.raises(RuntimeError, match="artifact mismatch"):
+        asyncio.run(wrapped(agent, "instruction", env, None))
+    original.assert_awaited_once_with(agent, "instruction", env, None)
+    assert json.loads(setup.read_text())["status"] == "passed"
+    final = json.loads((agent.logs_dir / "harness-final.json").read_text())
+    assert final["status"] == "failed"
+    assert len(final["probes"]) == 1
