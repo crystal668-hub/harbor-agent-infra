@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import defaultdict
 from pathlib import Path
 
 HARNESSES = ("openclaw", "hermes", "codex", "claude-code")
@@ -73,27 +74,39 @@ def freeze_formal_slots(output: Path, context: dict, materialized, experiment: d
 
 def aggregate_formal_snapshots(paths: list[Path]) -> dict:
     """Aggregate one explicitly chosen original/merged view per original formal run."""
+    from harbor_agent_infra.recovery.native_snapshot import score_summary
+
     seen_runs = set()
     slots = set()
     results = []
+    tracks = defaultdict(list)
+    run_tracks = {}
     for path in paths:
         payload = json.loads((path / "results.json").read_text())
         run_id = payload.get("source_run_id") or payload["run_id"]
         if run_id in seen_runs:
             raise ValueError(f"Select exactly one snapshot per original run: {run_id}")
         seen_runs.add(run_id)
+        current_tracks = defaultdict(list)
         for record in payload["results"]:
             identity = (run_id, record["group_id"], record["task_name"], record.get("repeat_index"))
             if identity in slots:
                 raise ValueError(f"Duplicate formal slot: {identity}")
             slots.add(identity)
             results.append(record)
-    from harbor_agent_infra.recovery.native_snapshot import score_summary
+            track = record["task_name"].split("__", 1)[0]
+            tracks[track].append(record)
+            current_tracks[track].append(record)
+        run_tracks[run_id] = {
+            track: score_summary(rows) for track, rows in sorted(current_tracks.items())
+        }
 
     return {
         "schema_version": "formal-summary.v1",
         "runs": len(seen_runs),
         "slots": len(slots),
         "summary": score_summary(results),
+        "track": {track: score_summary(rows) for track, rows in sorted(tracks.items())},
+        "run_track": run_tracks,
         "selected_snapshots": [str(p.resolve()) for p in paths],
     }

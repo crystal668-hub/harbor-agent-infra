@@ -59,6 +59,39 @@ def test_full_matrix_has_48_independent_runs_and_3408_slots(tmp_path):
         aggregate_formal_snapshots([*paths, paths[0]])
 
 
+def test_formal_summary_separates_tracks_runs_and_unscored_records(tmp_path):
+    paths = []
+    for repeat, basic_score in ((1, 0.0), (2, 1.0)):
+        path = tmp_path / f"hermes-qwen-repeat{repeat}"
+        path.mkdir()
+        records = []
+        for task, score in (
+            ("property_calculation_basic__scored", basic_score),
+            ("property_calculation_basic__missing", None),
+            ("property_calculation_advanced__scored", 0.25),
+        ):
+            records.append({
+                "group_id": "skills_off",
+                "task_name": task,
+                "repeat_index": repeat - 1,
+                "run_lifecycle_status": "completed",
+                "scored": score is not None,
+                "vgb_domain_result": {"scores": {"score": score}},
+            })
+        (path / "results.json").write_text(json.dumps({
+            "run_id": path.name, "results": records,
+        }))
+        paths.append(path)
+    summary = aggregate_formal_snapshots(paths)
+    basic = summary["track"]["property_calculation_basic"]
+    assert basic["records"] == 4 and basic["scored"] == 2
+    assert basic["mean_vgb_score"] == 0.5
+    assert summary["track"]["property_calculation_advanced"]["mean_vgb_score"] == 0.25
+    for path, expected in zip(paths, (0.0, 1.0), strict=True):
+        row = summary["run_track"][path.name]["property_calculation_basic"]
+        assert row["mean_vgb_score"] == expected
+
+
 def test_formal_protocol_freezes_names_identity_and_job_before_execution(tmp_path):
     task = tmp_path / "tasks" / "track__task"
     task.mkdir(parents=True)
