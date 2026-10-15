@@ -14,6 +14,16 @@ def observe(root, agent, cost=1.0, usage=None):
     )
 
 
+def test_actual_harness_evidence_is_linked_without_copying_arbitrary_content(tmp_path):
+    evidence = tmp_path / "harness-setup.json"
+    evidence.write_text(json.dumps({"status": "failed", "arbitrary": "not projected"}))
+    result = observe(tmp_path, "codex")
+    assert result["harness_installation"] == {
+        "setup": {"status": "failed", "source": str(evidence)},
+        "final": {"status": "unavailable", "source": None},
+    }
+
+
 def test_codex_response_ids_deduplicate_and_cost_is_estimated(tmp_path):
     (tmp_path / "trajectory.json").write_text(
         json.dumps(

@@ -13,7 +13,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from preinstalled_probe import SCHEMA, actual_identity, digest, inventory, shell
+from preinstalled_probe import SCHEMA, actual_identity, digest, inventory, shell, shell_prefix
 from runtime_patches import hermes_output_patch_command, openclaw_adaptive_patch_command
 
 ROOT = Path(__file__).parent
@@ -117,7 +117,8 @@ def main():
             raise ValueError("unsupported npm integrity")
         tarball = fetch(pin["package_tarball"], DOWNLOADS / "agent.tgz",
                         integrity.removeprefix("sha512-"), "sha512")
-        shell(name, "npm install -g " + str(tarball) + " --fetch-retries=5")
+        run(["bash", "-c", shell_prefix(name) + "npm install -g " + str(tarball)
+             + " --fetch-retries=5"], timeout=1800)
         dependencies = json.loads(shell(name, "npm ls -g --all --json"))
         source = {"url": pin["package_tarball"], "integrity": integrity}
         node_dir = Path(roots[-1])

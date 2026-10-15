@@ -148,6 +148,15 @@ def artifact_observability(
     api_count = _count(usage.get("api_call_count"))
     effective = next(iter(efforts)) if len(efforts) == 1 else None
     return {
+        "harness_installation": {
+            phase: {
+                "status": _json(agent_dir / filename).get("status", "unavailable"),
+                "source": str(agent_dir / filename) if (agent_dir / filename).is_file() else None,
+            }
+            for phase, filename in (
+                ("setup", "harness-setup.json"), ("final", "harness-final.json"),
+            )
+        },
         "cache_write": {
             "tokens": cache_write,
             "source": str(trajectory_path) if cache_write is not None else None,
