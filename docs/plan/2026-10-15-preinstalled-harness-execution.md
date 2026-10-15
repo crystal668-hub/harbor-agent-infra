@@ -109,3 +109,24 @@ Registry 发布、主目录默认切换和正式实验派发不属于本次开�
 清理本次不再使用的构建缓存，回收约 52.71 MB；共享层仍由最终镜像引用，不能按
 旧镜像显示的总大小宣称已释放。历史安装清单、构建日志和失败证据仍保留。
 清理报告：`outputs/preinstalled/cleanup-report.json`。未进行全局 image/cache prune。
+
+## 最终本地验收与交付
+
+2026-10-16：独立 worktree 的开发及本地候选验收完成。
+最终结果以 [`2026-10-16-preinstalled-harness-acceptance.md`](2026-10-16-preinstalled-harness-acceptance.md)
+和 `outputs/preinstalled/acceptance-summary.json` 为准；本记录以上各节保留中间状态和失败历史。
+
+- 最终 provider-free：428 passed / 75 deselected；修改的 24 个 Python 文件 Ruff 通过。
+- 最终镜像 Docker 门禁：35 passed，0 failed，0 skipped。
+- 16 个唯一 provider/VGB 组合均有通过证据；Hermes 三个未受模型名补丁影响的路由保留
+  前一候选通过记录，并附 79,860 个基线安装文件完全一致的证明；Claude 在最终镜像复验通过。
+- 通过真实验收补齐 Hermes Anthropic SDK 的预装和两层精确模型名条件补丁，保留固定发布版本和 commit。
+- 最终四镜像身份保存在独立 `runtime-lock.preinstalled.json`；默认锁和主目录未修改。
+- 最终 16 份单组 `skills_off` 候选位于 `candidate-configs-ready/`，均保留来源 71 个任务、
+  模型、参数、资源、时限和 retry，并通过实际材料化；未启动正式实验。
+- 本次淘汰镜像已清理，只保留四个有效候选；累计定向回收约 629 MB 构建缓存。
+- 独立桥接服务已停止，验收容器已由 Harbor 清理；没有遗留开发验收进程。
+- Registry 发布、主分支合并和默认配置切换未执行，属于 G7 的具体发布审查。
+- 用户随后要求最终名称统一为 `hai-<harness名称>-latest`；已按该格式命名四镜像，
+  核验新旧 image ID/digest 相同后移除旧名称；候选锁与交付配置同步。最终配置目录为
+  `candidate-configs-delivery/`；之前的候选目录保留为开发证据。

@@ -4,10 +4,15 @@
 必要的本地初始化；缺失、错版、错路径或产物变化均失败，不自动联网补装。
 默认配置与旧锁文件继续使用 `runtime_install`。
 
+本次本地验收结果与已知边界见[验收报告](plan/2026-10-16-preinstalled-harness-acceptance.md)。
+
 本次本地候选的四个实际镜像身份另存为 `runtime-lock.preinstalled.json`。
 它保持默认锁中的发布版本、父镜像和化学身份完全相同，仅增加 `harness_images`。
 这些是本地可用镜像引用，尚未发布到 Registry；在其他 Docker 主机使用前须先发布并
 核对对应 RepoDigest，不能仅复制配置后假定远端可拉取。
+最终名称统一为 `hai-openclaw-latest`、`hai-hermes-latest`、`hai-codex-latest`、
+`hai-claude-code-latest`。这些名称按用户要求设置；运行仍通过各自完整 digest 固定产物，
+不会按名称自动选择其他 harness 版本。
 
 ## 镜像与锁定
 
@@ -120,7 +125,7 @@ uv run --locked --python 3.12 hai run \
 实现了工具调用上限；原模型、推理、输出上限、资源和任务时限保持模板设置。
 原 VGB prompt 和最终答案格式仍保留，矩阵快照与实际 task 文件记录完整输入。
 运行前后校验版本与安装产物；零分可为有效结果，不用分数筛选或反复重试验收样本。
-矩阵入口 `scripts/verify_preinstalled_matrix.py` 支持显式 `--harness` 子集，用于代码
+矩阵入口 `scripts/verify_preinstalled_matrix.py` 支持显式 `--harness` / `--provider` 子集，用于代码
 修复后的受影响组合复验。子集报告不代表全部 16 项通过；最终报告必须关联对应镜像
 身份和全部来源，保留先前失败/取消记录，不把复验样本写回正式实验。
 
