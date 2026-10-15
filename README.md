@@ -1,5 +1,8 @@
 # Harbor Agent Infra
 
+Optional strict preinstalled harness images and their isolated build/acceptance workflow
+are documented in [docs/preinstalled-harness.md](docs/preinstalled-harness.md).
+
 This repository is the experiment control plane for Harbor Agent trials. It materializes
 experiments, resource profiles and immutable image identities, then delegates Job/Trial
 lifecycle and Docker cleanup to Harbor Framework.

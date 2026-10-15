@@ -12,6 +12,9 @@ class AgentSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     adapter: Literal["openclaw", "hermes", "codex", "claude-code"]
+    installation_mode: Literal["runtime_install", "preinstalled"] = Field(
+        default="runtime_install", exclude_if=lambda value: value == "runtime_install"
+    )
     model: str = Field(min_length=1)
     provider: Literal["openai", "anthropic", "qwen", "deepseek"] | None = Field(
         default=None, exclude_if=lambda value: value is None
@@ -161,7 +164,7 @@ class ExperimentSpecV2(BaseModel):
     experiment_id: str = Field(min_length=1)
     domain: Literal["verifier-grounded"]
     benchmark: BenchmarkSpec
-    groups: list[ExperimentGroupSpec] = Field(min_length=2, max_length=2)
+    groups: list[ExperimentGroupSpec] = Field(min_length=1, max_length=2)
     agent: AgentSpec
     image: ImageSpec
     resources: ResourceRef
@@ -170,8 +173,12 @@ class ExperimentSpecV2(BaseModel):
     @model_validator(mode="after")
     def validate_groups(self) -> ExperimentSpecV2:
         group_ids = [group.id for group in self.groups]
-        if set(group_ids) != {"skills_on", "skills_off"}:
-            raise ValueError("groups must contain exactly skills_on and skills_off")
+        if group_ids != ["skills_off"] and (
+            len(group_ids) != 2 or set(group_ids) != {"skills_on", "skills_off"}
+        ):
+            raise ValueError(
+                "groups must contain skills_off alone or exactly skills_on and skills_off"
+            )
         return self
 
 

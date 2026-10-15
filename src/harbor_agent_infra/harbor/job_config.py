@@ -55,6 +55,8 @@ class MaterializedJob:
     skills_root: str | None = None
     injected_skills: tuple[dict[str, str], ...] = ()
     network_policies: tuple[dict[str, object], ...] = ()
+    agent_execution_image: str | None = None
+    installation_mode: str = "runtime_install"
     agent_python: dict[str, object] | None = None
     agent_chemistry: dict[str, object] | None = None
 
@@ -85,12 +87,13 @@ def _locked_image(spec: ExperimentSpec | ExperimentSpecV2):
         spec.benchmark.package_lock if isinstance(spec, ExperimentSpecV2) else spec.vgb.package_lock
     )
     lock = load_runtime_lock(Path(package_lock))
+    image = lock.execution_image(spec.agent.adapter, spec.agent.installation_mode)
     image_reference = spec.image.reference.split("@", 1)[0]
-    if image_reference != lock.agent_base_image.reference.split("@", 1)[0]:
+    if image_reference != image.reference.split("@", 1)[0]:
         raise ValueError("experiment image must match the locked agent base image")
-    if spec.image.digest != lock.agent_base_image.digest:
+    if spec.image.digest != image.digest:
         raise ValueError("experiment image digest does not match the runtime lock")
-    if spec.image.platform != lock.agent_base_image.platform:
+    if spec.image.platform != image.platform:
         raise ValueError("experiment image platform does not match the runtime lock")
     return lock
 
@@ -127,6 +130,10 @@ def materialize_job_config(
         preflight=preflight,
         openclaw_version=(lock.openclaw.version if spec.agent.adapter == "openclaw" else None),
         agent_base_image=lock.agent_base_image.immutable_reference,
+        agent_execution_image=lock.execution_image(
+            spec.agent.adapter, spec.agent.installation_mode
+        ).immutable_reference,
+        installation_mode=spec.agent.installation_mode,
         runner_id=harness_runner.runner_id,
         agent_name=spec.agent.adapter,
         agent_version={
@@ -276,6 +283,10 @@ def materialize_group_job_config(
         preflight=preflight,
         openclaw_version=(lock.openclaw.version if spec.agent.adapter == "openclaw" else None),
         agent_base_image=lock.agent_base_image.immutable_reference,
+        agent_execution_image=lock.execution_image(
+            spec.agent.adapter, spec.agent.installation_mode
+        ).immutable_reference,
+        installation_mode=spec.agent.installation_mode,
         runner_id=harness_runner.runner_id,
         agent_name=spec.agent.adapter,
         agent_version={
@@ -350,7 +361,9 @@ def materialize_paired_job_configs(
         runtime,
         spec,
         output_root=output_root,
-        image=lock.agent_base_image.immutable_reference,
+        image=lock.execution_image(
+            spec.agent.adapter, spec.agent.installation_mode
+        ).immutable_reference,
         task_settings=task_settings,
     )
     groups = {

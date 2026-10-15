@@ -7,6 +7,7 @@ from typing import Any, override
 
 from harbor.agents.installed.base import NonZeroAgentExitCodeError
 from harbor.agents.installed.openclaw import OpenClaw as HarborOpenClaw
+from harbor.agents.installed.openclaw import OpenClawOptions as HarborOpenClawOptions
 from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext
 
@@ -18,6 +19,7 @@ from adapters.openclaw.session import (
     session_inventory_command,
     trajectory_export_command,
 )
+from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import openclaw_adaptive_patch_command
 
 # OpenClaw's current model catalog declares this output limit for GPT-5.6 Sol.
@@ -27,8 +29,14 @@ _QWEN_38_FLASH_CONTEXT_WINDOW = 1_000_000
 _QWEN_38_FLASH_MAX_TOKENS = 131_072
 
 
+class OpenClawOptions(PreinstalledOptions, HarborOpenClawOptions):
+    pass
+
+
 class OpenClawAgent(HarborOpenClaw):
     """Thin Harbor OpenClaw wrapper with Infra-owned identity and evidence."""
+
+    options_model = OpenClawOptions
 
     # Harbor's stock OpenClaw adapter validates a small built-in provider set.
     # Qwen exposes an OpenAI-compatible endpoint using the conventional
@@ -62,6 +70,9 @@ class OpenClawAgent(HarborOpenClaw):
 
     @override
     async def install(self, environment: BaseEnvironment) -> None:
+        if self.options.preinstalled is not None:
+            await check_preinstalled(self, environment)
+            return
         for attempt in range(3):
             try:
                 await super().install(environment)
@@ -221,6 +232,7 @@ class OpenClawAgent(HarborOpenClaw):
         )
 
     @override
+    @verify_after_run
     async def run(
         self,
         instruction: str,

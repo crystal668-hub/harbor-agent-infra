@@ -14,10 +14,11 @@ from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext, ModelUsage
 from pydantic import Field
 
+from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import hermes_output_patch_command
 
 
-class HermesOptions(HarborHermesOptions):
+class HermesOptions(PreinstalledOptions, HarborHermesOptions):
     max_output_tokens: Annotated[int | None, Env("HAI_MAX_OUTPUT_TOKENS")] = Field(
         default=None, gt=0, description="Maximum output tokens per model response."
     )
@@ -100,6 +101,9 @@ class HermesAgent(HarborHermes):
 
     @override
     async def install(self, environment: BaseEnvironment) -> None:
+        if self.options.preinstalled is not None:
+            await check_preinstalled(self, environment)
+            return
         if not self._version:
             raise ValueError("Hermes version must be pinned to an immutable tag")
         await self.ensure_system_dependencies(environment, ("curl", "git", "ripgrep", "xz"))
@@ -136,6 +140,7 @@ class HermesAgent(HarborHermes):
                 await asyncio.sleep(2**attempt)
 
     @override
+    @verify_after_run
     @with_prompt_template
     async def run(
         self,
@@ -152,6 +157,8 @@ class HermesAgent(HarborHermes):
                 timeout_sec=10,
             )
             await super().run(instruction, environment, context)
+            if self.options.preinstalled is not None:
+                await self._export_oneshot_session(environment)
             return
 
         prefix = provider.upper()
@@ -218,26 +225,29 @@ class HermesAgent(HarborHermes):
         try:
             await self.exec_as_agent(environment, command=run_command, env=env)
         finally:
-            try:
-                export_result = await self.exec_as_agent(
-                    environment,
-                    command=(
-                        'export PATH="$HOME/.local/bin:$PATH" && '
-                        "(hermes sessions export /logs/agent/hermes-session.jsonl "
-                        "--source oneshot 2>/dev/null; "
-                        "[ -s /logs/agent/hermes-session.jsonl ] || "
-                        "hermes sessions export /logs/agent/hermes-session.jsonl "
-                        "--source cli 2>/dev/null) && "
-                        "head -n 1 /logs/agent/hermes-session.jsonl || true"
-                    ),
-                    env={"HERMES_HOME": "/tmp/hermes"},
-                    timeout_sec=30,
-                )
-                native_session_id = self._extract_native_session_id(export_result.stdout)
-                if native_session_id:
-                    self._native_session_id = native_session_id
-            except Exception:
-                pass
+            await self._export_oneshot_session(environment)
+
+    async def _export_oneshot_session(self, environment: BaseEnvironment) -> None:
+        try:
+            export_result = await self.exec_as_agent(
+                environment,
+                command=(
+                    'export PATH="$HOME/.local/bin:$PATH" && '
+                    "(hermes sessions export /logs/agent/hermes-session.jsonl "
+                    "--source oneshot 2>/dev/null; "
+                    "[ -s /logs/agent/hermes-session.jsonl ] || "
+                    "hermes sessions export /logs/agent/hermes-session.jsonl "
+                    "--source cli 2>/dev/null) && "
+                    "head -n 1 /logs/agent/hermes-session.jsonl || true"
+                ),
+                env={"HERMES_HOME": "/tmp/hermes"},
+                timeout_sec=30,
+            )
+            native_session_id = self._extract_native_session_id(export_result.stdout)
+            if native_session_id:
+                self._native_session_id = native_session_id
+        except Exception:
+            pass
 
     @staticmethod
     def _session_usage(jsonl_text: str) -> dict[str, int | float | str | None] | None:

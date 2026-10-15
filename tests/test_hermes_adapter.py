@@ -205,6 +205,34 @@ def test_hermes_current_model_config_pins_protocol(
         assert config["model"]["base_url"] == "https://selected.example"
 
 
+@pytest.mark.parametrize("preinstalled", [False, True])
+@pytest.mark.parametrize("provider", ["openai", "anthropic"])
+def test_preinstalled_native_routes_export_oneshot_session(
+    tmp_path, monkeypatch, provider, preinstalled,
+):
+    from adapters.preinstalled import PreinstalledIdentity
+
+    agent = _agent(tmp_path)
+    agent.model_name = provider + "/fixture-model"
+    if preinstalled:
+        agent.options = agent.options.model_copy(update={"preinstalled": PreinstalledIdentity(
+            manifest_sha256="a" * 64, image="test@sha256:" + "b" * 64,
+            parent_image="base@sha256:" + "c" * 64, platform="linux/arm64",
+        )})
+    native = AsyncMock()
+    monkeypatch.setattr("adapters.hermes.adapter.HarborHermes.run", native)
+    monkeypatch.setattr("adapters.preinstalled.check_preinstalled", AsyncMock())
+    execute = AsyncMock(return_value=SimpleNamespace(stdout=""))
+    monkeypatch.setattr(agent, "exec_as_agent", execute)
+    asyncio.run(agent.run("fixture instruction", None, None))
+    native.assert_awaited_once()
+    assert execute.await_count == (2 if preinstalled else 1)
+    if preinstalled:
+        command = execute.await_args.kwargs["command"]
+        assert "--source oneshot" in command
+        assert "--source cli" in command
+
+
 def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="source_commit"):
         HermesAgent(

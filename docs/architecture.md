@@ -36,6 +36,13 @@ RDKit wheel, and the explicit Conda chemistry packages for xTB and CREST.
 `PIP_BREAK_SYSTEM_PACKAGES=1` allows an agent-selected
 `pip install` in the disposable container; agents may instead create a venv.
 
+An explicit `agent.installation_mode: preinstalled` selects a per-harness execution image
+from the optional `harness_images` runtime lock. Harbor setup verifies the actual version,
+entry point and installation file hashes offline, applies the existing conditional patches,
+and fails on drift without reinstalling. The shared chemistry base remains separately locked;
+task materialization and chemistry preflight both resolve the final execution image.
+See [preinstalled harness images](preinstalled-harness.md) for candidate build and acceptance.
+
 The Phase 4 VGB integration runs in a separate Python process selected by `VGB_PYTHON`.
 It sends JSON requests to the official package's public `load_track`, `prompts`, `task`
 and `evaluate_one` APIs. Prompt files contain only public task inputs; scoring output is

@@ -520,6 +520,8 @@ async def run_paired_jobs(
     formal_context: dict | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
+    if group_id is None and len(spec.groups) == 1:
+        group_id = spec.groups[0].id
     print(f"Starting run_paired_jobs for group_id={group_id}", flush=True)
     output_root.mkdir(parents=True, exist_ok=formal_context is None)
     run_id = output_root.name
@@ -532,6 +534,8 @@ async def run_paired_jobs(
         preflight_chemistry, runtime, lock_path,
         output_path=output_root / "chemistry-preflight.json",
         pull_policy=spec.image.pull_policy,
+        **({"agent_name": spec.agent.adapter, "installation_mode": spec.agent.installation_mode}
+           if spec.agent.installation_mode == "preinstalled" else {}),
     )
     print("Preflight chemistry check completed.", flush=True)
     runtime_metadata = runtime.metadata()
@@ -783,6 +787,9 @@ async def run_paired_jobs(
                     "injected_skills": group.injected_skills,
                     "agent_name": group.agent_name,
                     "agent_version": group.agent_version,
+                    "installation_mode": group.installation_mode,
+                    "agent_base_image": group.agent_base_image,
+                    "agent_execution_image": group.agent_execution_image,
                     "agent_source_commit": group.agent_source_commit,
                     "agent_source_ref": group.agent_source_ref,
                     "agent_package_integrity": group.agent_package_integrity,

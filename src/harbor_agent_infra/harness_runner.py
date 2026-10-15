@@ -11,6 +11,18 @@ from harbor_agent_infra.preparation.runtime_lock import InfraRuntimeLock
 from integrations.vgb.agent_output import response_from_agent_artifacts
 
 
+def _installation_kwargs(spec: AgentSpec, lock: InfraRuntimeLock) -> dict[str, object]:
+    if spec.installation_mode == "runtime_install":
+        return {}
+    image = lock.execution_image(spec.adapter, spec.installation_mode)
+    return {"preinstalled": {
+        "manifest_sha256": image.manifest_sha256,
+        "image": image.immutable_reference,
+        "parent_image": lock.agent_base_image.immutable_reference,
+        "platform": image.platform,
+    }}
+
+
 @dataclass(frozen=True)
 class HarnessRunner:
     agent_name: str
@@ -49,7 +61,9 @@ class OpenClawHarnessRunner(HarnessRunner):
         skills: Sequence[str] = (),
         paired: bool = False,
     ) -> AgentConfig:
-        kwargs: dict[str, object] = {"version": lock.openclaw.version}
+        kwargs: dict[str, object] = {
+            "version": lock.openclaw.version, **_installation_kwargs(spec, lock)
+        }
         if spec.thinking is not None:
             kwargs["thinking"] = spec.thinking
         if spec.max_output_tokens is not None:
@@ -108,6 +122,7 @@ class HermesHarnessRunner(HarnessRunner):
             "version": lock.hermes.source_tag,
             "source_commit": lock.hermes.source_commit,
             "install_branch": lock.hermes.install_branch,
+            **_installation_kwargs(spec, lock),
         }
         if spec.reasoning is not None:
             kwargs["reasoning"] = spec.reasoning
@@ -116,6 +131,11 @@ class HermesHarnessRunner(HarnessRunner):
         return AgentConfig(
             import_path=self.import_path,
             model_name=spec.model,
+            env=(
+                {"ANTHROPIC_BASE_URL": "${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"}
+                if spec.installation_mode == "preinstalled"
+                and spec.model.startswith("anthropic/") else {}
+            ),
             skills=list(skills),
             override_setup_timeout_sec=1200,
             kwargs=kwargs,
@@ -135,7 +155,7 @@ class NativeHarnessRunner(HarnessRunner):
         paired: bool = False,
     ) -> AgentConfig:
         version = lock.codex.version if self.agent_name == "codex" else lock.claude_code.version
-        kwargs: dict[str, object] = {"version": version}
+        kwargs: dict[str, object] = {"version": version, **_installation_kwargs(spec, lock)}
         if spec.reasoning_effort is not None:
             kwargs["reasoning_effort"] = spec.reasoning_effort
         env: dict[str, str] = {}
@@ -163,7 +183,12 @@ class NativeHarnessRunner(HarnessRunner):
                         "Codex output caps require an explicit CODEX_* bridge endpoint"
                     )
         return AgentConfig(
-            name=self.agent_name,
+            name=self.agent_name if spec.installation_mode == "runtime_install" else None,
+            import_path=(
+                "adapters.preinstalled:"
+                + ("CodexAgent" if self.agent_name == "codex" else "ClaudeCodeAgent")
+                if spec.installation_mode == "preinstalled" else None
+            ),
             model_name=spec.model,
             env=env,
             skills=list(skills),

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,13 @@ class AgentBaseImageLock:
     @property
     def immutable_reference(self) -> str:
         return f"{self.reference.split('@', 1)[0]}@{self.digest}"
+
+
+@dataclass(frozen=True)
+class HarnessImageLock(AgentBaseImageLock):
+    version: str
+    manifest_sha256: str
+    source_commit: str | None = None
 
 
 @dataclass(frozen=True)
@@ -94,6 +102,24 @@ class InfraRuntimeLock:
     agent_base_image: AgentBaseImageLock
     agent_python: AgentPythonRuntimeLock
     agent_chemistry: AgentChemistryToolsLock
+    harness_images: dict[str, HarnessImageLock] = dataclass_field(default_factory=dict)
+
+    def harness_version(self, name: str) -> str:
+        return {
+            "openclaw": self.openclaw.version,
+            "hermes": self.hermes.package_version,
+            "codex": self.codex.version,
+            "claude-code": self.claude_code.version,
+        }[name]
+
+    def execution_image(self, name: str, mode: str = "runtime_install") -> AgentBaseImageLock:
+        if mode == "runtime_install":
+            return self.agent_base_image
+        if mode != "preinstalled":
+            raise ValueError(f"unsupported installation mode: {mode}")
+        if name not in self.harness_images:
+            raise ValueError(f"missing preinstalled image lock for {name}")
+        return self.harness_images[name]
 
 
 def load_runtime_lock(path: Path) -> InfraRuntimeLock:
@@ -237,6 +263,32 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
         != chemistry["rdkit"]["wheels"]["linux-aarch64"]["sha256"]
     ):
         raise ValueError("agent_chemistry must match the shared chemistry lock")
+    images: dict[str, HarnessImageLock] = {}
+    raw_images = payload.get("harness_images", {})
+    if not isinstance(raw_images, dict):
+        raise ValueError("harness_images must be a mapping")
+    versions = {
+        "openclaw": version, "hermes": hermes_version,
+        "codex": codex["version"], "claude-code": claude_code["version"],
+    }
+    for name, item in raw_images.items():
+        if name not in versions or not isinstance(item, dict):
+            raise ValueError(f"unsupported harness image lock: {name}")
+        required = {"reference", "digest", "platform", "version", "manifest_sha256"}
+        if set(item) - (required | {"source_commit"}) or required - set(item):
+            raise ValueError(f"incomplete or unknown harness image fields: {name}")
+        if (
+            not isinstance(item["reference"], str)
+            or not item["reference"] or "${" in item["reference"]
+            or "@" in item["reference"]
+            or not _DIGEST.fullmatch(str(item["digest"]))
+            or item["platform"] != platform
+            or item["version"] != versions[name]
+            or not re.fullmatch(r"[0-9a-f]{64}", str(item["manifest_sha256"]))
+            or item.get("source_commit") != (hermes_commit if name == "hermes" else None)
+        ):
+            raise ValueError(f"harness image identity mismatch: {name}")
+        images[name] = HarnessImageLock(**item)
     return InfraRuntimeLock(
         openclaw=OpenClawRuntimeLock(
             version=version,
@@ -278,6 +330,7 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
             }
         ),
         agent_base_image=AgentBaseImageLock(reference=reference, digest=digest, platform=platform),
+        harness_images=images,
         agent_python=AgentPythonRuntimeLock(
             python_command=python["command"],
             python_alias=python["alias"],

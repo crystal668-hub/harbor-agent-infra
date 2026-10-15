@@ -67,6 +67,12 @@ and venv support. Additional skill-specific Python packages remain agent-managed
 Harbor then installs the locked harness version in the Trial container. Registry
 credentials are consumed by Docker's credential helper and are never written to evidence.
 
+The original behavior is `agent.installation_mode: runtime_install` (also the default when
+omitted). Explicit `preinstalled` mode requires a matching per-harness immutable image and
+installation manifest in the runtime lock. Missing or mismatching programs fail setup; no
+network installation fallback occurs. Generate separate candidate configs with
+`scripts/prepare_preinstalled_run.py`; see [the workflow](preinstalled-harness.md).
+
 The agent may install Python packages during a Trial according to the skill it is executing.
 Those packages are ephemeral Trial state and are not added to `runtime-lock.json`; only the
 Python/pip and chemistry tool versions plus the immutable image digest are locked.
