@@ -397,3 +397,32 @@ def test_review_blocks_later_candidate_and_zero_score_does_not_affect_order(nati
     assert not plan.conflicts
     assert plan.slots[0].action == "review" and plan.slots[0].selected is None
     assert plan.slots[0].substitution_count == 2
+
+
+def test_native_analyzer_and_reaudit_use_actual_recovery_results(native_runs):
+    from harbor_agent_infra.recovery.analyzer import RecoveryAnalyzer
+    from harbor_agent_infra.recovery.auditor import audit_run
+
+    _, recovery = native_runs
+    stats = RecoveryAnalyzer(recovery).analyze()
+    assert stats.successfully_recovered == 1 and stats.recovery_failed == 0
+    assert audit_run(recovery).slots == []
+    path = next(recovery.glob("jobs/*/*/result.json"))
+    trial = json.loads(path.read_text())
+    trial.update(
+        agent_execution=None,
+        verifier_result=None,
+        exception_info={
+            "exception_type": "NetworkConnectionError",
+            "exception_message": "download failed",
+        },
+    )
+    write(path, trial)
+    (path.parent / "verifier/vgb-evaluation.json").unlink()
+    audited = audit_run(recovery)
+    assert len(audited.slots) == 1
+    assert audited.slots[0].substitution_count == 1
+    assert audited.slots[0].original_trial_id != trial["id"]
+    assert not audited.slots[0].approved
+    stats = RecoveryAnalyzer(recovery).analyze()
+    assert stats.successfully_recovered == 0 and stats.recovery_failed == 1

@@ -39,6 +39,15 @@ def audit_run(
         raise ValueError(f"No jobs/ directory found in {run_dir}")
 
     run_name = run_name or run_dir.name
+    results_path = run_dir / "results.json"
+    previous_manifest = run_dir / "recovery-manifest.json"
+    if results_path.is_file():
+        envelope = json.loads(results_path.read_text())
+        run_name = envelope.get("source_run_id") or envelope.get("run_id") or run_name
+    elif previous_manifest.is_file() and not any(jobs_dir.glob("*/harbor.json")):
+        if not (run_dir / "recovery-result.json").is_file():
+            raise ValueError("Cannot audit active or incomplete native recovery batch")
+        run_name = RecoveryManifest.load(previous_manifest).run_name
     slots: list[RecoverySlot] = []
 
     # Scan all jobs
@@ -128,7 +137,7 @@ def _find_failed_vgb_slots(run_dir: Path, run_name: str) -> list[RecoverySlot]:
     """Build recovery slots from a native ``hai run`` results.json file."""
     results_path = run_dir / "results.json"
     if not results_path.is_file():
-        return []
+        return _audit_native_recovery(run_dir, run_name)
 
     payload = json.loads(results_path.read_text(encoding="utf-8"))
     records = payload.get("results")
@@ -194,6 +203,62 @@ def _find_failed_vgb_slots(run_dir: Path, run_name: str) -> list[RecoverySlot]:
             )
         )
     return slots
+
+
+def _audit_native_recovery(run_dir: Path, run_name: str) -> list[RecoverySlot]:
+    """Re-audit failed replacement attempts while retaining the original slot anchor."""
+    manifest_path = run_dir / "recovery-manifest.json"
+    summary_path = run_dir / "recovery-result.json"
+    if not manifest_path.is_file() or not summary_path.is_file():
+        return []
+    from harbor_agent_infra.recovery.native_plan import assessment, trial_index
+
+    source = RecoveryManifest.load(manifest_path)
+    originals = {slot.slot_id: slot for slot in source.slots}
+    result = []
+    for path, trial in trial_index(run_dir).values():
+        meta_path = path.parent.parent / "recovery-metadata.json"
+        if not meta_path.is_file():
+            continue
+        meta = json.loads(meta_path.read_text())
+        origin = originals.get(meta.get("slot_id"))
+        if origin is None:
+            raise ValueError("Recovery trial has no original manifest slot")
+        validity, _ = assessment(path, trial)
+        if validity == "valid":
+            continue
+        exc = trial.get("exception_info") or {}
+        if validity == "scoring_pending":
+            classification = FailureClassification(
+                FailureCategory.SCORING,
+                "Valid execution awaits scoring repair",
+                False,
+                {"source": "native_recovery"},
+                1.0,
+            )
+        elif validity == "review":
+            classification = FailureClassification(
+                FailureCategory.CAPABILITY,
+                "Recovery execution requires review",
+                False,
+                {"source": "native_recovery", "validity": "unknown"},
+                0.3,
+            )
+        else:
+            classification = classify_failure(
+                exc.get("exception_type"), exc.get("exception_message")
+            )
+        result.append(
+            RecoverySlot(
+                job_name=origin.job_name,
+                task_id=origin.task_id,
+                original_trial_id=origin.original_trial_id,
+                original_run=source.run_name,
+                failure_classification=classification,
+                substitution_count=meta["substitution_attempt"],
+            )
+        )
+    return result
 
 
 def _read_json(path: Path) -> dict | None:

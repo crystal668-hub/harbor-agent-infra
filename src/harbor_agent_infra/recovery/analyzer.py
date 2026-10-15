@@ -112,9 +112,7 @@ class RecoveryAnalyzer:
         approved_for_recovery = sum(1 for slot in manifest.slots if slot.approved)
 
         # Analyze failure reasons
-        failure_reasons = Counter(
-            slot.failure_classification.reason for slot in manifest.slots
-        )
+        failure_reasons = Counter(slot.failure_classification.reason for slot in manifest.slots)
 
         # Analyze failures by job and task
         failures_by_job: dict[str, int] = defaultdict(int)
@@ -156,6 +154,44 @@ class RecoveryAnalyzer:
                                 else:
                                     recovery_failed += 1
 
+        # Native recoveries keep trials directly below each Job, without trials/.
+        native_result = self.run_dir / "recovery-result.json"
+        native_summary = self.run_dir / "merge-metadata.json"
+        native_engineering_recovered = None
+        native_execution = native_result.is_file() and any(
+            (self.run_dir / "jobs").glob("*/*/result.json")
+        )
+        if native_execution:
+            from harbor_agent_infra.recovery.native_plan import assessment, trial_index
+
+            outcomes = json.loads(native_result.read_text()).get("slot_results", [])
+            by_slot = {}
+            for path, trial in trial_index(self.run_dir).values():
+                metadata_path = path.parent.parent / "recovery-metadata.json"
+                if metadata_path.is_file():
+                    identity = json.loads(metadata_path.read_text()).get("slot_id")
+                    by_slot[identity] = assessment(path, trial)[0]
+            successfully_recovered = sum(
+                by_slot.get(outcome["slot_id"]) in ("valid", "scoring_pending")
+                for outcome in outcomes
+                if outcome.get("executed")
+            )
+            recovery_failed = sum(
+                by_slot.get(outcome["slot_id"]) not in ("valid", "scoring_pending")
+                for outcome in outcomes
+                if outcome.get("executed")
+            )
+            native_engineering_recovered = successfully_recovered
+        elif native_summary.is_file():
+            summary = json.loads(native_summary.read_text())
+            successfully_recovered = sum(
+                slot["action"] in ("valid", "scoring_pending") for slot in summary.get("slots", [])
+            )
+            recovery_failed = sum(
+                slot["action"] in ("unrecovered", "review") for slot in summary.get("slots", [])
+            )
+            native_engineering_recovered = successfully_recovered
+
         # Calculate recovery rates
         if approved_for_recovery > 0:
             recovery_rate = successfully_recovered / approved_for_recovery
@@ -166,8 +202,7 @@ class RecoveryAnalyzer:
         engineering_approved = sum(
             1
             for slot in manifest.slots
-            if slot.approved
-            and slot.failure_classification.category == FailureCategory.ENGINEERING
+            if slot.approved and slot.failure_classification.category == FailureCategory.ENGINEERING
         )
 
         if engineering_approved > 0:
@@ -177,8 +212,7 @@ class RecoveryAnalyzer:
                 for slot in manifest.slots:
                     if (
                         not slot.approved
-                        or slot.failure_classification.category
-                        != FailureCategory.ENGINEERING
+                        or slot.failure_classification.category != FailureCategory.ENGINEERING
                     ):
                         continue
 
@@ -209,6 +243,8 @@ class RecoveryAnalyzer:
                                                     engineering_recovered += 1
                                                     break
 
+            if native_engineering_recovered is not None:
+                engineering_recovered = native_engineering_recovered
             engineering_recovery_rate = engineering_recovered / engineering_approved
         else:
             engineering_recovery_rate = 0.0
@@ -259,9 +295,7 @@ class RecoveryAnalyzer:
         lines.append(f"  Successfully recovered: {stats.successfully_recovered}")
         lines.append(f"  Failed to recover: {stats.recovery_failed}")
         lines.append(f"  Overall recovery rate: {stats.recovery_rate:.1%}")
-        lines.append(
-            f"  Engineering recovery rate: {stats.engineering_recovery_rate:.1%}"
-        )
+        lines.append(f"  Engineering recovery rate: {stats.engineering_recovery_rate:.1%}")
         lines.append("")
 
         # Top failure reasons
