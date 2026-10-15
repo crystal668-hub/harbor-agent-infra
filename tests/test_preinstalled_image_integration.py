@@ -137,3 +137,20 @@ def test_real_hermes_rejects_wrong_source_commit():
     )
     assert result.returncode != 0
     assert json.loads(result.stdout)["status"] == "failed"
+
+
+def test_real_hermes_rejects_modified_application_dependency():
+    _, lock, image = candidate("hermes")
+    expected = expected_identity("hermes", lock, image)
+    result = run_probe(
+        image, expected,
+        mutation="import json; from pathlib import Path; "
+        "m=json.loads(Path('/opt/hai/harness-manifest.json').read_text()); "
+        "p=Path(next(p for p in m['files'] if p.startswith('/tmp/hermes/installs/') "
+        "and p.endswith('/httpx/__init__.py'))); "
+        "p.write_bytes(p.read_bytes()+b'\\n#dependency-tamper\\n')",
+    )
+    assert result.returncode != 0
+    report = json.loads(result.stdout)
+    assert report["status"] == "failed"
+    assert "artifact mismatch" in report["error"]
