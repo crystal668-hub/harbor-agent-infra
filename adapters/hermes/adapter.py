@@ -14,10 +14,11 @@ from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext, ModelUsage
 from pydantic import Field
 
+from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import hermes_output_patch_command
 
 
-class HermesOptions(HarborHermesOptions):
+class HermesOptions(PreinstalledOptions, HarborHermesOptions):
     max_output_tokens: Annotated[int | None, Env("HAI_MAX_OUTPUT_TOKENS")] = Field(
         default=None, gt=0, description="Maximum output tokens per model response."
     )
@@ -100,6 +101,9 @@ class HermesAgent(HarborHermes):
 
     @override
     async def install(self, environment: BaseEnvironment) -> None:
+        if self.options.preinstalled is not None:
+            await check_preinstalled(self, environment)
+            return
         if not self._version:
             raise ValueError("Hermes version must be pinned to an immutable tag")
         await self.ensure_system_dependencies(environment, ("curl", "git", "ripgrep", "xz"))
@@ -136,6 +140,7 @@ class HermesAgent(HarborHermes):
                 await asyncio.sleep(2**attempt)
 
     @override
+    @verify_after_run
     @with_prompt_template
     async def run(
         self,

@@ -22,3 +22,14 @@ Registry 发布、主目录默认切换和正式实验派发不属于本次开�
 - 可选 `harness_images` 映射保存对应执行镜像版本、digest、平台和安装清单 SHA-256。
 - 缺少对应锁定项时拒绝预装模式；旧锁、旧原生 JobConfig 继续使用原安装路径。
 - 统一镜像解析用于材料化和最终执行镜像的化学预检；manifest 分别记录父镜像和执行镜像。
+- 测试：390 passed / 40 deselected；修改文件 Ruff 通过。全仓库 Ruff 有已有脚本、viewer 和恢复测试问题，未做无关修复。
+
+## G2 严格 setup
+
+- 保留 Harbor `BaseInstalledAgent.setup`；四种 install 入口支持严格离线校验。
+- 镜像清单 SHA-256、实际发布版本、实际入口、运行时版本、Hermes commit 和完整安装文件树均需匹配。
+- 兼容补丁仍由原有条件选择；只允许清单冻结的补丁文件变化，补丁前后双重校验且幂等。
+- agent 正常运行结束后再次校验产物身份，分别保存 setup 与 final 证据。
+- Codex/Claude Code 薄子类继承原生运行方法；OpenClaw/Hermes 保留旧安装模式。
+- 测试：403 passed / 40 deselected；实际文件篡改负例、Factory/Harbor setup 调用路径及条件补丁均覆盖。
+- 尚未通过真实预装镜像的 Docker 门禁；这些单元测试不替代 G3/G4。
