@@ -31,9 +31,11 @@ def docker_fixture(tmp_path):
     if check.stdout.strip():
         pytest.skip("Existing experiment containers are running; preserve their resources")
     config = yaml.safe_load(Path("scripts/fake-agent-job.yaml").read_text())
-    image = subprocess.run(
-        ["docker", "image", "inspect", "hai-fake-agent:acceptance"], capture_output=True
+    dockerfile = Path("tests/fixtures/fake-agent/task/environment/Dockerfile").read_text()
+    base_image = next(
+        line.split()[1] for line in dockerfile.splitlines() if line.startswith("FROM ")
     )
+    image = subprocess.run(["docker", "image", "inspect", base_image], capture_output=True)
     if image.returncode:
         pytest.skip("Build the existing fake-agent acceptance image before this test")
     original = tmp_path / "original"
