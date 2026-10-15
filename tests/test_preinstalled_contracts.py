@@ -154,6 +154,28 @@ def test_single_group_candidate_schema_preserves_skills_off_default(monkeypatch,
             RunConfig.model_validate(expand_required(payload))
 
 
+def test_candidate_generator_keeps_relative_runtime_bound_to_source_checkout(tmp_path):
+    import yaml
+
+    from scripts.prepare_preinstalled_run import prepare
+
+    path, _ = candidate_lock(tmp_path)
+    project = tmp_path / "original-checkout"
+    project.mkdir()
+    (project / "pyproject.toml").write_text("[project]\nname='fixture'\n")
+    source = project / "configs" / "source.yaml"
+    source.parent.mkdir()
+    payload = yaml.safe_load(Path("examples/experiments/codex/vgb-gpt.config.yaml").read_text())
+    payload["run"]["vgb_python"] = ".vgb-runtime/bin/python"
+    payload["run"]["skills_root"] = "skills"
+    source.write_text(yaml.safe_dump(payload))
+    output = tmp_path / "candidate.yaml"
+    prepare(source, path, output, tmp_path / "new-run")
+    created = yaml.safe_load(output.read_text())
+    assert created["run"]["vgb_python"] == str(project / ".vgb-runtime/bin/python")
+    assert created["run"]["skills_root"] == str(project / "skills")
+
+
 def test_acceptance_matrix_is_finite_and_freezes_all_tracks_and_routes(tmp_path, monkeypatch):
     from scripts.verify_preinstalled_matrix import ACCEPTANCE_PREFIX, CASES, PROVIDERS, matrix
 

@@ -28,6 +28,14 @@ def prepare(source: Path, lock_path: Path, output: Path, run_directory: Path) ->
     experiment["groups"] = [group for group in experiment["groups"] if group["id"] == "skills_off"]
     experiment["experiment_id"] += "-preinstalled"
     payload["run"]["output_dir"] = str(run_directory.absolute())
+    source_root = next(
+        (parent for parent in source.resolve().parents if (parent / "pyproject.toml").is_file()),
+        Path.cwd(),
+    )
+    for name in ("skills_root", "vgb_python"):
+        value = payload["run"][name]
+        if "${" not in value and not Path(value).is_absolute():
+            payload["run"][name] = str(source_root / value)
     # Validate the expanded object but write original environment references.
     RunConfig.model_validate(expand_required(payload))
     output.parent.mkdir(parents=True, exist_ok=True)
