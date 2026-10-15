@@ -33,3 +33,14 @@ Registry 发布、主目录默认切换和正式实验派发不属于本次开�
 - Codex/Claude Code 薄子类继承原生运行方法；OpenClaw/Hermes 保留旧安装模式。
 - 测试：403 passed / 40 deselected；实际文件篡改负例、Factory/Harbor setup 调用路径及条件补丁均覆盖。
 - 尚未通过真实预装镜像的 Docker 门禁；这些单元测试不替代 G3/G4。
+
+## G3/G4 构建与真实验收（进行中）
+
+- 固定 Node 22.23.3 / npm 10.9.9，来源为历史 OpenClaw 安装日志与 Node 官方校验清单；nvm 0.40.2 与现有 Harbor 一致。
+- Claude Code 直接获取 2.1.296 官方 ARM64 原生发行文件并验证官方 manifest 校验值，避免 bootstrap 先下载 latest 安装器。尚未改变 CLI 的发行方式。
+- 构建上下文仅包含公开锁数据、安装器和校验代码，不包含 `.env` 或实验目录。
+- BuildKit 对本地基础 RepoDigest 尝试远端解析失败；构建使用已核对 digest/image ID 的专用临时父镜像名称，构建后核对并移除该名称。
+- Codex 候选构建成功；两个并发新容器通过 Harbor `install_only` 离线 setup，版本 0.162.1，Node/npm 精确匹配。
+- 断网验收使用测试任务的 Compose `network_mode: none`；Harbor 原生 egress sidecar 的外部基础镜像拉取失败，不作为 harness 失败。控制探针检查无可用非 loopback 接口、无 IPv4 路由且外部 TCP 连接失败。
+- Codex 成功证据：worktree `outputs/preinstalled/codex-offline-3/report.json`。前两次失败证据保留，不覆盖。
+- 当前全量 provider-free：407 passed / 40 deselected；本次构建与校验模块 Ruff 通过。
