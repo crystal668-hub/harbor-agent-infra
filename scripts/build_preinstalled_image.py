@@ -23,6 +23,16 @@ def require_idle_docker() -> None:
         raise RuntimeError("Docker has active containers; defer image validation until they finish")
 
 
+def require_new_reference(reference: str) -> None:
+    if not reference or "@" in reference or any(character.isspace() for character in reference):
+        raise ValueError("candidate build reference must be a concrete local build handle")
+    found = subprocess.run(
+        ["docker", "image", "inspect", reference], capture_output=True, check=False,
+    )
+    if found.returncode == 0:
+        raise ValueError("candidate build reference already exists; choose a new handle")
+
+
 def build_context(directory: Path, name: str, lock_path: Path, inputs_path: Path) -> dict:
     lock = load_runtime_lock(lock_path)
     inputs = json.loads(inputs_path.read_text())
@@ -53,10 +63,15 @@ def main() -> int:
     args = parser.parse_args()
     # This entry point deliberately has no implicit push or default-config mutation.
     require_idle_docker()
+    require_new_reference(args.reference)
     lock = load_runtime_lock(args.lock)
     output = args.output_dir.absolute()
     output.mkdir(parents=True, exist_ok=True)
     metadata = output / (args.name + "-build-metadata.json")
+    if any((output / (args.name + suffix)).exists() for suffix in (
+        "-build-metadata.json", "-installation.json", "-runtime-lock.json",
+    )):
+        raise ValueError("candidate artifacts already exist; choose a new output directory")
     parent = inspect_image(
         lock.agent_base_image.reference, digest=lock.agent_base_image.digest,
         platform=lock.agent_base_image.platform,

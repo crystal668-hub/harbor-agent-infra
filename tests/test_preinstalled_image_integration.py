@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from adapters.preinstalled import PROBE_SOURCE
+from adapters.preinstalled_probe import shell_prefix
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 from integrations.vgb.chemistry import PROBE_SOURCE as CHEMISTRY_PROBE
 from integrations.vgb.chemistry import read_chemistry_lock, validate_probe
@@ -72,6 +73,24 @@ def test_candidate_preserves_fixed_chemistry(name):
         "-c", CHEMISTRY_PROBE, "/opt/vgb-crest",
     ], capture_output=True, text=True, timeout=90, check=True)
     validate_probe(json.loads(result.stdout), read_chemistry_lock(path))
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_candidate_reuses_parent_layers_and_exposes_only_its_harness(name):
+    _, lock, image = candidate(name)
+    info = json.loads(subprocess.check_output([
+        "docker", "image", "inspect", lock.agent_base_image.immutable_reference,
+        image.immutable_reference,
+    ]))
+    parent_layers = info[0]["RootFS"]["Layers"]
+    assert info[1]["RootFS"]["Layers"][:len(parent_layers)] == parent_layers
+    others = [{"claude-code": "claude"}.get(other, other) for other in NAMES if other != name]
+    command = shell_prefix(name) + 'for program in ' + " ".join(others) + '; do '
+    command += 'if command -v "$program" >/dev/null 2>&1; then exit 1; fi; done'
+    subprocess.run([
+        "docker", "run", "--rm", "--pull=never", "--network=none", "--cpus=1", "--memory=2g",
+        "--entrypoint", "bash", image.immutable_reference, "-c", command,
+    ], capture_output=True, text=True, timeout=60, check=True)
 
 
 @pytest.mark.parametrize("name", NAMES)

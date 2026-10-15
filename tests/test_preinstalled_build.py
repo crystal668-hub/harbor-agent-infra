@@ -11,7 +11,11 @@ from pathlib import Path
 import pytest
 
 from adapters import preinstalled_probe, runtime_patches
-from scripts.build_preinstalled_image import build_context, require_idle_docker
+from scripts.build_preinstalled_image import (
+    build_context,
+    require_idle_docker,
+    require_new_reference,
+)
 
 
 @pytest.fixture
@@ -46,6 +50,19 @@ def test_build_guard_refuses_to_compete_with_active_containers(monkeypatch):
     )
     with pytest.raises(RuntimeError, match="active containers"):
         require_idle_docker()
+
+
+def test_build_guard_refuses_to_overwrite_an_existing_image(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "scripts.build_preinstalled_image.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0),
+    )
+    with pytest.raises(ValueError, match="already exists"):
+        require_new_reference("existing-image")
+    with pytest.raises(ValueError, match="concrete local"):
+        require_new_reference("existing-image@sha256:invalid")
 
 
 def test_build_context_contains_only_explicit_public_files(tmp_path):
