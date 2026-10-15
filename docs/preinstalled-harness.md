@@ -97,8 +97,8 @@ uv run --locked --python 3.12 python scripts/prepare_preinstalled_run.py \
 ```
 
 先在环境中设置模板所需的路径变量。生成器验证展开后的配置，但输出仍保留环境变量
-引用，不复制凭据；拒绝覆盖已有配置或运行目录。它保留现有 experiment.v2 的双组
-声明兼容性，执行时必须显式选 `--group skills_off`，本次迁移不运行技能配对：
+引用，不复制凭据；拒绝覆盖已有配置或运行目录。生成的新配置只包含 `skills_off`；
+schema 同时保留原有双组配置的兼容性。执行时显式选 `--group skills_off`：
 
 ```bash
 uv run --locked --python 3.12 hai materialize \

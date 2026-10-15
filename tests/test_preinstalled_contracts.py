@@ -129,9 +129,29 @@ def test_candidate_config_preserves_source_and_only_changes_new_run(tmp_path, mo
     assert created["experiment"]["agent"]["installation_mode"] == "preinstalled"
     assert created["experiment"]["agent"]["base_url_env"] == "CODEX_GPT_BASE_URL"
     assert created["run"]["vgb_python"] == "${VGB_PYTHON}"
-    assert created["experiment"]["groups"] == yaml.safe_load(original)["experiment"]["groups"]
+    assert [group["id"] for group in created["experiment"]["groups"]] == ["skills_off"]
     with pytest.raises(ValueError, match="must be new"):
         prepare(source, path, output, run)
+
+
+@pytest.mark.parametrize("group_ids", [["skills_off"], ["skills_on"], ["skills_off", "skills_off"]])
+def test_single_group_candidate_schema_preserves_skills_off_default(monkeypatch, group_ids):
+    import yaml
+    from pydantic import ValidationError
+
+    from harbor_agent_infra.contracts.run import RunConfig
+    from harbor_agent_infra.preparation.experiments import expand_required
+
+    monkeypatch.setenv("OPENCLAW_SKILLS_ROOT", "/fixture/skills")
+    monkeypatch.setenv("VGB_PYTHON", "/fixture/vgb/python")
+    payload = yaml.safe_load(Path("examples/experiments/codex/vgb-gpt.config.yaml").read_text())
+    groups = {group["id"]: group for group in payload["experiment"]["groups"]}
+    payload["experiment"]["groups"] = [groups[name] for name in group_ids]
+    if group_ids == ["skills_off"]:
+        assert len(RunConfig.model_validate(expand_required(payload)).experiment.groups) == 1
+    else:
+        with pytest.raises(ValidationError, match="groups must contain"):
+            RunConfig.model_validate(expand_required(payload))
 
 
 def test_acceptance_matrix_is_finite_and_freezes_all_tracks_and_routes(tmp_path, monkeypatch):

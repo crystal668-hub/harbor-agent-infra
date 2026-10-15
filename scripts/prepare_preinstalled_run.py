@@ -25,6 +25,7 @@ def prepare(source: Path, lock_path: Path, output: Path, run_directory: Path) ->
     experiment["benchmark"]["package_lock"] = str(lock_path.absolute())
     experiment["image"] = {"reference": image.reference, "digest": image.digest,
                            "platform": image.platform, "pull_policy": "never"}
+    experiment["groups"] = [group for group in experiment["groups"] if group["id"] == "skills_off"]
     experiment["experiment_id"] += "-preinstalled"
     payload["run"]["output_dir"] = str(run_directory.absolute())
     # Validate the expanded object but write original environment references.
