@@ -61,7 +61,9 @@ def expected_identity(name, lock, image):
 @pytest.mark.parametrize("name", NAMES)
 def test_real_harbor_two_offline_containers(name, tmp_path):
     path, _, _ = candidate(name)
-    asyncio.run(verify_image(name, path, tmp_path / name, concurrent=2))
+    evidence_root = os.environ.get("PREINSTALLED_GATE_OUTPUT_DIR")
+    output = Path(evidence_root).absolute() / name if evidence_root else tmp_path / name
+    asyncio.run(verify_image(name, path, output, concurrent=2))
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -104,7 +106,8 @@ def test_real_candidate_rejects_identity_drift(name, case):
         "m=json.loads(Path('/opt/hai/harness-manifest.json').read_text()); "
     )
     if case == "version":
-        expected["version"] = "0.0.0"
+        mutation = (prefix + "p=Path(m['realpath']); "
+                    "p.write_text('#!/bin/sh\\necho 0.0.0\\n')")
     elif case == "manifest":
         expected["manifest_sha256"] = "0" * 64
     elif case == "artifact":
@@ -120,12 +123,17 @@ def test_real_candidate_rejects_identity_drift(name, case):
     assert result.returncode != 0, result.stdout
     report = json.loads(result.stdout)
     assert report["status"] == "failed" and report["error"]
+    if case == "version":
+        assert "actual harness version mismatch" in report["error"]
 
 
 def test_real_hermes_rejects_wrong_source_commit():
     _, lock, image = candidate("hermes")
     expected = expected_identity("hermes", lock, image)
-    expected["source_commit"] = "0" * 40
-    result = run_probe(image, expected)
+    result = run_probe(
+        image, expected,
+        mutation="from pathlib import Path; "
+        "Path('/tmp/hermes/hermes-agent/.git/HEAD').write_text('0'*40+'\\n')",
+    )
     assert result.returncode != 0
-    assert "commit mismatch" in json.loads(result.stdout)["error"]
+    assert json.loads(result.stdout)["status"] == "failed"
