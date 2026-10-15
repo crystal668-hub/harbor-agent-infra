@@ -461,3 +461,22 @@ def test_original_scoring_gap_is_preserved_for_reassessment(native_runs, tmp_pat
     slot = next(s for s in audited.slots if s.task_id == record["task_name"])
     assert slot.failure_classification.category.value == "scoring"
     assert not slot.can_substitute
+
+
+def test_valid_original_is_not_replaced_even_when_recovery_is_approved(native_runs):
+    original, recovery = native_runs
+    path = next(original.glob("jobs/*/trial-0/result.json"))
+    trial = json.loads(path.read_text())
+    trial["exception_info"] = None
+    trial["verifier_result"] = {"rewards": {"vgb_score": 0.0}}
+    write(path, trial)
+    write(
+        path.parent / "verifier/vgb-evaluation.json",
+        {
+            "vgb_status": "scored",
+            "domain_result": {"status": "scored", "scores": {"score": 0.0}},
+        },
+    )
+    plan = plan_native_merge(original, [recovery])
+    assert any("valid original" in conflict for conflict in plan.conflicts)
+    assert plan.slots[0].selected is None

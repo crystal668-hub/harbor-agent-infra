@@ -198,6 +198,9 @@ def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan
     if len(set(recoveries)) != len(recoveries) or original in recoveries:
         plan.conflicts.append("Duplicate original/recovery directory aliases")
         return plan
+    if any(root.is_relative_to(original) or original.is_relative_to(root) for root in recoveries):
+        plan.conflicts.append("Input directories must be disjoint")
+        return plan
     indexed = trial_index(original)
     by_anchor = {}
     identities = set()
@@ -222,7 +225,10 @@ def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan
             record, path, trial, substitution_count=int(record.get("substitution_count", 0))
         )
         plan.slots.append(slot)
-        by_anchor[(path.parent.parent.name, record["task_name"], trial_id)] = slot
+        anchor_key = (path.parent.parent.name, record["task_name"], trial_id)
+        if anchor_key in by_anchor:
+            raise ValueError("One original trial cannot represent multiple slots or groups")
+        by_anchor[anchor_key] = slot
     for root in recoveries:
         try:
             _add_recovery(plan, by_anchor, root)
@@ -294,6 +300,9 @@ def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
                 or not read_json(path.parent.parent / "result.json").get("finished_at")
             ):
                 raise ValueError("Recovery trial/job is unfinished or has wrong task")
+            job_stats = read_json(path.parent.parent / "result.json").get("stats", {})
+            if job_stats.get("n_running_trials", 0) or job_stats.get("n_pending_trials", 0):
+                raise ValueError("Recovery Job still has active or pending trials")
             if execution_identity(trial) != execution_identity(slot.original_trial):
                 raise ValueError("Frozen trial execution conditions or task checksum changed")
             ordinal = meta.get("substitution_attempt")
