@@ -426,3 +426,16 @@ def test_native_analyzer_and_reaudit_use_actual_recovery_results(native_runs):
     assert not audited.slots[0].approved
     stats = RecoveryAnalyzer(recovery).analyze()
     assert stats.successfully_recovered == 0 and stats.recovery_failed == 1
+
+
+@pytest.mark.parametrize("harness", ["openclaw", "hermes", "codex", "claude-code"])
+def test_snapshot_projection_supports_each_harness(tmp_path, harness):
+    from harbor_agent_infra.recovery.merger import ResultMerger
+
+    original, recovery = fixture_run(tmp_path, harness=harness)
+    output = tmp_path / "merged"
+    ResultMerger(original, [recovery], output).merge()
+    record = json.loads((output / "results.json").read_text())["results"][0]
+    assert record["agent_name"] == harness
+    assert record["runner"] == f"harbor_{harness}"
+    assert record["observability"]["totals"]["tokens"]["cost_usd"] is None

@@ -68,6 +68,9 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
     if artifact.get("vgb_status") == "scored":
         if not isinstance(domain, dict) or domain.get("status") != "scored":
             raise ValueError(f"Malformed scored VGB artifact: {path}")
+        track, task_id = trial["task_name"].split("__", 1)
+        if domain.get("track", track) != track or domain.get("task_id", task_id) != task_id:
+            raise ValueError(f"VGB artifact task identity mismatch: {path}")
         score = (domain.get("scores") or {}).get("score")
         reward = ((trial.get("verifier_result") or {}).get("rewards") or {}).get("vgb_score")
         if (
@@ -137,7 +140,11 @@ class NativeMergePlan:
                     "original_trial_id": slot.original_trial["id"],
                     "action": slot.action,
                     "selected_trial_id": (
-                        slot.selected.trial["id"] if slot.selected else slot.original_trial["id"]
+                        slot.selected.trial["id"]
+                        if slot.selected
+                        else (slot.record.get("final_attempt") or {}).get(
+                            "trial_id", slot.original_trial["id"]
+                        )
                     ),
                     "substitution_count": slot.substitution_count,
                     "attempts": [
@@ -170,6 +177,24 @@ def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan
     envelope = read_json(original / "results.json")
     run_id = envelope["run_id"]
     plan = NativeMergePlan(original, recoveries, run_id)
+    run_manifest = original / "run-manifest.json"
+    if run_manifest.is_file():
+        saved = read_json(run_manifest)
+        if "finished_at" in saved and not saved["finished_at"]:
+            plan.conflicts.append("Original run is still active or incomplete")
+    declared = original / "slots.jsonl"
+    if declared.is_file():
+        expected = {
+            (s["group_id"], s["task_name"], s["repeat_index"])
+            for line in declared.read_text().splitlines()
+            if line.strip()
+            for s in [json.loads(line)]
+        }
+        actual = {
+            (r["group_id"], r["task_name"], r.get("repeat_index")) for r in envelope["results"]
+        }
+        if actual != expected:
+            plan.conflicts.append("Original results do not cover the frozen slot matrix")
     if len(set(recoveries)) != len(recoveries) or original in recoveries:
         plan.conflicts.append("Duplicate original/recovery directory aliases")
         return plan
@@ -230,6 +255,7 @@ def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
     if state_path.exists() and read_json(state_path).get("status") != "finished":
         raise ValueError("Recovery batch still running or interrupted")
     indexed = trial_index(root)
+    matched = set()
     for approved_slot in approved:
         if not approved_slot.can_substitute:
             raise ValueError(f"Invalid approval or exhausted budget: {approved_slot.slot_id}")
@@ -277,6 +303,9 @@ def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
                 f"Expected one completed trial for approved slot; found {len(matches)}"
             )
         slot.candidates.extend(matches)
+        matched.update(c.trial["id"] for c in matches)
+    if set(indexed) != matched:
+        raise ValueError("Recovery contains unapproved or unaccounted trial results")
 
 
 def _select(slot: SlotPlan, plan: NativeMergePlan) -> None:

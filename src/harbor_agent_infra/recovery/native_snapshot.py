@@ -91,6 +91,9 @@ def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict
             "projection_source": "native_recovery_artifacts",
         }
     )
+    for key in ("slot_id", "provider", "public_task_sha256"):
+        if key in template:
+            record[key] = template[key]
     if domain:
         record["raw"]["vgb_domain_result"] = domain
     event_payload["source"] = "reconstructed_from_native_terminal_result"
