@@ -20,6 +20,7 @@ def test_saved_candidate_lock_preserves_original_release_and_chemistry_identitie
     images = candidate.pop("harness_images")
     assert candidate == original
     assert set(images) == set(NAMES)
+    assert all(images[name]["reference"] == f"hai-{name}-latest" for name in NAMES)
     lock = load_runtime_lock(Path("runtime-lock.preinstalled.json"))
     assert len({lock.execution_image(name, "preinstalled").digest for name in NAMES}) == 4
 

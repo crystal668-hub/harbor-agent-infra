@@ -333,21 +333,21 @@
       "digest": "sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16",
       "manifest_sha256": "6aee5680f7c8cd03bf4191cd22678ddfb0da8d2868a3b2f45840cc16920b950d",
       "platform": "linux/arm64",
-      "reference": "hai-candidate-claude-code-20261015",
+      "reference": "hai-claude-code-latest",
       "version": "2.1.296"
     },
     "codex": {
       "digest": "sha256:ae908ae8e55477ef999c5c4f1a18fe017146f057ab813c8646a2d606ac8ac41e",
       "manifest_sha256": "adf2a48adb955ff97aaacb798ae6cf24ada4e8035e908d140440acb258da1f49",
       "platform": "linux/arm64",
-      "reference": "hai-candidate-codex-20261015",
+      "reference": "hai-codex-latest",
       "version": "0.162.1"
     },
     "hermes": {
       "digest": "sha256:6a5985d929602fee0905c2548afab5058192dc812e4538e3b8b57d93042444bb",
       "manifest_sha256": "feb46d876533bf730a674e64e1ed5311edfc6f6cee5036f331ab12f23ae26ed1",
       "platform": "linux/arm64",
-      "reference": "hai-harness-hermes-wire-20261016",
+      "reference": "hai-hermes-latest",
       "source_commit": "818c13be1dc4fd28987e1e881a9408224afd4535",
       "version": "0.21.6"
     },
@@ -355,7 +355,7 @@
       "digest": "sha256:083e6590790627b6f35dc4b771d89d635e724b5b28f29037ea55746c9e05f54f",
       "manifest_sha256": "c2ef26ea7e501af0f2a609444a1993d35a69c597c6a4e05f57dbdc1d0eedcb15",
       "platform": "linux/arm64",
-      "reference": "hai-candidate-openclaw-20261015",
+      "reference": "hai-openclaw-latest",
       "version": "2026.6.34"
     }
   },
