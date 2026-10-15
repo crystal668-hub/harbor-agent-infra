@@ -37,7 +37,7 @@ async def _run_provider_smoke() -> None:
     task_config = task_root / "task.toml"
     task_config.write_text(
         task_config.read_text(encoding="utf-8").replace(
-            "hai-fake-agent@sha256:197902e2ec6c47c8ac10fa0656fec7d548e0e9b69a9d7926fdb9b1986434eab1",
+            "hai-fake-agent@sha256:23f3946ddb38408a531f379082e36db9a1a263b5ce51a4a3feb9a4f0b1a93ae3",
             lock.agent_base_image.immutable_reference,
         ),
         encoding="utf-8",
