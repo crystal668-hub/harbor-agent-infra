@@ -91,3 +91,46 @@ def test_legacy_serialization_and_missing_image_are_explicit():
         harness_runner_for("codex").build_agent_config(
             agent.model_copy(update={"installation_mode": "preinstalled"}), lock
         )
+
+
+def test_candidate_config_preserves_source_and_only_changes_new_run(tmp_path, monkeypatch):
+    import yaml
+
+    from scripts.prepare_preinstalled_run import prepare
+
+    monkeypatch.setenv("OPENCLAW_SKILLS_ROOT", "/fixture/skills")
+    monkeypatch.setenv("VGB_PYTHON", "/fixture/vgb/python")
+    path, _ = candidate_lock(tmp_path)
+    source = Path("examples/experiments/codex/vgb-gpt.config.yaml")
+    original = source.read_bytes()
+    output = tmp_path / "candidate.yaml"
+    run = tmp_path / "new-run"
+    result = prepare(source, path, output, run)
+    created = yaml.safe_load(output.read_text())
+    assert source.read_bytes() == original
+    assert not run.exists()
+    assert result["group"] == "skills_off"
+    assert created["experiment"]["agent"]["installation_mode"] == "preinstalled"
+    assert created["experiment"]["agent"]["base_url_env"] == "CODEX_GPT_BASE_URL"
+    assert created["run"]["vgb_python"] == "${VGB_PYTHON}"
+    assert created["experiment"]["groups"] == yaml.safe_load(original)["experiment"]["groups"]
+    with pytest.raises(ValueError, match="must be new"):
+        prepare(source, path, output, run)
+
+
+def test_acceptance_matrix_is_finite_and_freezes_all_tracks_and_routes(tmp_path, monkeypatch):
+    from scripts.verify_preinstalled_matrix import CASES, PROVIDERS, matrix
+
+    monkeypatch.setenv("OPENCLAW_SKILLS_ROOT", "/fixture/skills")
+    monkeypatch.setenv("VGB_PYTHON", "/fixture/vgb/python")
+    path, _ = candidate_lock(tmp_path)
+    entries = matrix(path, Path("examples/experiments"), tmp_path / "matrix")
+    assert len(entries) == 16
+    for name in NAMES:
+        selected = [entry for entry in entries if entry["harness"] == name]
+        assert {entry["provider"] for entry in selected} == set(PROVIDERS)
+        assert {entry["track"] for entry in selected} == {track for track, _ in CASES}
+        assert all(entry["config"]["experiment"]["agent"]["installation_mode"] == "preinstalled"
+                   for entry in selected)
+        assert all(entry["config"]["experiment"]["retry"]["max_retries"] == 0
+                   for entry in selected)

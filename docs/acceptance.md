@@ -4,6 +4,12 @@ Phase 0 is complete when a clean Python 3.12 environment can run `uv sync --froz
 `hai doctor`, Ruff, compilation and provider-free tests. Docker integration and official
 VGB track fixtures are separate acceptance gates in later phases.
 
+Strict preinstalled harness images have separate gates described in
+[the preinstalled workflow](preinstalled-harness.md). The shared base's absence-of-harness
+assertion remains valid; each derived execution image instead must pass actual version,
+artifact, chemistry and offline Harbor setup checks. The original runtime-install gates
+below continue to validate historical configurations.
+
 Phase 1 configuration acceptance additionally requires `hai materialize` to map an
 explicit resource profile to `n_concurrent_trials`, `override_cpus`,
 `override_memory_mb`, CPU/memory policies, retry count and attempt count, while rejecting
