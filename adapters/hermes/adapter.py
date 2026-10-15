@@ -157,6 +157,8 @@ class HermesAgent(HarborHermes):
                 timeout_sec=10,
             )
             await super().run(instruction, environment, context)
+            if self.options.preinstalled is not None:
+                await self._export_oneshot_session(environment)
             return
 
         prefix = provider.upper()
@@ -223,26 +225,29 @@ class HermesAgent(HarborHermes):
         try:
             await self.exec_as_agent(environment, command=run_command, env=env)
         finally:
-            try:
-                export_result = await self.exec_as_agent(
-                    environment,
-                    command=(
-                        'export PATH="$HOME/.local/bin:$PATH" && '
-                        "(hermes sessions export /logs/agent/hermes-session.jsonl "
-                        "--source oneshot 2>/dev/null; "
-                        "[ -s /logs/agent/hermes-session.jsonl ] || "
-                        "hermes sessions export /logs/agent/hermes-session.jsonl "
-                        "--source cli 2>/dev/null) && "
-                        "head -n 1 /logs/agent/hermes-session.jsonl || true"
-                    ),
-                    env={"HERMES_HOME": "/tmp/hermes"},
-                    timeout_sec=30,
-                )
-                native_session_id = self._extract_native_session_id(export_result.stdout)
-                if native_session_id:
-                    self._native_session_id = native_session_id
-            except Exception:
-                pass
+            await self._export_oneshot_session(environment)
+
+    async def _export_oneshot_session(self, environment: BaseEnvironment) -> None:
+        try:
+            export_result = await self.exec_as_agent(
+                environment,
+                command=(
+                    'export PATH="$HOME/.local/bin:$PATH" && '
+                    "(hermes sessions export /logs/agent/hermes-session.jsonl "
+                    "--source oneshot 2>/dev/null; "
+                    "[ -s /logs/agent/hermes-session.jsonl ] || "
+                    "hermes sessions export /logs/agent/hermes-session.jsonl "
+                    "--source cli 2>/dev/null) && "
+                    "head -n 1 /logs/agent/hermes-session.jsonl || true"
+                ),
+                env={"HERMES_HOME": "/tmp/hermes"},
+                timeout_sec=30,
+            )
+            native_session_id = self._extract_native_session_id(export_result.stdout)
+            if native_session_id:
+                self._native_session_id = native_session_id
+        except Exception:
+            pass
 
     @staticmethod
     def _session_usage(jsonl_text: str) -> dict[str, int | float | str | None] | None:
