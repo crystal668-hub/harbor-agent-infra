@@ -174,3 +174,52 @@ def test_acceptance_cancellation_persists_terminal_status_and_stops_dispatch(tmp
     assert len(report["entries"]) == 1
     assert report["entries"][0]["status"] == "cancelled"
     assert execute.await_count == 1
+
+
+def test_vgb_tasks_and_chemistry_preflight_resolve_the_execution_image(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from test_chemistry import evidence
+    from test_task_materializer import FakeVgbRuntime, _resources, _spec
+
+    from harbor_agent_infra.harbor.job_config import materialize_paired_job_configs
+    from integrations.vgb import chemistry
+
+    path, _ = candidate_lock(tmp_path)
+    lock = load_runtime_lock(path)
+    selected = lock.harness_images["openclaw"]
+    spec = _spec(tmp_path)
+    spec = spec.model_copy(update={
+        "agent": spec.agent.model_copy(update={"installation_mode": "preinstalled"}),
+        "image": spec.image.model_copy(update={
+            "reference": selected.reference, "digest": selected.digest,
+        }),
+        "benchmark": spec.benchmark.model_copy(update={"package_lock": str(path)}),
+    })
+    materialized = materialize_paired_job_configs(
+        spec, _resources(), FakeVgbRuntime(), output_root=tmp_path / "materialized",
+        group_id="skills_off",
+    )
+    task_toml = (materialized.tasks[0].path / "task.toml").read_text()
+    assert selected.immutable_reference in task_toml
+    host, _ = evidence()
+    monkeypatch.setattr(chemistry, "runtime_settings", lambda _: (tmp_path, path))
+    monkeypatch.setattr(chemistry, "probe_host", lambda *args: host)
+    inspected = []
+
+    def inspect(reference, **kwargs):
+        inspected.append((reference, kwargs["digest"]))
+        return SimpleNamespace(to_dict=lambda: {"reference": reference})
+
+    def run(command, **kwargs):
+        assert selected.immutable_reference in command
+        return SimpleNamespace(stdout=json.dumps(host))
+
+    monkeypatch.setattr("harbor_agent_infra.preparation.image_manager.inspect_image", inspect)
+    monkeypatch.setattr(chemistry.subprocess, "run", run)
+    chemistry.preflight_chemistry(
+        SimpleNamespace(python_executable=tmp_path / "python"), path,
+        output_path=tmp_path / "chemistry-report.json", agent_name="openclaw",
+        installation_mode="preinstalled",
+    )
+    assert inspected == [(selected.reference, selected.digest)]
