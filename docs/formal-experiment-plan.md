@@ -655,7 +655,7 @@ uv run --locked hai aggregate \
 
 | Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 已合并待验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
+| Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
 | Claude Code | Qwen | 未发现产物，待核对 | — | — |
 | Claude Code | GPT | 未发现产物，待核对 | — | — |
 | Claude Code | Claude | 未发现产物，待核对 | — | — |
@@ -718,11 +718,11 @@ uv run --locked hai aggregate \
 
 | 来源 | 子实验 / 原始 run 目录名 | 本次入选快照（相对 `run-artifacts/formal/`） | 核对日期 | 缺失与验收备注 |
 | --- | --- | --- | --- | --- |
-| A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | advanced 缺失 0，basic 缺失 0；basic 有 3 条 lifecycle 为 failed 但已评分的记录，保留其分数，验收时核对失败分类 |
+| A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | 已验收；advanced/basic 缺失均为 0。3 条 basic 记录为 7200 秒正常超时，属于有效能力观测，保留分数且不再补跑；其余工程失败已由 recovery batch1/2 处理 |
 
 来源 A 的 `formal-summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
 与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
-当前统计仅表示已有快照的评分情况，最终有效性与完成状态仍须按恢复协议验收。
+当前统计已完成该子实验的验收；后续汇总继续按原始 slot 代表和恢复协议执行。
 
 核对现有结果的只读命令：
 
