@@ -253,6 +253,8 @@ def main(argv: list[str] | None = None) -> int:
                         "agent_source_ref": materialized.agent_source_ref,
                         "agent_package_integrity": materialized.agent_package_integrity,
                         "agent_base_image": materialized.agent_base_image,
+                        "agent_execution_image": materialized.agent_execution_image,
+                        "installation_mode": materialized.installation_mode,
                         "job_config": materialized.job_config.model_dump(mode="json"),
                     }
                     for group_id, materialized in paired.groups.items()
@@ -279,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
             "agent_source_ref": materialized.agent_source_ref,
             "agent_package_integrity": materialized.agent_package_integrity,
             "agent_base_image": materialized.agent_base_image,
+            "agent_execution_image": materialized.agent_execution_image,
+            "installation_mode": materialized.installation_mode,
             "agent_python": materialized.agent_python,
             "agent_chemistry": materialized.agent_chemistry,
             "preflight": asdict(materialized.preflight),

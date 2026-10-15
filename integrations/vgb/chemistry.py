@@ -104,6 +104,7 @@ def probe_host(python: Path, prefix: Path, env: dict[str, str]) -> dict[str, Any
 def preflight_chemistry(
     runtime: Any, lock_path: Path, *, output_path: Path,
     pull_policy: str = "never",
+    agent_name: str | None = None, installation_mode: str = "runtime_install",
 ) -> dict[str, Any]:
     """Probe the actual immutable image and verifier before creating any Harbor Job."""
     from harbor_agent_infra.preparation.image_manager import inspect_image
@@ -125,7 +126,9 @@ def preflight_chemistry(
         report["verifier"] = host
         validate_probe(host, expected)
         lock = load_runtime_lock(lock_path)
-        image = lock.agent_base_image
+        if installation_mode != "runtime_install" and agent_name is None:
+            raise ChemistryError("preinstalled chemistry probe requires an agent name")
+        image = lock.execution_image(agent_name or "openclaw", installation_mode)
         report["image"] = inspect_image(
             image.reference, digest=image.digest, platform=image.platform, pull_policy=pull_policy,
         ).to_dict()

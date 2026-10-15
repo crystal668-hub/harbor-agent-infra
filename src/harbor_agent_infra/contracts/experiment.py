@@ -12,6 +12,9 @@ class AgentSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     adapter: Literal["openclaw", "hermes", "codex", "claude-code"]
+    installation_mode: Literal["runtime_install", "preinstalled"] = Field(
+        default="runtime_install", exclude_if=lambda value: value == "runtime_install"
+    )
     model: str = Field(min_length=1)
     provider: Literal["openai", "anthropic", "qwen", "deepseek"] | None = Field(
         default=None, exclude_if=lambda value: value is None
