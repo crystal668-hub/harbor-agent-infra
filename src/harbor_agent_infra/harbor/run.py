@@ -520,6 +520,8 @@ async def run_paired_jobs(
     formal_context: dict | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
+    if group_id is None and len(spec.groups) == 1:
+        group_id = spec.groups[0].id
     print(f"Starting run_paired_jobs for group_id={group_id}", flush=True)
     output_root.mkdir(parents=True, exist_ok=formal_context is None)
     run_id = output_root.name

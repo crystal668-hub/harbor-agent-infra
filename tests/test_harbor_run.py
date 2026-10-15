@@ -476,8 +476,12 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     assert resumed["resume"] == {"supported": True, "resumed": True, "previous_status": "completed"}
 
 
-def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path) -> None:
+@pytest.mark.parametrize("implicit", [False, True])
+def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path, implicit) -> None:
     spec = _spec(tmp_path)
+    if implicit:
+        spec = spec.model_copy(update={"groups": [group for group in spec.groups
+                                                 if group.id == "skills_off"]})
     runtime = FakeVgbRuntime()
     runtime.python_executable = Path(sys.executable)
     created = []
@@ -508,11 +512,11 @@ def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path
     monkeypatch.setattr(run_module, "Job", FakeJob)
     root = tmp_path / "single"
     manifest = asyncio.run(
-        run_group_jobs(
+        (run_module.run_paired_jobs if implicit else run_group_jobs)(
             spec,
             _resources(),
             runtime,
-            group_id="skills_off",
+            **({} if implicit else {"group_id": "skills_off"}),
             output_root=root,
         )
     )
@@ -531,6 +535,9 @@ def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path
         {"id": "skills_off", "skills_enabled": False, "status": "completed"}
     ]
     assert not (root / "per-record" / "skills_on").exists()
+
+    if implicit:
+        return
 
     skills_root = tmp_path / "skills"
     for name in ("rdkit", "ase"):
