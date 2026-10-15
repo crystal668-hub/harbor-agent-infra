@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -101,6 +102,12 @@ def audit_run(
 
             slots.append(slot)
 
+    # Native Harbor runs produced by hai keep trial records in the run-level
+    # results.json and do not emit the legacy jobs/*/harbor.json index.  Use
+    # that authoritative record when the legacy scan found nothing.
+    if not slots:
+        slots.extend(_find_failed_vgb_slots(run_dir, run_name))
+
     manifest = RecoveryManifest(
         run_name=run_name,
         run_category=category,
@@ -114,6 +121,79 @@ def audit_run(
     )
 
     return manifest
+
+
+def _find_failed_vgb_slots(run_dir: Path, run_name: str) -> list[RecoverySlot]:
+    """Build recovery slots from a native ``hai run`` results.json file."""
+    results_path = run_dir / "results.json"
+    if not results_path.is_file():
+        return []
+
+    payload = json.loads(results_path.read_text(encoding="utf-8"))
+    records = payload.get("results")
+    if not isinstance(records, list):
+        return []
+
+    slots: list[RecoverySlot] = []
+    for record in records:
+        if not isinstance(record, dict) or record.get("run_lifecycle_status") == "completed":
+            continue
+
+        attempt = record.get("final_attempt") or {}
+        trial_result_path = Path(str(attempt.get("trial_result_path") or ""))
+        trial_dir = trial_result_path.parent if trial_result_path else Path()
+        logs = _read_failure_logs(trial_dir)
+        trial_payload = _read_json(trial_result_path)
+        exception_info = (trial_payload or {}).get("exception_info") or {}
+        exception_type = record.get("execution_error_kind") or exception_info.get("exception_type")
+        exception_message = record.get("error") or exception_info.get("exception_message")
+        exit_code = _extract_exit_code(exception_message)
+        classification = classify_failure(
+            exception_type=exception_type,
+            exception_message=exception_message,
+            logs=logs,
+            exit_code=exit_code,
+        )
+        job_name = trial_dir.parent.name if trial_dir.parts else "unknown"
+        trial_id = str(attempt.get("trial_id") or (trial_payload or {}).get("id") or "unknown")
+        slots.append(
+            RecoverySlot(
+                job_name=job_name,
+                task_id=str(record.get("task_name") or "unknown"),
+                original_trial_id=trial_id,
+                failure_classification=classification,
+                original_run=run_name,
+            )
+        )
+    return slots
+
+
+def _read_json(path: Path) -> dict | None:
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _read_failure_logs(trial_dir: Path) -> str | None:
+    if not trial_dir.is_dir():
+        return None
+    chunks = []
+    for name in ("exception.txt", "trial.log"):
+        path = trial_dir / name
+        if path.is_file():
+            chunks.append(path.read_text(encoding="utf-8", errors="replace")[-5000:])
+    return "\n".join(chunks) or None
+
+
+def _extract_exit_code(message: str | None) -> int | None:
+    if not message:
+        return None
+    match = re.search(r"exit(?:\s+code)?\s+(\d+)", message, re.IGNORECASE)
+    return int(match.group(1)) if match else None
 
 
 def _find_failed_trials(job_dir: Path) -> list[dict]:

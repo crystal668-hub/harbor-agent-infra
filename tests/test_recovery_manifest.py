@@ -379,3 +379,36 @@ class TestAuditRun:
 
         with pytest.raises(ValueError, match="No jobs/ directory"):
             audit_run(run_dir, run_name="run-123")
+
+    def test_audit_native_hai_results(self, tmp_path: Path) -> None:
+        """Native hai results are audited when legacy harbor.json is absent."""
+        run_dir = tmp_path / "native-run"
+        job_dir = run_dir / "jobs" / "native-job" / "task-slug"
+        job_dir.mkdir(parents=True)
+        trial_result = job_dir / "result.json"
+        trial_result.write_text(json.dumps({
+            "id": "trial-1",
+            "exception_info": {
+                "exception_type": "NetworkConnectionError",
+                "exception_message": "curl: (35) SSL_ERROR_SYSCALL",
+            },
+        }))
+        (run_dir / "results.json").write_text(json.dumps({
+            "results": [{
+                "task_name": "track__task-1",
+                "run_lifecycle_status": "failed",
+                "execution_error_kind": "NetworkConnectionError",
+                "error": "curl: (35) SSL_ERROR_SYSCALL",
+                "final_attempt": {
+                    "trial_id": "trial-1",
+                    "trial_result_path": str(trial_result),
+                },
+            }],
+        }))
+
+        manifest = audit_run(run_dir, run_name="native-run", category=RunCategory.FORMAL)
+
+        assert len(manifest.slots) == 1
+        assert manifest.slots[0].task_id == "track__task-1"
+        assert manifest.slots[0].failure_classification.category == FailureCategory.ENGINEERING
+        assert manifest.slots[0].failure_classification.is_substitutable is True

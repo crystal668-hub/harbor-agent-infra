@@ -50,6 +50,26 @@ def classify_failure(
         filter(None, [exception_type or "", exception_message or "", logs or ""])
     )
 
+    # Harbor-native VGB records preserve the provider/setup exception name
+    # instead of the generic recovery-system names.  These failures happen
+    # before agent execution and are safe candidates for a replacement trial.
+    if exception_type == "NetworkConnectionError" or _contains_any(
+        all_text,
+        [
+            "downloads.claude.ai",
+            "ssl_connect",
+            "could not resolve host",
+            "socket is closed",
+        ],
+    ):
+        return FailureClassification(
+            category=FailureCategory.ENGINEERING,
+            reason="Agent setup download or network failure",
+            is_substitutable=True,
+            evidence={"type": "agent_setup_network", "source": "harbor_record"},
+            confidence=1.0,
+        )
+
     # Engineering failures
     if _contains_any(
         all_text,
