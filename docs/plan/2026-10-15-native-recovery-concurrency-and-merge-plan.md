@@ -13,7 +13,7 @@
 
 | 对象 | 目录／设置 |
 | --- | --- |
-| 原始 Repeat 1 | `run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/` |
+| 原始 Repeat 1 | `run-artifacts/formal/claude-code-deepseek-repeat1/` |
 | 本轮补跑 | `run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1/` |
 | 建议合并输出 | `run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1/` |
 | 原始配置 | `configs/experiments/claude-code/vgb-deepseek.config.yaml` |
@@ -117,6 +117,56 @@ run-artifacts/formal/
 复制的原始证据保持字节不变，其历史路径保留；新生成的运行路径与记录引用指向
 新快照实际文件，原始路径另存为 provenance。Viewer 需能解析新快照中的原生 Job。
 
+### 4.1 正式实验目录固定命名
+
+原始正式运行统一使用：
+
+```text
+run-artifacts/formal/<harness>-<provider>-repeat<N>/
+```
+
+| 部分 | 固定取值／规则 |
+| --- | --- |
+| harness | `openclaw`、`hermes`、`codex`、`claude-code`，与 adapter 名一致 |
+| provider | `openai`、`anthropic`、`qwen`、`deepseek`，表示所选模型 provider |
+| N | 从 1 开始的正式 repeat 批次号，不补零；禁止把恢复次数写作新 repeat |
+| 示例 | `claude-code-deepseek-repeat1`、`codex-openai-repeat2`、`hermes-anthropic-repeat3` |
+
+GPT 和 Claude 的 provider 名分别写为 `openai` 和 `anthropic`；模型具体 ID、版本和
+执行条件继续保存在冻结配置中。相同 harness/provider/repeat 不能覆盖已有正式目录；
+若同 provider 有不同模型或条件，必须先确定独立实验根目录，不能用当前命名造成冲突。
+
+对应派生产物沿用现有计划：
+
+```text
+run-artifacts/formal/<harness>-<provider>-repeat<N>-recovery-batch<M>/
+run-artifacts/formal/<harness>-<provider>-repeat<N>-merged-batch<M>/
+```
+
+其中 `M` 是恢复或合并批次号，不改变原 repeat 身份。
+后续执行脚本和正式配置的 `run.output_dir` 应按该规则生成；本次文档修订不批量
+覆盖其他已有配置，也不通过改 experiment_id 重新定义本轮历史 slot。
+
+### 4.2 本轮原目录迁移与历史身份
+
+本轮原始目录已从 `claude-code-vgb-deepseek-cross-provider/` 移至
+`claude-code-deepseek-repeat1/`。由于补跑进程仍在执行且持有旧路径，旧位置保留相对
+符号链接 `claude-code-vgb-deepseek-cross-provider -> claude-code-deepseek-repeat1`。
+Viewer 的目录发现会忽略符号链接，因此仅展示新的正式目录，不重复计数。
+
+这是目录迁移，不修改已保存的 `run_id`、experiment_id、Job/Trial ID、slot_id、
+配置快照或原始事件；历史路径继续通过兼容链接解析。迁移审计记录与原文件校验和
+保存在本地 `reports/claude-code-deepseek-repeat1-directory-migration.json`。
+
+合并器需要将目录位置与历史 run 身份分开处理：
+
+- 目录位置以显式 CLI 路径和 realpath 为准；旧别名与新路径不能算两个输入 run。
+- 历史身份以原始 manifest 的 run_id、原始 Job/Trial 与批准记录交叉确认，
+  不能要求 metadata.original_run 必须等于新目录 basename。
+- 接受可验证的旧身份到新目录的映射，不能仅凭任意别名放宽身份校验。
+- 新合并快照的路径引用写入真实快照路径，并记录历史身份及来源别名。
+- 原始／恢复数据仍有旧路径引用时保留兼容链接；不得在当前恢复进程运行中删除。
+
 旧 `trials/` 布局保留兼容测试；不能以旧式字段缺失为由静默猜测原生 slot。
 
 ## 5. 恢复按 2 并发运行
@@ -153,7 +203,7 @@ run-artifacts/formal/
 
 | 关联项 | 校验规则 |
 | --- | --- |
-| 原 run | `original_run` 与指定原始运行一致；旧 unknown 仅按已定义回退处理 |
+| 原 run | `original_run` 与原 manifest 的历史 run_id 一致；迁移目录通过 realpath 和已验证身份映射关联；旧 unknown 仅按已定义回退处理 |
 | 原 Job | `original_job`／manifest `job_name` 与原始目录一致 |
 | 原 trial | `original_trial_id` 精确匹配原生 TrialResult 的 `id` |
 | 任务 | 原／恢复 `task_name` 与保存的任务配置一致，包含 track |
@@ -260,21 +310,21 @@ VGB artifact 中的 score 必须与该 TrialResult verifier reward 一致。
 ```bash
 # 恢复启动前验证配置；适配后同时展示有效并发上限 2
 uv run --locked --python 3.12 hai recover \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider/recovery-manifest.json \
+  run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
   --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
   --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
   --dry-run
 
 # 整批完成后预览；不会写入结果
 uv run --locked --python 3.12 hai merge \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider \
+  run-artifacts/formal/claude-code-deepseek-repeat1 \
   run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
   --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1 \
   --dry-run
 
 # 审查预览后，使用同样输入实际发布新快照
 uv run --locked --python 3.12 hai merge \
-  run-artifacts/formal/claude-code-vgb-deepseek-cross-provider \
+  run-artifacts/formal/claude-code-deepseek-repeat1 \
   run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
   --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-merged-batch1
 ```
@@ -287,7 +337,7 @@ uv run --locked --python 3.12 hai merge \
 | 顺序 | 聚焦提交 | 主要文件／模块 | 验收产物 |
 | --- | --- | --- | --- |
 | 1 | 恢复双并发与执行状态 | recovery/executor.py、cli.py、executor 测试 | 能达到 2 且不超 2；失败隔离；正确取消与执行计数 |
-| 2 | 原生 slot 解析和只读合并计划 | recovery/merger.py 或同目录的独立 planner、cli.py | 原生/旧式路径识别；批准、身份、条件、候选选择；dry-run |
+| 2 | 原生 slot、迁移别名解析和只读合并计划 | recovery/merger.py 或同目录的独立 planner、cli.py | 原生/旧式路径识别；批准、身份、条件、候选选择；dry-run |
 | 3 | 新快照与原生记录投影 | merger、harbor/run.py 的必要共享投影、相关测试 | 原始证据不变；新路径可解析；VGB 分数一致 |
 | 4 | 汇总、预算与再审计衔接 | merger、auditor、analyzer、Viewer 必要部分 | 71 个 slot；尝试/代表分层；不重复批准或消耗预算 |
 | 5 | 操作说明与本轮验收报告 | recovery-system-guide.md、实验本地报告 | 经审核的 dry-run 结果及正式合并验收记录 |
@@ -304,6 +354,7 @@ Provider-free 单元／契约测试：
 - 取消不新增任务，活跃 Job 退出后释放配额；重复输出写入被拒绝。
 - 同 Job 多个失败任务分别恢复，且每个原 trial 只计一次。
 - 本轮原生目录、旧 trials 目录和缺失历史字段兼容；同 task 多 repeat 歧义必须报错。
+- 新旧目录别名解析到同一历史 run；迁移后 metadata 仍可关联，Viewer 只发现新目录一次。
 - 未获批、条件不一致、缺证据、前序待审、重复候选均不会被静默替换。
 - 正常零分可入选；超时保留有效性与原生命周期；评分工程故障不触发 Agent 重跑。
 - 多批次首条有效代表选择稳定，不受输入目录顺序、完成顺序或分数影响。
@@ -337,7 +388,7 @@ git diff --check
 
 - 计划状态：待审核。
 - 已确定范围：双并发 recover、原生目录合并、原 slot 唯一关联、证据保留、
-  新快照发布、完整投影汇总、替代预算与再审计衔接。
+  新快照发布、完整投影汇总、替代预算与再审计衔接，以及正式目录固定命名与历史别名解析。
 - 实施授权与数据操作分开：计划通过后按上述步骤编码和测试；
   本文不会自行暂停当前批次、重复提交恢复或发布正式合并结果。
 
