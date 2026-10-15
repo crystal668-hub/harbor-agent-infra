@@ -6,6 +6,8 @@ lifecycle and Docker cleanup to Harbor Framework.
 
 See the [formal experiment plan](docs/formal-experiment-plan.md) for the current
 experiment matrix, execution protocol, and reporting requirements.
+See the [failure recovery migration plan](docs/failure-recovery-migration-plan.md)
+for failure classification, retry and recovery policy, and migration design.
 
 The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Each Trial
 uses the immutable `hai-base-env` image derived from the locked Node base. The image

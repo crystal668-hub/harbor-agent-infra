@@ -239,7 +239,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 ### 6.1 失败分类原则
 
-按照 [2026-10-12 失败恢复迁移计划](plan/2026-10-12-failure-recovery-migration-plan.md) 的判定矩阵：
+按照 [失败恢复迁移计划](failure-recovery-migration-plan.md) 的判定矩阵：
 
 | 失败类型 | 有效性判定 | 恢复策略 |
 |---------|-----------|---------|
@@ -640,7 +640,7 @@ uv run --locked hai aggregate \
 ## 14. 附录
 
 ### 14.1 参考文档
-- [失败恢复迁移计划](plan/2026-10-12-failure-recovery-migration-plan.md)
+- [失败恢复迁移计划](failure-recovery-migration-plan.md)
 - [模型矩阵](model-matrix.md)
 - [配置文档](configuration.md)
 - [化学环境](chemistry.md)
