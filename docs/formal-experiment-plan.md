@@ -175,7 +175,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 64,000 是 agent 单 turn（单次模型响应）的输出约束，通常不会触及；不是整个任务的累计 token 预算。
 比较目标是固定时间下的系统能力，保留当前设置。参数传递与网关实际强制执行能力的区别见
-[模型验证记录](../model-matrix.md)，不将该参数视为已验证的严格总预算。
+[模型验证记录](model-matrix.md)，不将该参数视为已验证的严格总预算。
 
 ### 5.2 资源与超时配置
 
@@ -217,7 +217,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 预装镜像方案待执行：先完成当前实验补跑，再实施并验收预装方案、切换后续新实验。
 切换时冻结新的镜像 digest 与执行条件；原始 run、补跑及其结果保留原冻结身份，
 不得自动将不同环境的结果作为同条件替代。详见
-[预装镜像实施计划](2026-10-15-preinstalled-harness-migration-plan.md)。
+[预装镜像实施计划](plan/2026-10-15-preinstalled-harness-migration-plan.md)。
 
 ### 5.5 技能配置
 - **Group**: 仅运行 `skills_off`
@@ -239,7 +239,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 ### 6.1 失败分类原则
 
-按照 [2026-10-12 失败恢复迁移计划](2026-10-12-failure-recovery-migration-plan.md) 的判定矩阵：
+按照 [2026-10-12 失败恢复迁移计划](plan/2026-10-12-failure-recovery-migration-plan.md) 的判定矩阵：
 
 | 失败类型 | 有效性判定 | 恢复策略 |
 |---------|-----------|---------|
@@ -640,11 +640,11 @@ uv run --locked hai aggregate \
 ## 14. 附录
 
 ### 14.1 参考文档
-- [失败恢复迁移计划](2026-10-12-failure-recovery-migration-plan.md)
-- [模型矩阵](../model-matrix.md)
-- [配置文档](../configuration.md)
-- [化学环境](../chemistry.md)
-- [架构文档](../architecture.md)
+- [失败恢复迁移计划](plan/2026-10-12-failure-recovery-migration-plan.md)
+- [模型矩阵](model-matrix.md)
+- [配置文档](configuration.md)
+- [化学环境](chemistry.md)
+- [架构文档](architecture.md)
 
 ### 14.2 变更历史
 - 2026-10-14: 初始版本，待审核

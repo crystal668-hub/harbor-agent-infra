@@ -45,6 +45,6 @@ basic 与 advanced 分别统计和报告，混合均分仅作辅助。
 ## 关键文档
 
 - [执行计划](2026-10-14-experiment-execution-plan.md)
-- [正式方案](2026-10-14-formal-experiment-plan.md)
+- [正式方案](../formal-experiment-plan.md)
 - [恢复与合并约定](2026-10-15-native-recovery-concurrency-and-merge-plan.md)
 - [预装镜像计划](2026-10-15-preinstalled-harness-migration-plan.md)

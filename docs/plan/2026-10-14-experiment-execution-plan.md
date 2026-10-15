@@ -101,7 +101,7 @@ uv run --locked --python 3.12 hai formal-summary \
 
 输出 `track` 为跨 run 的分 track 统计，`run_track` 为各原始 run 的分 track 统计，
 `summary` 保留兼容的整体辅助统计。未知评分保留缺失，不作为零分。
-完整报告要求见[正式方案](2026-10-14-formal-experiment-plan.md)。
+完整报告要求见[正式方案](../formal-experiment-plan.md)。
 
 ## 6. 时间估算
 

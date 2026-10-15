@@ -4,6 +4,9 @@ This repository is the experiment control plane for Harbor Agent trials. It mate
 experiments, resource profiles and immutable image identities, then delegates Job/Trial
 lifecycle and Docker cleanup to Harbor Framework.
 
+See the [formal experiment plan](docs/formal-experiment-plan.md) for the current
+experiment matrix, execution protocol, and reporting requirements.
+
 The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Each Trial
 uses the immutable `hai-base-env` image derived from the locked Node base. The image
 contains Python 3.11, pip 23.0.1, RDKit 2026.03.2, xTB 6.7.1, CREST 2.12 and venv support. Other

@@ -1,6 +1,6 @@
 # 正式实验方案总结
 **日期**: 2026-10-15（按用户确认修订）
-**完整方案**: [2026-10-14-formal-experiment-plan.md](2026-10-14-formal-experiment-plan.md)
+**完整方案**: [正式实验方案](../formal-experiment-plan.md)
 
 ---
 
@@ -302,4 +302,4 @@ uv run --locked hai aggregate \
 
 ---
 
-**详细内容请参考**: [2026-10-14-formal-experiment-plan.md](2026-10-14-formal-experiment-plan.md)
+**详细内容请参考**: [正式实验方案](../formal-experiment-plan.md)
