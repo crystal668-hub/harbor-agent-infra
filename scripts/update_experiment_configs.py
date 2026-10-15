@@ -7,6 +7,7 @@ Ensures all 16 harness×model configs use unified parameters:
 - Resources: 4 CPU / 6144 MB
 - Concurrent trials: 2
 - max_retries: 0
+- Groups: skills_off only
 - Output dir: run-artifacts/formal/<experiment-id>
 """
 
@@ -23,6 +24,16 @@ def update_config(config_path: Path) -> bool:
 
         # Track changes
         changes = []
+
+        # Formal experiments declare only the authorized skills_off group.
+        groups = [{
+            'id': 'skills_off',
+            'label': 'benchmark skills disabled',
+            'skills_enabled': False,
+        }]
+        if config['experiment'].get('groups') != groups:
+            config['experiment']['groups'] = groups
+            changes.append('groups: skills_off only')
 
         # Update task timeouts
         if config.get('task', {}).get('agent_timeout_sec') != 7200:

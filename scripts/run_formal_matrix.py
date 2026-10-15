@@ -11,14 +11,14 @@ from harbor_agent_infra.formal import formal_run_name
 
 def matrix_commands() -> list[tuple[str, list[str]]]:
     commands = []
-    for harness in ("claude-code", "codex", "hermes", "openclaw"):
-        for template, provider in (
-            ("deepseek", "deepseek"),
-            ("qwen", "qwen"),
-            ("gpt", "openai"),
-            ("claude", "anthropic"),
-        ):
-            for repeat in (1, 2, 3):
+    for repeat in (1, 2, 3):
+        for harness in ("claude-code", "codex", "hermes", "openclaw"):
+            for template, provider in (
+                ("deepseek", "deepseek"),
+                ("qwen", "qwen"),
+                ("gpt", "openai"),
+                ("claude", "anthropic"),
+            ):
                 name = formal_run_name(harness, provider, repeat)
                 commands.append(
                     (

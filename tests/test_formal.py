@@ -22,6 +22,17 @@ def test_full_matrix_has_48_independent_runs_and_3408_slots(tmp_path):
     paths = []
     commands = matrix_commands()
     assert len(commands) == len({name for name, _ in commands}) == 48
+    # Cover every combination once before scheduling any next-round execution.
+    for repeat in (1, 2, 3):
+        batch = commands[(repeat - 1) * 16 : repeat * 16]
+        assert {name for name, _ in batch} == {
+            formal_run_name(harness, provider, repeat)
+            for harness in HARNESSES
+            for provider in PROVIDERS
+        }
+        for _, command in batch:
+            assert command[command.index('--formal-repeat') + 1] == str(repeat)
+            assert command[command.index('--group') + 1] == 'skills_off'
     for harness in HARNESSES:
         for provider in PROVIDERS:
             for repeat in (1, 2, 3):
