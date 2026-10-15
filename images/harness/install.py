@@ -22,7 +22,11 @@ from preinstalled_probe import (
     shell_prefix,
     verify,
 )
-from runtime_patches import hermes_output_patch_command, openclaw_adaptive_patch_command
+from runtime_patches import (
+    hermes_model_id_patch_command,
+    hermes_output_patch_command,
+    openclaw_adaptive_patch_command,
+)
 
 ROOT = Path(__file__).parent
 DOWNLOADS = Path("/tmp/hai-downloads")
@@ -84,6 +88,7 @@ def capture_patches(name: str, roots: list[str], commit: str | None) -> dict:
         commands["openclaw-adaptive"] = openclaw_adaptive_patch_command()
     elif name == "hermes":
         commands["hermes-output"] = hermes_output_patch_command(commit)
+        commands["hermes-model-id"] = hermes_model_id_patch_command(commit)
     patches = {}
     for key, command in commands.items():
         original = inventory(roots)
@@ -91,7 +96,8 @@ def capture_patches(name: str, roots: list[str], commit: str | None) -> dict:
         # second in-memory copy of the full binary/dependency installation.
         candidates = (list(Path(shell(name, "npm root -g")).joinpath("openclaw/dist").glob("*.js"))
                       if name == "openclaw" else
-                      [Path("/tmp/hermes/hermes-agent/agent/agent_init.py")])
+                      [Path("/tmp/hermes/hermes-agent/agent/agent_init.py"),
+                       Path("/tmp/hermes/hermes-agent/hermes_cli/model_normalize.py")])
         snapshots = {str(path): path.read_bytes() for path in candidates}
         try:
             run(["bash", "-c", command], env={**os.environ, "HERMES_HOME": "/tmp/hermes"})

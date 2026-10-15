@@ -12,7 +12,11 @@ from harbor.agents.installed.claude_code import ClaudeCode, ClaudeCodeOptions
 from harbor.agents.installed.codex import Codex, CodexOptions
 from pydantic import BaseModel, ConfigDict, Field
 
-from adapters.runtime_patches import hermes_output_patch_command, openclaw_adaptive_patch_command
+from adapters.runtime_patches import (
+    hermes_model_id_patch_command,
+    hermes_output_patch_command,
+    openclaw_adaptive_patch_command,
+)
 
 PROBE_SOURCE = Path(__file__).with_name("preinstalled_probe.py").read_text()
 
@@ -33,8 +37,13 @@ class PreinstalledOptions(BaseModel):
 def selected_patches(agent) -> dict[str, str]:
     if agent.name() == "openclaw" and agent.model_name == "anthropic/claude-opus-5.5":
         return {"openclaw-adaptive": openclaw_adaptive_patch_command()}
-    if agent.name() == "hermes" and agent.options.max_output_tokens is not None:
-        return {"hermes-output": hermes_output_patch_command(agent._source_commit)}
+    if agent.name() == "hermes":
+        patches = {}
+        if agent.options.max_output_tokens is not None:
+            patches["hermes-output"] = hermes_output_patch_command(agent._source_commit)
+        if agent.model_name == "anthropic/claude-opus-5.5":
+            patches["hermes-model-id"] = hermes_model_id_patch_command(agent._source_commit)
+        return patches
     return {}
 
 
