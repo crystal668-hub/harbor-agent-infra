@@ -123,7 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
     recover.add_argument(
         "--config",
         type=Path,
-        help="run config TOML (required for recovery execution)"
+        help="original run YAML config (required for execution; validates snapshots in dry-run)"
     )
     recover.add_argument(
         "--output-dir",
@@ -438,21 +438,38 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         if args.dry_run:
+            executor = None
+            if args.config:
+                from harbor_agent_infra.recovery.executor import RecoveryExecutor
+
+                executor = RecoveryExecutor(
+                    manifest=manifest,
+                    run_config=load_run_config(args.config),
+                    output_dir=args.output_dir or args.manifest.parent / "recovery-dry-run",
+                )
             print(f"Dry run: would recover {len(approved)} approved slots:")
             for slot in approved:
                 print(f"  - {slot.job_name} :: {slot.task_id}")
                 print(f"    Reason: {slot.failure_classification.reason}")
                 print(f"    Substitutions: {slot.substitution_count}/{slot.max_substitutions}")
+                if executor is not None:
+                    try:
+                        job_config = asyncio.run(executor.prepare_job_config(slot))
+                    except ValueError as exc:
+                        print(f"    Configuration error: {exc}")
+                        return 1
+                    print(f"    Validated Job: {job_config.job_name} (1 selected task)")
             return 0
 
         # P2 implementation - actual recovery execution
         from datetime import datetime
+
         from harbor_agent_infra.recovery.executor import RecoveryExecutor
 
         # Load run config
         if not args.config:
             print("Error: --config is required for recovery execution")
-            print("Provide the original run configuration TOML file")
+            print("Provide the original run configuration YAML file")
             return 1
 
         config = load_run_config(args.config)

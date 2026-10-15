@@ -81,6 +81,21 @@ hai recover recovery-manifest.json \
 hai recover recovery-manifest.json --dry-run
 ```
 
+For native `hai run` artifacts, add `--config` to validate the actual saved
+Harbor JobConfig and task selection without creating a Job or an output directory:
+
+```bash
+uv run --locked --python 3.12 hai recover recovery-manifest.json \
+  --config configs/experiments/claude-code/vgb-deepseek.config.yaml --dry-run
+```
+
+Recovery loads the saved `jobs/<job>/config.json` from the manifest's `run_dir`
+or the original run's configured output directory. Historical manifests whose
+`original_run` is empty or `unknown` fall back to the manifest's run name.
+Each recovery Job selects exactly the failed task and gets its own directory;
+the other saved execution settings and original artifacts are preserved. A missing
+snapshot or an ambiguous task selection prevents that slot from running.
+
 **Example output:**
 ```
 Recovery Execution Complete: recovery-2026-10-14

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
 
 from harbor import Job
 
-from harbor_agent_infra.contracts.run_category import RunCategory
 from harbor_agent_infra.harbor.job_config import JobConfig
 from harbor_agent_infra.preparation.run_config import RunConfig
 from harbor_agent_infra.recovery.manifest import RecoveryManifest, RecoverySlot
@@ -92,68 +90,46 @@ class RecoveryExecutor:
         Returns:
             SlotExecutionResult with outcome.
         """
-        # Check if slot can still be substituted
-        if not slot.can_substitute:
+        try:
+            recovery_job_config = await self.prepare_job_config(slot)
+        except ValueError as exc:
             return SlotExecutionResult(
                 slot_id=slot.slot_id,
                 job_name=slot.job_name,
                 task_id=slot.task_id,
                 executed=False,
                 success=False,
-                error=f"Cannot substitute: count={slot.substitution_count}, max={slot.max_substitutions}",
+                error=str(exc),
             )
 
-        # Load original job config from original run
-        original_job_config = await self._load_original_job_config(slot)
-        if original_job_config is None:
-            return SlotExecutionResult(
-                slot_id=slot.slot_id,
-                job_name=slot.job_name,
-                task_id=slot.task_id,
-                executed=False,
-                success=False,
-                error="Could not load original job config",
-            )
-
-        # Create recovery job directory
-        job_dir = self.output_dir / "jobs" / slot.job_name
+        job_dir = recovery_job_config.jobs_dir / recovery_job_config.job_name
         job_dir.mkdir(parents=True, exist_ok=True)
 
-        # Add recovery metadata to job config
         recovery_metadata = {
+            "slot_id": slot.slot_id,
             "is_recovery": True,
-            "original_run": slot.original_run,
+            "original_run": (
+                self.manifest.run_name
+                if slot.original_run in ("", "unknown") else slot.original_run
+            ),
             "original_job": slot.job_name,
             "original_trial_id": slot.original_trial_id,
+            "substitution_count": slot.substitution_count,
             "substitution_attempt": slot.substitution_count + 1,
             "failure_reason": slot.failure_classification.reason,
             "recovery_run": self.recovery_run_name,
             "recovery_timestamp": datetime.now().isoformat(),
         }
 
-        # Create a modified job config with recovery metadata
-        recovery_job_config = JobConfig.model_validate(
-            {
-                **original_job_config.model_dump(),
-                "job_name": slot.job_name,
-                "jobs_dir": job_dir.parent,
-            }
-        )
-
         # Execute the job using Harbor
         try:
             job = await Job.create(recovery_job_config)
 
-            # Write recovery metadata to job directory
             recovery_metadata_path = job_dir / "recovery-metadata.json"
             recovery_metadata_path.write_text(
                 json.dumps(recovery_metadata, indent=2) + "\n"
             )
 
-            # Run the job
-            result = await job.run()
-
-            # Run the job
             result = await job.run()
 
             # Check if execution succeeded
@@ -162,7 +138,6 @@ class RecoveryExecutor:
                 with open(harbor_json) as f:
                     harbor_data = json.load(f)
 
-                # Success if we have at least one successful trial
                 trials = harbor_data.get("trials", [])
                 has_success = any(
                     t.get("result", {}).get("success", False) for t in trials
@@ -188,7 +163,6 @@ class RecoveryExecutor:
                         recovery_job_dir=str(job_dir),
                     )
             else:
-                # Use result stats to determine success
                 if result.stats.n_errored_trials == 0 and result.stats.n_cancelled_trials == 0:
                     return SlotExecutionResult(
                         slot_id=slot.slot_id,
@@ -205,7 +179,8 @@ class RecoveryExecutor:
                         task_id=slot.task_id,
                         executed=True,
                         success=False,
-                        error=f"Job had {result.stats.n_errored_trials} errors, {result.stats.n_cancelled_trials} cancelled",
+                        error=f"Job had {result.stats.n_errored_trials} errors, "
+                        f"{result.stats.n_cancelled_trials} cancelled",
                         recovery_job_dir=str(job_dir),
                     )
 
@@ -220,6 +195,48 @@ class RecoveryExecutor:
                 recovery_job_dir=str(job_dir),
             )
 
+    async def prepare_job_config(self, slot: RecoverySlot) -> JobConfig:
+        """Load the original snapshot and select exactly one recovery task.
+
+        Shared with dry-run validation; never creates a Job or writes files.
+        """
+        if not slot.can_substitute:
+            raise ValueError(
+                f"Cannot substitute: count={slot.substitution_count}, max={slot.max_substitutions}"
+            )
+
+        # Load original job config from original run
+        original_job_config = await self._load_original_job_config(slot)
+        if original_job_config is None:
+            raise ValueError("Could not load original job config")
+
+        original_config = original_job_config.model_dump(mode="python")
+        matching_tasks = [
+            task for task in original_config.get("tasks", [])
+            if _task_matches(task, slot.task_id)
+        ]
+        if (
+            len(matching_tasks) != 1
+            or original_job_config.datasets
+            or original_job_config.source_jobs
+        ):
+            raise ValueError(
+                "Expected one matching explicit task in original Job config, "
+                f"found {len(matching_tasks)} (datasets and source jobs are unsupported)"
+            )
+
+        recovery_job_name = f"{slot.job_name}-recovery-{slot.original_trial_id}"
+
+        # Create a modified job config with recovery metadata
+        original_config.update(
+            {
+                "tasks": matching_tasks,
+                "job_name": recovery_job_name,
+                "jobs_dir": self.output_dir / "jobs",
+            }
+        )
+        return JobConfig.model_validate(original_config)
+
     async def _load_original_job_config(self, slot: RecoverySlot) -> JobConfig | None:
         """Load the original job config for a slot.
 
@@ -229,20 +246,31 @@ class RecoveryExecutor:
         Returns:
             JobConfig if found, None otherwise.
         """
-        # Try to find original run directory
-        artifacts_root = Path(self.run_config.run.output_dir).parent
+        output_dir = Path(self.run_config.run.output_dir)
+        run_name = slot.original_run
+        if not run_name or run_name == "unknown":
+            run_name = self.manifest.run_name
 
-        # Try categorized structure
-        for category_name in ["formal", "temporary"]:
-            category_dir = artifacts_root / category_name
-            run_dir = category_dir / slot.original_run
-            if run_dir.exists():
-                return await self._read_job_config(run_dir, slot.job_name)
+        run_dirs = []
+        if manifest_run_dir := self.manifest.metadata.get("run_dir"):
+            run_dirs.append(Path(manifest_run_dir))
+        if output_dir.name == run_name:
+            run_dirs.append(output_dir)
+        artifacts_root = output_dir.parent
+        run_dirs.extend(
+            artifacts_root / category / run_name
+            for category in ("formal", "temporary")
+        )
+        run_dirs.append(artifacts_root / run_name)
 
-        # Try legacy flat structure
-        run_dir = artifacts_root / slot.original_run
-        if run_dir.exists():
-            return await self._read_job_config(run_dir, slot.job_name)
+        seen: set[Path] = set()
+        for run_dir in run_dirs:
+            if run_dir in seen or not run_dir.is_dir():
+                continue
+            seen.add(run_dir)
+            job_config = await self._read_job_config(run_dir, slot.job_name)
+            if job_config is not None:
+                return job_config
 
         return None
 
@@ -265,6 +293,13 @@ class RecoveryExecutor:
 
         # Reconstruct JobConfig from dict
         return JobConfig.model_validate(config_dict)
+
+
+def _task_matches(task: dict, task_id: str) -> bool:
+    """Match the canonical track__task name saved in a native task path."""
+    if task.get("path") is not None:
+        return Path(task["path"]).name == task_id
+    return task.get("name") == task_id
 
 
 class RecoveryResult:
