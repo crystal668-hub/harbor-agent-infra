@@ -131,6 +131,11 @@ class HermesHarnessRunner(HarnessRunner):
         return AgentConfig(
             import_path=self.import_path,
             model_name=spec.model,
+            env=(
+                {"ANTHROPIC_BASE_URL": "${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"}
+                if spec.installation_mode == "preinstalled"
+                and spec.model.startswith("anthropic/") else {}
+            ),
             skills=list(skills),
             override_setup_timeout_sec=1200,
             kwargs=kwargs,

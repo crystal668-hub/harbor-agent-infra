@@ -93,6 +93,22 @@ def test_legacy_serialization_and_missing_image_are_explicit():
         )
 
 
+def test_preinstalled_hermes_forwards_configured_anthropic_endpoint(tmp_path, monkeypatch):
+    from harbor.utils.env import resolve_env_vars
+
+    path, _ = candidate_lock(tmp_path)
+    lock = load_runtime_lock(path)
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://selected.example")
+    spec = AgentSpec(adapter="hermes", model="anthropic/claude-opus-5.5")
+    legacy = harness_runner_for("hermes").build_agent_config(spec, lock)
+    assert legacy.env == {}
+    selected = harness_runner_for("hermes").build_agent_config(
+        spec.model_copy(update={"installation_mode": "preinstalled"}), lock,
+    )
+    assert resolve_env_vars(selected.env)["ANTHROPIC_BASE_URL"] == "https://selected.example"
+    assert "selected.example" not in selected.model_dump_json()
+
+
 def test_candidate_config_preserves_source_and_only_changes_new_run(tmp_path, monkeypatch):
     import yaml
 

@@ -63,11 +63,15 @@ def matrix(lock_path: Path, templates: Path, output: Path) -> list[dict]:
     return entries
 
 
-async def run_matrix(lock_path: Path, templates: Path, output: Path) -> dict:
+async def run_matrix(
+    lock_path: Path, templates: Path, output: Path, *, names: tuple[str, ...] = NAMES,
+) -> dict:
     require_idle_docker()
     if output.exists():
         raise ValueError("acceptance matrix requires a new output directory")
-    entries = matrix(lock_path, templates, output)
+    entries = [entry for entry in matrix(lock_path, templates, output) if entry["harness"] in names]
+    if not entries:
+        raise ValueError("acceptance selection is empty")
     output.mkdir(parents=True)
     (output / "matrix.json").write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n")
     report = {"schema_version": "preinstalled-matrix.v1", "status": "running", "entries": []}
@@ -121,9 +125,12 @@ def main() -> int:
     parser.add_argument("--dotenv", type=Path, required=True)
     parser.add_argument("--templates", type=Path, default=Path("examples/experiments"))
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--harness", choices=NAMES, action="append")
     args = parser.parse_args()
     load_dotenv(args.dotenv, override=False)
-    report = asyncio.run(run_matrix(args.lock, args.templates, args.output_dir.absolute()))
+    report = asyncio.run(run_matrix(
+        args.lock, args.templates, args.output_dir.absolute(), names=tuple(args.harness or NAMES),
+    ))
     print(json.dumps({"status": report["status"], "entries": len(report["entries"])}, indent=2))
     return 0 if report["status"] == "passed" else 1
 
