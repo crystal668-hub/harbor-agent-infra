@@ -69,6 +69,7 @@ def recovery_run_dir(tmp_path: Path) -> Path:
         original_trial_id="trial-0",
         failure_classification=fc,
         original_run="original-run",
+        approved=True,
     )
 
     manifest = RecoveryManifest(
@@ -343,3 +344,11 @@ class TestResultMerger:
         assert data["merged_slots"] == 1
         assert isinstance(data["conflicts"], list)
         assert "merged_output_path" in data
+
+
+def test_legacy_merge_never_modifies_original(tmp_path, original_run_dir, recovery_run_dir):
+    from harbor_agent_infra.recovery.native_plan import fingerprint_inputs
+
+    before = fingerprint_inputs([original_run_dir, recovery_run_dir])
+    ResultMerger(original_run_dir, [recovery_run_dir], tmp_path / "merged").merge()
+    assert fingerprint_inputs([original_run_dir, recovery_run_dir]) == before

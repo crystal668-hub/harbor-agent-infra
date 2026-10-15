@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from harbor_agent_infra.contracts.failure_types import FailureCategory, FailureClassification
 from harbor_agent_infra.contracts.run_category import RunCategory
 from harbor_agent_infra.recovery.classifier import classify_failure
 from harbor_agent_infra.recovery.manifest import RecoveryManifest, RecoverySlot
@@ -136,7 +137,14 @@ def _find_failed_vgb_slots(run_dir: Path, run_name: str) -> list[RecoverySlot]:
 
     slots: list[RecoverySlot] = []
     for record in records:
-        if not isinstance(record, dict) or record.get("run_lifecycle_status") == "completed":
+        if not isinstance(record, dict):
+            continue
+        if record.get("recovery_resolved") and record.get("merge_action") != "scoring_pending":
+            continue
+        if (
+            record.get("run_lifecycle_status") == "completed"
+            and record.get("merge_action") != "scoring_pending"
+        ):
             continue
 
         attempt = record.get("final_attempt") or {}
@@ -154,15 +162,35 @@ def _find_failed_vgb_slots(run_dir: Path, run_name: str) -> list[RecoverySlot]:
             logs=logs,
             exit_code=exit_code,
         )
-        job_name = trial_dir.parent.name if trial_dir.parts else "unknown"
+        if record.get("merge_action") == "scoring_pending":
+            classification = FailureClassification(
+                FailureCategory.SCORING,
+                "Valid execution awaits scoring repair",
+                False,
+                {"source": "native_merge"},
+                1.0,
+            )
+        elif record.get("merge_action") == "review":
+            classification = FailureClassification(
+                FailureCategory.CAPABILITY,
+                "Recovery execution requires review",
+                False,
+                {"source": "native_merge", "validity": "unknown"},
+                0.3,
+            )
+        origin = record.get("recovery_origin") or {}
+        job_name = origin.get("original_job") or (
+            trial_dir.parent.name if trial_dir.parts else "unknown"
+        )
         trial_id = str(attempt.get("trial_id") or (trial_payload or {}).get("id") or "unknown")
         slots.append(
             RecoverySlot(
                 job_name=job_name,
                 task_id=str(record.get("task_name") or "unknown"),
-                original_trial_id=trial_id,
+                original_trial_id=origin.get("original_trial_id") or trial_id,
                 failure_classification=classification,
-                original_run=run_name,
+                original_run=origin.get("original_run") or run_name,
+                substitution_count=int(record.get("substitution_count", 0)),
             )
         )
     return slots
@@ -244,9 +272,7 @@ def _find_failed_trials(job_dir: Path) -> list[dict]:
 
             if exception_info:
                 failure_info["exception_type"] = exception_info.get("exception_type")
-                failure_info["exception_message"] = exception_info.get(
-                    "exception_message"
-                )
+                failure_info["exception_message"] = exception_info.get("exception_message")
 
             # Try to get logs
             logs_path = job_dir / f"{trial_id}.log"

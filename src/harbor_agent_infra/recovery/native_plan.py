@@ -220,7 +220,11 @@ def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
     summary = read_json(summary_path)
     approved = manifest.get_approved_slots()
     outcomes = {r["slot_id"]: r for r in summary.get("slot_results", [])}
-    if len(outcomes) != len(approved) or summary.get("total_slots") != len(approved):
+    if (
+        len(outcomes) != len(summary.get("slot_results", []))
+        or len(outcomes) != len(approved)
+        or summary.get("total_slots") != len(approved)
+    ):
         raise ValueError("Final recovery result does not cover every approved slot")
     state_path = root / "recovery-state.json"
     if state_path.exists() and read_json(state_path).get("status") != "finished":
@@ -304,6 +308,10 @@ def _select(slot: SlotPlan, plan: NativeMergePlan) -> None:
             )
         return
     if slot.record.get("recovery_resolved"):
+        if fresh:
+            plan.conflicts.append(
+                f"Slot already has an effective representative: {slot.record['task_name']}"
+            )
         return
     for candidate in sorted(fresh, key=lambda c: c.ordinal):
         if candidate.validity == "review":

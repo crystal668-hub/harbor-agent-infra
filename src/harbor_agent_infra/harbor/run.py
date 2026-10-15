@@ -322,7 +322,8 @@ class RunEventSink:
         self.network_policies = network_policies or {}
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def __call__(self, event: TrialHookEvent, *, group_id: str) -> None:
+    def project(self, event: TrialHookEvent, *, group_id: str) -> tuple[Path, dict, dict]:
+        """Project an existing native result without writing or scoring it."""
         result = event.result
         record_name = f"{event.trial_name}__{event.trial_id}"
         record_path = self.path.parent.parent / "per-record" / group_id / f"{record_name}.json"
@@ -468,6 +469,10 @@ class RunEventSink:
             **record_payload,
             "trial_result": trial_dump,
         }
+        return record_path, payload, event_payload
+
+    async def __call__(self, event: TrialHookEvent, *, group_id: str) -> None:
+        record_path, payload, event_payload = self.project(event, group_id=group_id)
         await asyncio.to_thread(self._commit, record_path, payload, event_payload)
 
     def _commit(

@@ -158,6 +158,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="output directory for merged results"
     )
 
+    merge.add_argument(
+        "--dry-run", action="store_true",
+        help="validate native slot selections without writing files",
+    )
+
     analyze = subparsers.add_parser(
         "analyze",
         help="analyze recovery statistics and generate report"
@@ -563,6 +568,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"    - {recovery_run}")
         print(f"  Output: {args.output_dir}")
         print("")
+
+        if (args.original_run / "results.json").is_file():
+            from harbor_agent_infra.recovery.native_plan import plan_native_merge
+
+            plan = plan_native_merge(args.original_run, args.recovery_runs)
+            if args.dry_run:
+                print(json.dumps(plan.to_dict(), indent=2, ensure_ascii=False))
+                return 1 if plan.conflicts else 0
+            if plan.conflicts:
+                for conflict in plan.conflicts:
+                    print(f"Conflict: {conflict}")
+                return 1
+        elif args.dry_run:
+            print("Native merge dry-run requires the original results.json")
+            return 1
 
         # Create merger and execute
         merger = ResultMerger(
