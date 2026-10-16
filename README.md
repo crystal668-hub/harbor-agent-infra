@@ -1,6 +1,7 @@
 # Harbor Agent Infra
 
-Optional strict preinstalled harness images and their isolated build/acceptance workflow
+Formal experiments require strict preinstalled harness images from the main workspace's
+`runtime-lock.preinstalled.json`. Their isolated build/acceptance workflow and local use
 are documented in [docs/preinstalled-harness.md](docs/preinstalled-harness.md).
 
 This repository is the experiment control plane for Harbor Agent trials. It materializes
@@ -12,12 +13,13 @@ experiment matrix, execution protocol, and reporting requirements.
 See the [failure recovery migration plan](docs/failure-recovery-migration-plan.md)
 for failure classification, retry and recovery policy, and migration design.
 
-The control plane uses Harbor v0.23.0's native OpenClaw installed-agent path. Each Trial
-uses the immutable `hai-base-env` image derived from the locked Node base. The image
+The control plane uses Harbor v0.23.0's native installed-agent lifecycle. Formal Trials
+use one immutable preinstalled execution image per harness, derived from `hai-base-env`.
+The shared base image
 contains Python 3.11, pip 23.0.1, RDKit 2026.03.2, xTB 6.7.1, CREST 2.12 and venv support. Other
-Python packages remain agent-managed during the Trial. Harbor installs Node 22 through nvm
-and pins `openclaw@2026.6.34` inside the agent
-container. The VGB integration and real provider runs are separate acceptance gates.
+Python packages remain agent-managed during the Trial. Preinstalled setup verifies the
+locked harness and dependencies without downloading or reinstalling them.
+The VGB integration and real provider runs are separate acceptance gates.
 
 See [chemistry alignment](docs/chemistry.md) to bind the verifier's `vgb-crest`
 environment. Experiments now require the image and verifier to pass the shared
@@ -87,7 +89,7 @@ Provision the locked wheel into a host-side runtime and run the four-track accep
 
 ```bash
 uv run python scripts/provision_vgb_runtime.py \
-  --lock runtime-lock.json \
+  --lock runtime-lock.preinstalled.json \
   --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
   --runtime-dir .vgb-runtime
 VGB_PYTHON=.vgb-runtime/bin/python uv run pytest tests/test_vgb_integration.py

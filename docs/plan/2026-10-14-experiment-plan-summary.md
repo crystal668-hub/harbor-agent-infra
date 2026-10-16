@@ -141,7 +141,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 ## 配置检查清单
 
 ### 启动前必须确认
-- [ ] Agent 镜像已构建: `sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936`
+- [ ] 四个预装执行镜像与主工作区 `runtime-lock.preinstalled.json` 一致，均在本地可用
 - [ ] VGB runtime 已配置: `.vgb-runtime/bin/python`
 - [ ] 化学环境已验证: `chemistry-preflight.json`
 - [ ] Provider 凭据已设置: `.env` 文件
@@ -156,6 +156,7 @@ experiment:
     max_retries: 0  # 必须为 0
   
   agent:
+    installation_mode: preinstalled
     max_output_tokens: 64000
     # OpenClaw: thinking: high
     # Hermes: reasoning: high
@@ -190,15 +191,16 @@ uv python install 3.12.13
 uv venv --python 3.12.13 .venv
 uv sync --frozen --dev
 
-# 2. VGB Runtime
-uv run python scripts/provision_vgb_runtime.py \
-  --lock runtime-lock.json \
+# 2. VGB Runtime from the main workspace preinstalled lock
+uv run --locked --python 3.12 python scripts/provision_vgb_runtime.py \
+  --lock runtime-lock.preinstalled.json \
   --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
   --runtime-dir .vgb-runtime \
   --chemistry-prefix /path/to/vgb-crest
 
-# 3. Agent 镜像
-./scripts/build_agent_image.sh hai-base-env:chemistry-20261013
+# 3. Validate formal configs and preinstalled execution images
+uv run --locked --python 3.12 python scripts/update_experiment_configs.py
+bash scripts/run_formal_experiments.sh --dry-run
 
 # 4. 验证
 uv run hai doctor
@@ -297,7 +299,7 @@ uv run --locked hai aggregate \
 3. **保全证据**: 任何删除或恢复前，必须先保全现场
 4. **人工审查**: 所有补跑必须经过人工审查批准
 5. **执行顺序**: 按 repeat 轮次串行调度，每轮覆盖 16 个组合；每个 Job 内并发 2 Trials
-6. **预装镜像**: 待当前实验补跑完成后实施、验收并切换后续新实验；旧 run 保留冻结环境身份
+6. **预装镜像**: 后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json` 和对应预装镜像；旧 run 保留冻结环境身份
 7. **单组声明**: 本地正式配置仅保留 `skills_off`，由 `scripts/update_experiment_configs.py` 维护
 
 ---

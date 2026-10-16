@@ -84,9 +84,11 @@ uv run --locked --python 3.12 hai view
 恢复、原生目录合并与首条有效代表选择遵循
 [正式恢复约定](2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
 
-**预装镜像待执行，先完成当前实验补跑，再实施、验收并切换后续新实验。**
-切换记录新的镜像 digest 与执行条件；原始及恢复 run 保留原冻结环境身份。
-预装实施与验收范围见[预装计划](2026-10-15-preinstalled-harness-migration-plan.md)。
+**后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json` 与对应的预装执行镜像。**
+配置更新器写入绝对锁路径、`installation_mode: preinstalled` 和锁定 digest，
+矩阵入口与 `hai run --formal-repeat` 都在派发前验证；任何不符直接拒绝启动。
+原始及恢复 run 保留原冻结环境身份，跨环境不自动替代。
+预装验收范围见[验收报告](2026-10-16-preinstalled-harness-acceptance.md)。
 
 ## 5. 分 track 统计与报告
 

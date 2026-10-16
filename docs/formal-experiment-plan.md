@@ -200,8 +200,10 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 | 组件 | 版本/配置 | 说明 |
 |------|----------|------|
-| Agent 镜像 | `hai-base-env` | Digest: `sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936` |
-| 平台 | `linux/arm64` | |
+| 正式运行锁 | `runtime-lock.preinstalled.json` | 主工作区根目录；正式配置使用绝对路径 |
+| 安装模式 | `preinstalled` | 缺失或错版直接失败，不回退安装 |
+| 执行镜像平台 | `linux/arm64` | 四个 harness 各使用独立派生镜像 |
+| 共同基础镜像 | `hai-base-env` | 仅为父镜像，不作为正式 Trial 的执行镜像 |
 | Python (Agent) | 3.11 | 预装在镜像中 |
 | Python (VGB) | 3.12 | 宿主隔离 runtime |
 | RDKit | 2026.03.2 | Agent 与 Verifier 共享锁 |
@@ -214,10 +216,24 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 | Codex | 0.162.1 | 通过本地 protocol bridge 配置输出上限 |
 | Claude Code | 2.1.296 | Native CLI |
 
-预装镜像方案待执行：先完成当前实验补跑，再实施并验收预装方案、切换后续新实验。
-切换时冻结新的镜像 digest 与执行条件；原始 run、补跑及其结果保留原冻结身份，
-不得自动将不同环境的结果作为同条件替代。详见
-[预装镜像实施计划](plan/2026-10-15-preinstalled-harness-migration-plan.md)。
+当前主工作区已采用本地验收的预装镜像。正式 Trial 按 harness 选择下列不可变执行镜像；
+镜像名中的 `latest` 不参与版本选择，实际身份由 digest 固定，`pull_policy: never`。
+
+| Harness | 执行镜像 | Digest |
+| --- | --- | --- |
+| OpenClaw | `hai-openclaw-latest` | `sha256:083e6590790627b6f35dc4b771d89d635e724b5b28f29037ea55746c9e05f54f` |
+| Hermes | `hai-hermes-latest` | `sha256:6a5985d929602fee0905c2548afab5058192dc812e4538e3b8b57d93042444bb` |
+| Codex | `hai-codex-latest` | `sha256:ae908ae8e55477ef999c5c4f1a18fe017146f057ab813c8646a2d606ac8ac41e` |
+| Claude Code | `hai-claude-code-latest` | `sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16` |
+
+四个镜像仍以 `hai-base-env@sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936`
+为共同父层。正式配置的 `experiment.benchmark.package_lock` 必须指向主工作区
+`runtime-lock.preinstalled.json` 的绝对路径，`experiment.agent.installation_mode` 必须为
+`preinstalled`，`experiment.image` 必须与锁定的 harness 执行镜像完全一致。
+正式矩阵启动器和带 `--formal-repeat` 的直接运行在派发前校验这些条件；
+不符合则拒绝启动，不回退到 `runtime-lock.json`。镜像目前仅在本机，跨主机运行前需发布并核对
+Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨环境自动替代。
+验收依据见[预装镜像验收报告](plan/2026-10-16-preinstalled-harness-acceptance.md)。
 
 ### 5.5 技能配置
 - **Group**: 仅运行 `skills_off`
@@ -421,15 +437,13 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
    uv sync --frozen --dev
    
    # VGB Runtime
-   uv run python scripts/provision_vgb_runtime.py \
-     --lock runtime-lock.json \
+   uv run --locked --python 3.12 python scripts/provision_vgb_runtime.py \
+     --lock runtime-lock.preinstalled.json \
      --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
      --runtime-dir .vgb-runtime \
      --chemistry-prefix /path/to/vgb-crest
    
-   # Agent 镜像
-   ./scripts/build_agent_image.sh hai-base-env:chemistry-20261013
-   # 记录返回的 RepoDigest，更新配置中的 digest 字段
+   # 四个预装执行镜像已构建并验收；正式准备不重建基础镜像
    ```
 
 2. **验证环境**:
@@ -441,7 +455,12 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
      tests/test_chemistry_integration.py
    ```
 
-3. **准备配置模板**: 更新 `configs/experiments/` 下的模板
+3. **准备配置并验证预装锁**:
+   ```bash
+   uv run --locked --python 3.12 python scripts/update_experiment_configs.py
+   bash scripts/run_formal_experiments.sh --dry-run
+   ```
+   配置更新器从主工作区预装锁写入四个执行镜像；矩阵预检必须通过。
 
 ### 9.2 执行阶段
 
@@ -461,6 +480,9 @@ uv run --locked --python 3.12 hai run \
   --config configs/experiments/openclaw/vgb-gpt.config.yaml \
   --group skills_off --formal-provider openai --formal-repeat 1
 ```
+
+上述配置必须引用主工作区的预装锁及 OpenClaw 执行镜像。历史旧锁只用于核对历史产物，
+不能作为后续正式 run 的启动配置。
 
 统一入口串行调度 48 个原始 run，每个 Job 内并发 2 Trials。已有目录会保留并跳过，
 目录存在不代表完成；进入下一轮前须核对本轮全部 run 的结束状态，处理未完成或误跳过的 run。
@@ -754,6 +776,7 @@ uv run --locked --python 3.12 hai formal-summary \
 - 2026-10-14: 初始版本，待审核
 - 2026-10-15: 用户确认固定时间能力比较、单 turn 64,000 输出约束、分 track 报告、按 repeat 轮次执行、当前补跑后再切换预装镜像；修正为 48 个原始 run / 3,408 slots，并收敛本地单组配置
 - 2026-10-16: 新增实验进度与分 track 得分台账，覆盖 48 个子实验，并记录已核对的 Claude Code × DeepSeek repeat1 合并快照结果
+- 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json`
 
 ### 15.3 审批
 - [x] 本轮实验设计调整确认（2026-10-15，见变更历史）
