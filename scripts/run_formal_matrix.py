@@ -6,19 +6,45 @@ import argparse
 import subprocess
 from pathlib import Path
 
-from harbor_agent_infra.formal import formal_run_name
+import yaml
+
+from harbor_agent_infra.formal import (
+    formal_run_name,
+    validate_formal_preinstalled_experiment,
+)
+
+MODELS = (
+    ("deepseek", "deepseek"),
+    ("qwen", "qwen"),
+    ("gpt", "openai"),
+    ("claude", "anthropic"),
+)
+HARNESSES = ("claude-code", "codex", "hermes", "openclaw")
+
+
+def validate_formal_configs(workspace_root: Path) -> None:
+    """Refuse formal runs unless all configs use this workspace's preinstalled lock."""
+    workspace_root = workspace_root.resolve()
+    for harness in HARNESSES:
+        for template, _ in MODELS:
+            config_path = (
+                workspace_root / "configs" / "experiments" / harness
+                / f"vgb-{template}.config.yaml"
+            )
+            if not config_path.is_file():
+                raise ValueError(f"formal experiment config is missing: {config_path}")
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            try:
+                validate_formal_preinstalled_experiment(config["experiment"], workspace_root)
+            except ValueError as exc:
+                raise ValueError(f"{config_path}: {exc}") from exc
 
 
 def matrix_commands() -> list[tuple[str, list[str]]]:
     commands = []
     for repeat in (1, 2, 3):
-        for harness in ("claude-code", "codex", "hermes", "openclaw"):
-            for template, provider in (
-                ("deepseek", "deepseek"),
-                ("qwen", "qwen"),
-                ("gpt", "openai"),
-                ("claude", "anthropic"),
-            ):
+        for harness in HARNESSES:
+            for template, provider in MODELS:
                 name = formal_run_name(harness, provider, repeat)
                 commands.append(
                     (
@@ -50,6 +76,10 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--interactive", action="store_true")
     args = parser.parse_args()
+    try:
+        validate_formal_configs(Path(__file__).resolve().parents[1])
+    except ValueError as exc:
+        parser.error(str(exc))
     for name, command in matrix_commands():
         if args.dry_run:
             print(" ".join(command))

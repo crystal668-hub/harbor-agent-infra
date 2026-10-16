@@ -2,24 +2,28 @@
 """
 Update experiment configuration templates to match formal experiment plan.
 
-Ensures all 16 harness×model configs use unified parameters:
+Ensures all 16 harness×model configs use the formal experiment contract:
 - Agent timeout: 7200s (2 hours)
 - Resources: 4 CPU / 6144 MB
 - Concurrent trials: 2
 - max_retries: 0
 - Groups: skills_off only
+- The main workspace runtime-lock.preinstalled.json and matching harness image
 - Output dir: run-artifacts/formal/<experiment-id>
 """
 
 import sys
 from pathlib import Path
+
 import yaml
 
+from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 
-def update_config(config_path: Path) -> bool:
+
+def update_config(config_path: Path, lock_path: Path, lock) -> bool:
     """Update a single config file with unified parameters."""
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
 
         # Track changes
@@ -34,6 +38,25 @@ def update_config(config_path: Path) -> bool:
         if config['experiment'].get('groups') != groups:
             config['experiment']['groups'] = groups
             changes.append('groups: skills_off only')
+
+        experiment = config['experiment']
+        harness = experiment['agent']['adapter']
+        image = lock.execution_image(harness, 'preinstalled')
+        if experiment['benchmark'].get('package_lock') != str(lock_path):
+            experiment['benchmark']['package_lock'] = str(lock_path)
+            changes.append('package_lock: main workspace runtime-lock.preinstalled.json')
+        if experiment['agent'].get('installation_mode') != 'preinstalled':
+            experiment['agent']['installation_mode'] = 'preinstalled'
+            changes.append('installation_mode: preinstalled')
+        locked_image = {
+            'reference': image.reference,
+            'digest': image.digest,
+            'platform': image.platform,
+            'pull_policy': 'never',
+        }
+        if experiment.get('image') != locked_image:
+            experiment['image'] = locked_image
+            changes.append(f'image: {image.immutable_reference}')
 
         # Update task timeouts
         if config.get('task', {}).get('agent_timeout_sec') != 7200:
@@ -68,7 +91,10 @@ def update_config(config_path: Path) -> bool:
 
         # Update output_dir to formal path
         output_dir = config.get('run', {}).get('output_dir', '')
-        if output_dir.startswith('run-artifacts/') and not output_dir.startswith('run-artifacts/formal/'):
+        if (
+            output_dir.startswith('run-artifacts/')
+            and not output_dir.startswith('run-artifacts/formal/')
+        ):
             # Extract experiment ID from current path
             old_dir = output_dir.replace('run-artifacts/', '')
             new_dir = f'run-artifacts/formal/{old_dir}'
@@ -90,13 +116,15 @@ def update_config(config_path: Path) -> bool:
 
     except Exception as e:
         print(f"✗ {config_path.relative_to(Path.cwd())}: {e}", file=sys.stderr)
-        return False
+        raise
 
 
 def main():
     """Update all experiment configs."""
     repo_root = Path(__file__).parent.parent
     configs_dir = repo_root / 'configs' / 'experiments'
+    lock_path = (repo_root / 'runtime-lock.preinstalled.json').resolve()
+    lock = load_runtime_lock(lock_path)
 
     harnesses = ['openclaw', 'hermes', 'codex', 'claude-code']
     models = ['gpt', 'claude', 'qwen', 'deepseek']
@@ -116,21 +144,20 @@ def main():
             config_file = harness_dir / f'vgb-{model}.config.yaml'
             if config_file.exists():
                 total += 1
-                if update_config(config_file):
+                if update_config(config_file, lock_path, lock):
                     updated += 1
             else:
-                print(f"⚠ {config_file.relative_to(repo_root)} does not exist")
+                raise FileNotFoundError(f"formal config is missing: {config_file}")
 
     print(f"\n{'='*60}")
     print(f"Summary: {updated}/{total} configs updated")
 
     if updated > 0:
         print("\nNext steps:")
-        print("1. Review the changes: git diff configs/experiments/")
-        print("2. Run tests: source .venv/bin/activate && python -m pytest -m 'not integration' -q")
-        print("3. Commit: git add configs/ && git commit -m 'config: unify experiment parameters'")
+        print("1. Validate all configs: bash scripts/run_formal_experiments.sh --dry-run")
+        print("2. Run tests: uv run --locked --python 3.12 pytest -m 'not integration'")
 
-    return 0 if total == updated or updated > 0 else 1
+    return 0 if total == len(harnesses) * len(models) else 1
 
 
 if __name__ == '__main__':

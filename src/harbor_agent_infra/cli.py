@@ -331,7 +331,10 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("hai run requires experiment.v2 with skills_on and skills_off groups")
         formal_context = None
         if args.formal_repeat is not None or args.formal_provider is not None:
-            from harbor_agent_infra.formal import formal_run_name
+            from harbor_agent_infra.formal import (
+                formal_run_name,
+                validate_formal_preinstalled_experiment,
+            )
 
             if args.formal_repeat is None or args.formal_provider is None or args.config is None:
                 raise ValueError(
@@ -346,6 +349,9 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(
                     "Formal repeat requires skills_off, one attempt, no retries and concurrency 2"
                 )
+            validate_formal_preinstalled_experiment(
+                spec.model_dump(mode="json"), Path(__file__).resolve().parents[2]
+            )
             name = formal_run_name(spec.agent.adapter, args.formal_provider, args.formal_repeat)
             expected_output = args.formal_root / name
             if (args.output_dir is not None

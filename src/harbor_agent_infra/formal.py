@@ -7,8 +7,38 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+
 HARNESSES = ("openclaw", "hermes", "codex", "claude-code")
 PROVIDERS = ("openai", "anthropic", "qwen", "deepseek")
+
+
+def validate_formal_preinstalled_experiment(experiment: dict, workspace_root: Path) -> None:
+    """Bind a new formal run to this checkout's locked preinstalled harness image."""
+    workspace_root = workspace_root.resolve()
+    lock_path = workspace_root / "runtime-lock.preinstalled.json"
+    if not lock_path.is_file():
+        raise ValueError(f"required formal runtime lock is missing: {lock_path}")
+    declared_lock = Path(experiment["benchmark"]["package_lock"])
+    if not declared_lock.is_absolute() or declared_lock.resolve() != lock_path:
+        raise ValueError(f"formal runtime lock must be the main workspace file: {lock_path}")
+    agent = experiment["agent"]
+    if agent.get("installation_mode") != "preinstalled":
+        raise ValueError("formal harness must use preinstalled mode")
+    lock = load_runtime_lock(lock_path)
+    image = lock.execution_image(agent["adapter"], "preinstalled")
+    declared_image = experiment["image"]
+    expected = (image.reference, image.digest, image.platform, "never")
+    actual = tuple(declared_image.get(field) for field in (
+        "reference", "digest", "platform", "pull_policy"
+    ))
+    if actual != expected:
+        raise ValueError("formal execution image must match the preinstalled runtime lock")
+    groups = experiment.get("groups", [])
+    if len(groups) != 1 or groups[0].get("id") != "skills_off" or groups[0].get(
+        "skills_enabled"
+    ) is not False:
+        raise ValueError("formal config must declare only skills_off")
 
 
 def formal_run_name(harness: str, provider: str, repeat: int) -> str:
@@ -38,7 +68,7 @@ def freeze_formal_slots(output: Path, context: dict, materialized, experiment: d
             "snapshot": str(snapshot),
             "experiment_sha256": group.experiment_sha256,
             "resource_config_sha256": group.resource_config_sha256,
-            "image": group.agent_base_image,
+            "image": group.agent_execution_image or group.agent_base_image,
         }
         bindings[group_id] = {}
         for task in materialized.tasks:

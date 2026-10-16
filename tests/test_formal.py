@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 from harbor import JobConfig
 from harbor.models.trial.config import TaskConfig
 
@@ -14,8 +15,10 @@ from harbor_agent_infra.formal import (
     aggregate_formal_snapshots,
     formal_run_name,
     freeze_formal_slots,
+    validate_formal_preinstalled_experiment,
 )
-from scripts.run_formal_matrix import matrix_commands
+from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from scripts.run_formal_matrix import matrix_commands, validate_formal_configs
 
 
 def test_full_matrix_has_48_independent_runs_and_3408_slots(tmp_path):
@@ -92,6 +95,74 @@ def test_formal_summary_separates_tracks_runs_and_unscored_records(tmp_path):
         assert row["mean_vgb_score"] == expected
 
 
+@pytest.mark.parametrize("harness", HARNESSES)
+def test_formal_experiment_requires_workspace_preinstalled_lock_and_image(harness):
+    lock_path = Path("runtime-lock.preinstalled.json").resolve()
+    lock = load_runtime_lock(lock_path)
+    image = lock.execution_image(harness, "preinstalled")
+    experiment = {
+        "benchmark": {"package_lock": str(lock_path)},
+        "agent": {"adapter": harness, "installation_mode": "preinstalled"},
+        "image": {
+            "reference": image.reference,
+            "digest": image.digest,
+            "platform": image.platform,
+            "pull_policy": "never",
+        },
+        "groups": [{"id": "skills_off", "skills_enabled": False}],
+    }
+    validate_formal_preinstalled_experiment(experiment, Path.cwd())
+    for mutation, expected in (
+        (lambda value: value["benchmark"].update(package_lock="runtime-lock.json"), "runtime lock"),
+        (lambda value: value["agent"].update(installation_mode="runtime_install"), "preinstalled"),
+        (
+            lambda value: value["image"].update(digest=lock.agent_base_image.digest),
+            "execution image",
+        ),
+    ):
+        changed = json.loads(json.dumps(experiment))
+        mutation(changed)
+        with pytest.raises(ValueError, match=expected):
+            validate_formal_preinstalled_experiment(changed, Path.cwd())
+
+
+def test_matrix_requires_all_16_configs_to_match_workspace_preinstalled_lock(tmp_path):
+    import shutil
+
+    workspace = tmp_path / "workspace"
+    lock_path = workspace / "runtime-lock.preinstalled.json"
+    workspace.mkdir()
+    shutil.copyfile("runtime-lock.preinstalled.json", lock_path)
+    lock = load_runtime_lock(lock_path)
+    for harness in HARNESSES:
+        for template, _ in (
+            ("deepseek", "deepseek"),
+            ("qwen", "qwen"),
+            ("gpt", "openai"),
+            ("claude", "anthropic"),
+        ):
+            image = lock.execution_image(harness, "preinstalled")
+            config_path = (
+                workspace / "configs" / "experiments" / harness
+                / f"vgb-{template}.config.yaml"
+            )
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(yaml.safe_dump({"experiment": {
+                "benchmark": {"package_lock": str(lock_path)},
+                "agent": {"adapter": harness, "installation_mode": "preinstalled"},
+                "image": {"reference": image.reference, "digest": image.digest,
+                          "platform": image.platform, "pull_policy": "never"},
+                "groups": [{"id": "skills_off", "skills_enabled": False}],
+            }}))
+    validate_formal_configs(workspace)
+    first = workspace / "configs/experiments/claude-code/vgb-deepseek.config.yaml"
+    config = yaml.safe_load(first.read_text())
+    config["experiment"]["benchmark"]["package_lock"] = "runtime-lock.json"
+    first.write_text(yaml.safe_dump(config))
+    with pytest.raises(ValueError, match="main workspace file"):
+        validate_formal_configs(workspace)
+
+
 def test_formal_protocol_freezes_names_identity_and_job_before_execution(tmp_path):
     task = tmp_path / "tasks" / "track__task"
     task.mkdir(parents=True)
@@ -110,6 +181,7 @@ def test_formal_protocol_freezes_names_identity_and_job_before_execution(tmp_pat
             experiment_sha256="experiment",
             resource_config_sha256="resources",
             agent_base_image="image@sha256:" + "a" * 64,
+            agent_execution_image="preinstalled@sha256:" + "b" * 64,
         )
     }
     context = {
@@ -126,6 +198,8 @@ def test_formal_protocol_freezes_names_identity_and_job_before_execution(tmp_pat
     slot = bindings["skills_off"][task.name]
     assert slot["repeat_index"] == 1 and len(slot["slot_id"]) == 64
     assert (output / "protocol.json").is_file()
+    protocol = json.loads((output / "protocol.json").read_text())
+    assert protocol["groups"]["skills_off"]["image"] == "preinstalled@sha256:" + "b" * 64
     assert (output / "frozen-jobs/skills_off.json").is_file()
     assert len((output / "slots.jsonl").read_text().splitlines()) == 1
 
@@ -151,7 +225,25 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
     config = config.model_copy(
         update={"resources": config.resources.model_copy(update={"capacity": capacity})}
     )
-    monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: config)
+    old_config = config
+    lock_path = Path("runtime-lock.preinstalled.json").resolve()
+    image = load_runtime_lock(lock_path).execution_image("claude-code", "preinstalled")
+    spec = config.experiment
+    spec = spec.model_copy(update={
+        "benchmark": spec.benchmark.model_copy(update={"package_lock": str(lock_path)}),
+        "agent": spec.agent.model_copy(update={"installation_mode": "preinstalled"}),
+        "image": spec.image.model_copy(update={
+            "reference": image.reference,
+            "digest": image.digest,
+            "platform": image.platform,
+            "pull_policy": "never",
+        }),
+        "groups": [group for group in spec.groups if group.id == "skills_off"],
+    })
+    config = config.model_copy(
+        update={"experiment": spec}
+    )
+    monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: old_config)
     monkeypatch.setattr("harbor_agent_infra.cli.VgbRuntime.from_executable", lambda _: object())
     run = AsyncMock()
     monkeypatch.setattr("harbor_agent_infra.cli.run_paired_jobs", run)
@@ -166,6 +258,10 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
         "--formal-root",
         str(tmp_path),
     ]
+    with pytest.raises(ValueError, match="formal runtime lock"):
+        main(args)
+    assert run.await_count == 0
+    monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: config)
     assert main(args) == 0
     kwargs = run.await_args.kwargs
     assert kwargs["output_root"] == tmp_path / "claude-code-deepseek-repeat2"
