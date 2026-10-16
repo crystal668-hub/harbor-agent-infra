@@ -640,7 +640,7 @@ uv run --locked hai aggregate \
 ## 14. 实验进度与分 track 得分台账
 
 **最后核对日期**：2026-10-16。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前 1 个子实验已验收，Claude Code × Qwen repeat1 正在运行；Claude Code × GPT、Claude repeat1 已获准按顺序接续，尚未启动。
+当前 1 个子实验已验收；Claude Code × Qwen repeat1 的旧安装模式 run 已中断并完成现场评估，预装模式正在补齐其余 basic 任务；Claude Code × GPT、Claude repeat1 等待 Qwen 预装 run 完成后接续。
 其余 44 个子实验尚未在本地 `run-artifacts/formal/` 发现规范目录，启动状态待核对。
 
 ### 14.1 更新与统计口径
@@ -657,7 +657,7 @@ uv run --locked hai aggregate \
 | Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
-| Claude Code | Qwen | 运行中（见来源 B） | — | — |
+| Claude Code | Qwen | 预装运行中（见来源 B、C） | 12 / 20；0.413925 | — |
 | Claude Code | GPT | 待串行启动 | — | — |
 | Claude Code | Claude | 待串行启动 | — | — |
 | Codex | DeepSeek | 未发现产物，待核对 | — | — |
@@ -720,11 +720,12 @@ uv run --locked hai aggregate \
 | 来源 | 子实验 / 原始 run 目录名 | 本次入选快照（相对 `run-artifacts/formal/`） | 核对日期 | 缺失与验收备注 |
 | --- | --- | --- | --- | --- |
 | A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | 已验收；advanced/basic 缺失均为 0。3 条 basic 记录为 7200 秒正常超时，属于有效能力观测，保留分数且不再补跑；其余工程失败已由 recovery batch1/2 处理 |
-| B | `claude-code-qwen-repeat1` | 尚未形成最终快照 | 2026-10-16 | 原安装模式、71 个冻结 slots、并发 2；运行中已出现网络安装失败和非零退出，结束后审计，不能据此填写最终均分。每小时检查；遇需恢复的问题时暂停后续接续并通知 |
+| B | `claude-code-qwen-repeat1` | `claude-code-qwen-repeat1-interrupted-assessed` | 2026-10-16 | 旧 `runtime-lock.json` / `hai-base-env` 条件已中断；已评估 20 个 advanced slots，其中 12 个已评分，均分 0.413925。019 明确答案经原 VGB runtime 重评分为 0.474084；020 无最终答案，记录为 AgentTimeoutError，未评分。剩余 51 个 basic slots 转入预装 run |
+| C | `claude-code-qwen-repeat1-preinstalled` | `claude-code-qwen-repeat1-preinstalled` | 2026-10-16 | 使用 `runtime-lock.preinstalled.json`、`hai-claude-code-latest@sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16`、`installation_mode: preinstalled`；仅运行旧 run 未执行的 51 个 basic slots，当前运行中 |
 
 来源 A 的 `formal-summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
 与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
-当前统计已完成该子实验的验收；后续汇总继续按原始 slot 代表和恢复协议执行。
+当前 Qwen 结果跨两个冻结环境，必须按来源分开核对；预装 run 完成后再决定每个 slot 的代表结果，不能把旧环境与预装环境的同一 slot 直接混合。
 
 核对现有结果的只读命令：
 
