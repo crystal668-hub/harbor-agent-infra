@@ -668,7 +668,7 @@ uv run --locked hai aggregate \
 
 - 按 repeat1 → repeat2 → repeat3 跟踪，每轮列出全部 16 个组合；repeat 对应内部索引 0、1、2。
 - 两个 track 独立统计。得分单元格格式为 **计分样本 / 预定数；VGB 均分**，advanced 每次 20 slots，basic 每次 51 slots；均分保留 6 位小数。
-- 正常评分中的零分保留；`AgentTimeoutError` 或明确达到 7200 秒协议上限且未产生分数的记录，按可评分 `0.0` 纳入对应 track 分母。安全拒答、工程失败及其他无评分记录不补零，并在备注中单独列出。`—` 表示尚无可核实的分 track 统计，不代表零分或已确认未启动。
+- 正常评分中的零分保留；`AgentTimeoutError` 或明确达到 7200 秒协议上限且未产生分数的记录，按可评分 `0.0` 纳入对应 track 分母。本轮 Claude Advanced 的安全限制拒答也按用户决定计为 `0.0`；其他安全拒答、工程失败及无评分记录不默认补零，并在备注中单独列出。`—` 表示尚无可核实的分 track 统计，不代表零分或已确认未启动。
 - 状态随执行更新为运行中、待恢复、补跑中、已合并待验收、已验收或阻塞；不能仅凭目录存在或已评分数判定完成。部分结果须在备注中记录缺失数和原因。
 - 每个原始 run 只选一个原始或 merged 快照；补跑不新增子实验，不与原始结果重复计数。变更镜像或其他冻结条件时记录条件身份，按第 5.4 节处理。
 - 每次更新同步维护第 14.5 节的来源与备注；分数由 `hai formal-summary` 的 `run_track` 核对，不使用混合 track 均分替代。
@@ -680,7 +680,7 @@ uv run --locked hai aggregate \
 | Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
 | Claude Code | Qwen | 已验收；advanced 使用来源 G 的临时条件合并快照，basic 使用来源 C | 20 / 20；0.356398 | 51 / 51；0.827732 |
 | Claude Code | GPT | 已结束；71 个安装/Provider 网络连接失败，见来源 D | 0 / 20；— | 0 / 51；— |
-| Claude Code | Claude | 已验收；1 个安全拒答仍未评分，1 个超时按 0 计入，见来源 E | 19 / 20；0.638808 | 51 / 51；0.859013 |
+| Claude Code | Claude | 已验收；1 个安全限制拒答与 1 个超时均按 0 计入，见来源 E | 20 / 20；0.606868 | 51 / 51；0.859013 |
 | Codex | DeepSeek | 未启动 | — | — |
 | Codex | Qwen | 未启动 | — | — |
 | Codex | GPT | 未启动 | — | — |
@@ -744,7 +744,7 @@ uv run --locked hai aggregate \
 | B | `claude-code-qwen-repeat1` | `claude-code-qwen-repeat1` | 2026-10-17 | 旧条件根汇总已从 20 份原生 Trial 结果重建；JobConfig、协议范围、slot 清单与 tasks 已收敛为 advanced 20 题，51 个未执行 basic 预定项移除并归档原 71 题版本。12 个原始结果已评分，7 个 setup 工程失败转为来源 F 的新条件恢复；020 为超时记录 |
 | C | `claude-code-qwen-repeat1-preinstalled` | `claude-code-qwen-repeat1-preinstalled` | 2026-10-17 | 预装镜像条件；51 个 basic slots 全部结束，49 个有原始评分，另 2 个为 7200 秒 AgentTimeoutError；最终均分按 51 个 slots 计，两个超时各按 0 |
 | D | `claude-code-openai-repeat1` | `claude-code-openai-repeat1` | 2026-10-17 | 预装镜像条件；71 个 slots 全部结束，均为 `NetworkConnectionError`（连接被拒绝），advanced/basic 均 0 个已评分。错误观测已保留，是否恢复待后续处理 |
-| E | `claude-code-anthropic-repeat1` | `claude-code-anthropic-repeat1` | 2026-10-18 | 预装镜像条件；71 个 slots 全部结束。advanced 18 个原始评分，1 个 `AgentSafetyRefusalError` 保持未评分，1 个 `AgentTimeoutError` 按 0 计入，最终 advanced 19/20；basic 51/51。 |
+| E | `claude-code-anthropic-repeat1` | `claude-code-anthropic-repeat1` | 2026-10-18 | 预装镜像条件；71 个 slots 全部结束。advanced 有 18 个原始评分，1 个 `AgentSafetyRefusalError` 与 1 个 `AgentTimeoutError` 均按用户决定计 0，最终 advanced 20/20、均分 0.606868；basic 51/51、均分 0.859013。 |
 | F | `claude-code-qwen-repeat1-advanced-preinstalled-recovery-batch1` | `claude-code-qwen-repeat1-advanced-preinstalled-recovery-batch1` | 2026-10-18 | 7 个获批 setup 工程失败均已结束；4 个补跑 Job 成功，3 个虽生命周期失败但保留有效 VGB 证据。按用户批准的临时条件变更参与来源 G 的 advanced 合并选择。 |
 | G | `claude-code-qwen-repeat1` + 来源 F | `claude-code-qwen-repeat1-merged` | 2026-10-18 | 临时允许原始 `runtime_install` 与补跑 `preinstalled` 条件合并；advanced 20 个 slots 中两个 7200 秒超时按 0 计入，最终均分 0.356398。该快照仅用于本轮最终统计，条件变更记录在 `merge-metadata.json`。 |
 
@@ -785,7 +785,7 @@ uv run --locked --python 3.12 hai formal-summary \
 - 2026-10-16: 新增实验进度与分 track 得分台账，覆盖 48 个子实验，并记录已核对的 Claude Code × DeepSeek repeat1 合并快照结果
 - 2026-10-17: 核对 Claude Code repeat1 四个模型组合均已结束；更新 Qwen 分环境结果、GPT 全量网络失败和 Claude 分 track 评分，并标记其余 44 个子实验未启动
 - 2026-10-17: 根据用户授权，将 Qwen advanced 的 7 个工程失败转为显式预装新条件恢复；重建旧目录根汇总并将其范围收敛为 advanced 20 题，归档旧 71 题范围和 51 个未执行 basic 任务文件
-- 2026-10-18: 按用户决定不再恢复 Claude 的安全拒答与超时；将超时记录按可评分 0 纳入最终均分，更新 Qwen/Claude repeat1 两个 track 的最终台账与来源快照
+- 2026-10-18: 按用户决定不再恢复 Claude 的安全拒答与超时；将 Claude Advanced 的安全限制拒答和超时均按可评分 0 纳入最终均分，更新 Qwen/Claude repeat1 两个 track 的最终台账与来源快照
 - 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json`
 
 ### 15.3 审批
