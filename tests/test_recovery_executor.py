@@ -535,3 +535,125 @@ async def test_recovery_cancellation_waits_for_active_cleanup(native_recovery):
     state = json.loads((executor.output_dir / "recovery-state.json").read_text())
     assert state["status"] == "interrupted"
     assert set(state["slots"].values()) == {"interrupted"}
+
+
+@pytest.fixture
+def changed_condition(native_recovery, tmp_path):
+    import hashlib
+
+    import yaml
+
+    from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
+    from harbor_agent_infra.harness_runner import harness_runner_for
+    from harbor_agent_infra.preparation.experiments import experiment_sha256
+    from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+
+    executor, original, _ = native_recovery
+    lock_path = Path("runtime-lock.preinstalled.json").resolve()
+    lock = load_runtime_lock(lock_path)
+    raw = yaml.safe_load(Path("examples/experiments/claude-code/vgb-qwen.config.yaml").read_text())
+    exp = raw["experiment"]
+    exp["agent"] = {
+        "adapter": "claude-code", "model": "fixture-model",
+        "reasoning_effort": "high", "installation_mode": "preinstalled",
+    }
+    exp["benchmark"]["package_lock"] = str(lock_path)
+    exp["groups"] = [{"id": "skills_off", "label": "off", "skills_enabled": False}]
+    spec = ExperimentSpecV2.model_validate(exp)
+    image = lock.execution_image("claude-code", "preinstalled")
+    spec = spec.model_copy(update={"image": spec.image.model_copy(update={
+        "reference": image.reference, "digest": image.digest,
+        "platform": image.platform, "pull_policy": "never",
+    })})
+    executor.run_config.experiment = spec
+    target = original.model_dump(mode="json")
+    target["tasks"] = target["tasks"][:2]
+    target["agents"][0]["name"] = None
+    expected = harness_runner_for("claude-code").build_agent_config(spec.agent, lock)
+    target["agents"][0]["import_path"] = expected.import_path
+    target["agents"][0]["kwargs"]["preinstalled"] = expected.kwargs["preinstalled"]
+    for task in target["tasks"]:
+        before = Path(task["path"])
+        after = tmp_path / "preinstalled-tasks" / before.name
+        for directory in (before, after):
+            directory.mkdir(parents=True)
+            (directory / "instruction.md").write_text("fixed public instruction")
+        (before / "task.toml").write_text(
+            '[agent]\ntimeout_sec=7200\n[environment]\ndocker_image="old@sha256:fixture"\n'
+        )
+        (after / "task.toml").write_text(
+            '[agent]\ntimeout_sec=7200\n[environment]\n'
+            f'docker_image="{image.immutable_reference}"\n'
+        )
+        task["path"] = str(after)
+    snapshot = tmp_path / "materialized.json"
+    payload = {"experiment_sha256": experiment_sha256(spec),
+               "groups": {"skills_off": {"job_config": target}}}
+    snapshot.write_text(json.dumps(payload))
+    change = {
+        "schema_version": "preinstalled-condition-change.v1",
+        "condition_id": "fixture-preinstalled",
+        "authorization": "User approved preinstalled execution as a new condition",
+        "task_names": [s.task_id for s in executor.manifest.slots],
+        "runtime_lock": str(lock_path),
+        "runtime_lock_sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
+        "materialized_snapshot": str(snapshot),
+        "materialized_snapshot_sha256": hashlib.sha256(snapshot.read_bytes()).hexdigest(),
+    }
+    executor.manifest.metadata["condition_change"] = change
+    return executor, original, snapshot
+
+
+@pytest.mark.asyncio
+async def test_explicit_condition_change_uses_preinstalled_tasks_and_records_provenance(
+    changed_condition,
+):
+    executor, original, _ = changed_condition
+    jobs = [AsyncMock(), AsyncMock()]
+    for job in jobs:
+        job.run.return_value = MagicMock(stats=MagicMock(n_errored_trials=0, n_cancelled_trials=0))
+    with patch("harbor_agent_infra.recovery.executor.Job.create", new_callable=AsyncMock) as create:
+        create.side_effect = jobs
+        result = await executor.execute()
+    assert result.succeeded == 2
+    for call in create.await_args_list:
+        config = call.args[0]
+        assert config.agents[0].import_path == "adapters.preinstalled:ClaudeCodeAgent"
+        assert "preinstalled-tasks" in str(config.tasks[0].path)
+        assert config.environment == original.environment
+        metadata = json.loads(
+            (config.jobs_dir / config.job_name / "recovery-metadata.json").read_text()
+        )
+        assert metadata["condition_change"]["condition_id"] == "fixture-preinstalled"
+        assert metadata["statistical_role"] == "new_condition_observation"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault", ["hash", "model", "resources", "prompt", "timeout", "scope"])
+async def test_condition_change_rejects_unapproved_drift_before_launch(changed_condition, fault):
+    import hashlib
+
+    executor, _, path = changed_condition
+    payload = json.loads(path.read_text())
+    job = payload["groups"]["skills_off"]["job_config"]
+    if fault == "model":
+        job["agents"][0]["model_name"] = "other-model"
+    elif fault == "resources":
+        job["environment"]["override_cpus"] = 100
+    elif fault == "scope":
+        job["tasks"] = job["tasks"][:1]
+    elif fault in ("prompt", "timeout"):
+        task = Path(job["tasks"][1]["path"])
+        name = "instruction.md" if fault == "prompt" else "task.toml"
+        f = task / name
+        f.write_text(f.read_text().replace("7200", "14400") if fault == "timeout" else "changed")
+    path.write_text(json.dumps(payload) + ("\n" if fault == "hash" else ""))
+    if fault != "hash":
+        executor.manifest.metadata["condition_change"]["materialized_snapshot_sha256"] = (
+            hashlib.sha256(path.read_bytes()).hexdigest()
+        )
+    with patch("harbor_agent_infra.recovery.executor.Job.create", new_callable=AsyncMock) as create:
+        with pytest.raises(ValueError, match="Condition change"):
+            await executor.execute()
+    create.assert_not_awaited()
+    assert not executor.output_dir.exists()

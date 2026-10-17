@@ -55,6 +55,10 @@ class RecoveryExecutor:
             )
 
         concurrency = await self.concurrency_limit()
+        if self.manifest.metadata.get("condition_change"):
+            # Validate the entire authorized scope before any Trial can start.
+            for slot in approved_slots:
+                await self.prepare_job_config(slot)
         # Exclusive directory creation is the batch lock. A crash leaves evidence;
         # never resume a partial batch by silently submitting its slots again.
         self.output_dir.mkdir(parents=True, exist_ok=False)
@@ -178,6 +182,9 @@ class RecoveryExecutor:
             "recovery_run": self.recovery_run_name,
             "recovery_timestamp": datetime.now().isoformat(),
         }
+        if change := self.manifest.metadata.get("condition_change"):
+            recovery_metadata["condition_change"] = change
+            recovery_metadata["statistical_role"] = "new_condition_observation"
 
         recovery_metadata_path = job_dir / "recovery-metadata.json"
         recovery_metadata_path.write_text(json.dumps(recovery_metadata, indent=2) + "\n")
@@ -267,6 +274,13 @@ class RecoveryExecutor:
         original_job_config = await self._load_original_job_config(slot)
         if original_job_config is None:
             raise ValueError("Could not load original job config")
+
+        if self.manifest.metadata.get("condition_change"):
+            from harbor_agent_infra.recovery.condition_change import preinstalled_condition_job
+
+            original_job_config = preinstalled_condition_job(
+                original_job_config, self.run_config, self.manifest, slot
+            )
 
         original_config = original_job_config.model_dump(mode="python")
         matching_tasks = [
