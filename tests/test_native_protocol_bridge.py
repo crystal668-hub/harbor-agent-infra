@@ -90,6 +90,30 @@ def test_bridge_rejects_wrong_credentials_and_models(client):
     assert response.status_code == 400
 
 
+@pytest.mark.parametrize(
+    "result",
+    [
+        {"id": "msg-fixture", "content": [{"type": "text", "text": "BRIDGE_OK"}]},
+        FakeResponse(),
+    ],
+)
+def test_nonstream_messages_route_serializes_dict_and_pydantic_results(client, monkeypatch, result):
+    handler = AsyncMock(return_value=result)
+    monkeypatch.setattr("litellm.anthropic.messages.acreate", handler)
+
+    response = client.post(
+        "/v1/messages",
+        headers={"x-api-key": "gpt-test-key"},
+        json={"model": "gpt-6.1-sol", "stream": False, "messages": []},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == (
+        result.model_dump(mode="json", exclude_none=True)
+        if isinstance(result, BaseModel) else result
+    )
+
+
 def test_bridge_does_not_return_sdk_exception_secrets(client, monkeypatch):
     monkeypatch.setattr(
         "litellm.aresponses",

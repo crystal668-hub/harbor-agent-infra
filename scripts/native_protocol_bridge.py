@@ -79,7 +79,11 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
             # SDK exception text can contain request URLs or credentials.
             raise HTTPException(502, f"Upstream conversion failed: {type(exc).__name__}") from None
         if not payload.get("stream"):
-            return JSONResponse(result.model_dump(mode="json", exclude_none=True))
+            response = (
+                result.model_dump(mode="json", exclude_none=True)
+                if hasattr(result, "model_dump") else result
+            )
+            return JSONResponse(response)
 
         async def events() -> AsyncIterator[bytes]:
             async for event in result:
