@@ -661,9 +661,8 @@ uv run --locked hai aggregate \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-10-16。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前 1 个子实验已验收；Claude Code × Qwen repeat1 的旧安装模式 run 已中断并完成现场评估，预装模式正在补齐其余 basic 任务；Claude Code × GPT、Claude repeat1 等待 Qwen 预装 run 完成后接续。
-其余 44 个子实验尚未在本地 `run-artifacts/formal/` 发现规范目录，启动状态待核对。
+**最后核对日期**：2026-10-17。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+截至本次核对，**4/48 个子实验已结束**，均为 Claude Code repeat1 的四个模型组合；**其余 44 个尚未启动**。Qwen、GPT、Claude 三个 run 均已结束，DeepSeek repeat1 已验收。Qwen 的 71 个 slot 因中途切换镜像分属旧环境 advanced 与预装环境 basic 两份快照，台账分别报告，不合并跨环境均值。
 
 ### 14.1 更新与统计口径
 
@@ -679,75 +678,77 @@ uv run --locked hai aggregate \
 | Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
-| Claude Code | Qwen | 预装运行中（见来源 B、C） | 12 / 20；0.413925 | — |
-| Claude Code | GPT | 待串行启动 | — | — |
-| Claude Code | Claude | 待串行启动 | — | — |
-| Codex | DeepSeek | 未发现产物，待核对 | — | — |
-| Codex | Qwen | 未发现产物，待核对 | — | — |
-| Codex | GPT | 未发现产物，待核对 | — | — |
-| Codex | Claude | 未发现产物，待核对 | — | — |
-| Hermes | DeepSeek | 未发现产物，待核对 | — | — |
-| Hermes | Qwen | 未发现产物，待核对 | — | — |
-| Hermes | GPT | 未发现产物，待核对 | — | — |
-| Hermes | Claude | 未发现产物，待核对 | — | — |
-| OpenClaw | DeepSeek | 未发现产物，待核对 | — | — |
-| OpenClaw | Qwen | 未发现产物，待核对 | — | — |
-| OpenClaw | GPT | 未发现产物，待核对 | — | — |
-| OpenClaw | Claude | 未发现产物，待核对 | — | — |
+| Claude Code | Qwen | 已结束；跨环境分列，见来源 B、C | 12 / 20；0.413925 | 49 / 51；0.861517 |
+| Claude Code | GPT | 已结束；71 个安装/Provider 网络连接失败，见来源 D | 0 / 20；— | 0 / 51；— |
+| Claude Code | Claude | 已结束；2 个 advanced 未评分，见来源 E | 18 / 20；0.674298 | 51 / 51；0.859013 |
+| Codex | DeepSeek | 未启动 | — | — |
+| Codex | Qwen | 未启动 | — | — |
+| Codex | GPT | 未启动 | — | — |
+| Codex | Claude | 未启动 | — | — |
+| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | Qwen | 未启动 | — | — |
+| Hermes | GPT | 未启动 | — | — |
+| Hermes | Claude | 未启动 | — | — |
+| OpenClaw | DeepSeek | 未启动 | — | — |
+| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | GPT | 未启动 | — | — |
+| OpenClaw | Claude | 未启动 | — | — |
 
 ### 14.3 Repeat 2
 
 | Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 未发现产物，待核对 | — | — |
-| Claude Code | Qwen | 未发现产物，待核对 | — | — |
-| Claude Code | GPT | 未发现产物，待核对 | — | — |
-| Claude Code | Claude | 未发现产物，待核对 | — | — |
-| Codex | DeepSeek | 未发现产物，待核对 | — | — |
-| Codex | Qwen | 未发现产物，待核对 | — | — |
-| Codex | GPT | 未发现产物，待核对 | — | — |
-| Codex | Claude | 未发现产物，待核对 | — | — |
-| Hermes | DeepSeek | 未发现产物，待核对 | — | — |
-| Hermes | Qwen | 未发现产物，待核对 | — | — |
-| Hermes | GPT | 未发现产物，待核对 | — | — |
-| Hermes | Claude | 未发现产物，待核对 | — | — |
-| OpenClaw | DeepSeek | 未发现产物，待核对 | — | — |
-| OpenClaw | Qwen | 未发现产物，待核对 | — | — |
-| OpenClaw | GPT | 未发现产物，待核对 | — | — |
-| OpenClaw | Claude | 未发现产物，待核对 | — | — |
+| Claude Code | DeepSeek | 未启动 | — | — |
+| Claude Code | Qwen | 未启动 | — | — |
+| Claude Code | GPT | 未启动 | — | — |
+| Claude Code | Claude | 未启动 | — | — |
+| Codex | DeepSeek | 未启动 | — | — |
+| Codex | Qwen | 未启动 | — | — |
+| Codex | GPT | 未启动 | — | — |
+| Codex | Claude | 未启动 | — | — |
+| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | Qwen | 未启动 | — | — |
+| Hermes | GPT | 未启动 | — | — |
+| Hermes | Claude | 未启动 | — | — |
+| OpenClaw | DeepSeek | 未启动 | — | — |
+| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | GPT | 未启动 | — | — |
+| OpenClaw | Claude | 未启动 | — | — |
 
 ### 14.4 Repeat 3
 
 | Harness | Model | 进度 | Advanced：已评分 / 20；均分 | Basic：已评分 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 未发现产物，待核对 | — | — |
-| Claude Code | Qwen | 未发现产物，待核对 | — | — |
-| Claude Code | GPT | 未发现产物，待核对 | — | — |
-| Claude Code | Claude | 未发现产物，待核对 | — | — |
-| Codex | DeepSeek | 未发现产物，待核对 | — | — |
-| Codex | Qwen | 未发现产物，待核对 | — | — |
-| Codex | GPT | 未发现产物，待核对 | — | — |
-| Codex | Claude | 未发现产物，待核对 | — | — |
-| Hermes | DeepSeek | 未发现产物，待核对 | — | — |
-| Hermes | Qwen | 未发现产物，待核对 | — | — |
-| Hermes | GPT | 未发现产物，待核对 | — | — |
-| Hermes | Claude | 未发现产物，待核对 | — | — |
-| OpenClaw | DeepSeek | 未发现产物，待核对 | — | — |
-| OpenClaw | Qwen | 未发现产物，待核对 | — | — |
-| OpenClaw | GPT | 未发现产物，待核对 | — | — |
-| OpenClaw | Claude | 未发现产物，待核对 | — | — |
+| Claude Code | DeepSeek | 未启动 | — | — |
+| Claude Code | Qwen | 未启动 | — | — |
+| Claude Code | GPT | 未启动 | — | — |
+| Claude Code | Claude | 未启动 | — | — |
+| Codex | DeepSeek | 未启动 | — | — |
+| Codex | Qwen | 未启动 | — | — |
+| Codex | GPT | 未启动 | — | — |
+| Codex | Claude | 未启动 | — | — |
+| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | Qwen | 未启动 | — | — |
+| Hermes | GPT | 未启动 | — | — |
+| Hermes | Claude | 未启动 | — | — |
+| OpenClaw | DeepSeek | 未启动 | — | — |
+| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | GPT | 未启动 | — | — |
+| OpenClaw | Claude | 未启动 | — | — |
 
 ### 14.5 结果来源与后续更新
 
 | 来源 | 子实验 / 原始 run 目录名 | 本次入选快照（相对 `run-artifacts/formal/`） | 核对日期 | 缺失与验收备注 |
 | --- | --- | --- | --- | --- |
 | A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | 已验收；advanced/basic 缺失均为 0。3 条 basic 记录为 7200 秒正常超时，属于有效能力观测，保留分数且不再补跑；其余工程失败已由 recovery batch1/2 处理 |
-| B | `claude-code-qwen-repeat1` | `claude-code-qwen-repeat1-interrupted-assessed` | 2026-10-16 | 旧 `runtime-lock.json` / `hai-base-env` 条件已中断；已评估 20 个 advanced slots，其中 12 个已评分，均分 0.413925。019 明确答案经原 VGB runtime 重评分为 0.474084；020 无最终答案，记录为 AgentTimeoutError，未评分。剩余 51 个 basic slots 转入预装 run |
-| C | `claude-code-qwen-repeat1-preinstalled` | `claude-code-qwen-repeat1-preinstalled` | 2026-10-16 | 使用 `runtime-lock.preinstalled.json`、`hai-claude-code-latest@sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16`、`installation_mode: preinstalled`；仅运行旧 run 未执行的 51 个 basic slots，当前运行中 |
+| B | `claude-code-qwen-repeat1` | `claude-code-qwen-repeat1-interrupted-assessed` | 2026-10-17 | 旧 `runtime-lock.json` / `hai-base-env` 条件；20 个 advanced slots 中 12 个已评分，均分 0.413925。019 最终答案经原 VGB runtime 重评分为 0.474084；020 记录为超时未作答。另有 7 个工程 setup failure 无分，待后续按恢复规则处理 |
+| C | `claude-code-qwen-repeat1-preinstalled` | `claude-code-qwen-repeat1-preinstalled` | 2026-10-17 | 预装镜像条件；51 个 basic slots 全部结束，49 个已评分，均分 0.861517；另 2 个为 7200 秒 AgentTimeoutError，保留未评分 |
+| D | `claude-code-openai-repeat1` | `claude-code-openai-repeat1` | 2026-10-17 | 预装镜像条件；71 个 slots 全部结束，均为 `NetworkConnectionError`（连接被拒绝），advanced/basic 均 0 个已评分。错误观测已保留，是否恢复待后续处理 |
+| E | `claude-code-anthropic-repeat1` | `claude-code-anthropic-repeat1` | 2026-10-17 | 预装镜像条件；71 个 slots 全部结束。advanced 18/20，均分 0.674298；basic 51/51，均分 0.859013。advanced 缺分各 1 个 `AgentSafetyRefusalError` 与 `AgentTimeoutError` |
 
 来源 A 的 `formal-summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
 与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
-当前 Qwen 结果跨两个冻结环境，必须按来源分开核对；预装 run 完成后再决定每个 slot 的代表结果，不能把旧环境与预装环境的同一 slot 直接混合。
+Qwen 的 71 个 slot 跨两个冻结环境，必须按来源 B、C 分开报告，不能合成一个均值。GPT 与 Claude 使用预装镜像条件；GPT 的 71 条网络失败不计为得分。当前 4/48 个子实验已结束，剩余 44 个尚未启动；所有 repeat2、repeat3 仍未开始。
 
 核对现有结果的只读命令：
 
@@ -776,6 +777,7 @@ uv run --locked --python 3.12 hai formal-summary \
 - 2026-10-14: 初始版本，待审核
 - 2026-10-15: 用户确认固定时间能力比较、单 turn 64,000 输出约束、分 track 报告、按 repeat 轮次执行、当前补跑后再切换预装镜像；修正为 48 个原始 run / 3,408 slots，并收敛本地单组配置
 - 2026-10-16: 新增实验进度与分 track 得分台账，覆盖 48 个子实验，并记录已核对的 Claude Code × DeepSeek repeat1 合并快照结果
+- 2026-10-17: 核对 Claude Code repeat1 四个模型组合均已结束；更新 Qwen 分环境结果、GPT 全量网络失败和 Claude 分 track 评分，并标记其余 44 个子实验未启动
 - 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json`
 
 ### 15.3 审批
