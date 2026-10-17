@@ -51,6 +51,12 @@ def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict
     trial.trial_uri = path.parent.as_uri()
     group = template["group_id"]
     agent = trial.config.agent.name
+    if agent is None:
+        import_path = trial.config.agent.import_path or ""
+        if import_path.endswith(":ClaudeCodeAgent"):
+            agent = "claude-code"
+        elif import_path.endswith(":CodexAgent"):
+            agent = "codex"
     sink = RunEventSink(
         path.parents[3] / "events" / "trials.jsonl",
         run_id=run_id,

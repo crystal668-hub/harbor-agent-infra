@@ -168,6 +168,62 @@ def test_native_selection_covers_matrix(tmp_path, harness, provider, repeat):
     assert all(s.selected is None for s in plan.slots[1:])
 
 
+def test_qwen_preinstalled_condition_override_is_explicit_and_narrow(tmp_path):
+    from harbor_agent_infra.recovery.native_plan import _is_authorized_condition_change
+
+    original_task = tmp_path / "original-task"
+    candidate_task = tmp_path / "candidate-task"
+    for task_dir, image in (
+        (original_task, "base@sha256:base"),
+        (candidate_task, "claude-code@sha256:preinstalled"),
+    ):
+        task_dir.mkdir()
+        (task_dir / "instruction.md").write_text("same task")
+        (task_dir / "task.toml").write_text(
+            f'[environment]\ndocker_image = "{image}"\nos = "linux"\n'
+        )
+    original = {
+        "task_checksum": "runtime-checksum",
+        "config": {
+            "task": {"path": str(original_task)},
+            "agent": {
+                "name": "claude-code",
+                "import_path": None,
+                "kwargs": {"version": "2.1.296"},
+            },
+        },
+    }
+    candidate = {
+        "task_checksum": "preinstalled-checksum",
+        "config": {
+            "task": {"path": str(candidate_task)},
+            "agent": {
+                "name": None,
+                "import_path": "adapters.preinstalled:ClaudeCodeAgent",
+                "kwargs": {"version": "2.1.296", "preinstalled": {"image": "locked"}},
+            },
+        },
+    }
+    change = {
+        "schema_version": "preinstalled-condition-change.v1",
+        "condition_id": "claude-code-qwen-repeat1-advanced-preinstalled-20261017",
+        "authorization": "approved",
+        "task_names": ["track__task-0"],
+        "previous_condition": {"installation_mode": "runtime_install", "image": "base@sha256:base"},
+        "target_condition": {"installation_mode": "preinstalled", "image": "claude-code@sha256:preinstalled"},
+        "statistical_role": "new_condition_observation",
+    }
+
+    assert _is_authorized_condition_change(original, candidate, "track__task-0", change)
+    assert not _is_authorized_condition_change(
+        original, candidate, "track__task-1", change
+    )
+    change["condition_id"] = "another-condition"
+    assert not _is_authorized_condition_change(
+        original, candidate, "track__task-0", change
+    )
+
+
 def test_native_plan_handles_renamed_run(native_runs):
     original, recovery = native_runs
     renamed = original.with_name("renamed-original")

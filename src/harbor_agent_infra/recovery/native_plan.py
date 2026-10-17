@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -124,6 +125,8 @@ class NativeMergePlan:
     slots: list[SlotPlan] = field(default_factory=list)
     conflicts: list[str] = field(default_factory=list)
     fingerprints: dict[str, str] = field(default_factory=dict)
+    condition_change_allowed: bool = False
+    condition_change_overrides: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -133,6 +136,8 @@ class NativeMergePlan:
             "recovery_runs": [str(root) for root in self.recoveries],
             "slot_count": len(self.slots),
             "conflicts": self.conflicts,
+            "condition_change_allowed": self.condition_change_allowed,
+            "condition_change_overrides": self.condition_change_overrides,
             "slots": [
                 {
                     "group_id": slot.record["group_id"],
@@ -171,12 +176,99 @@ def fingerprint_inputs(roots: list[Path]) -> dict[str, str]:
     }
 
 
-def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan:
+def _task_content_equal(original: dict, candidate: dict, change: dict) -> bool:
+    """Allow materialized task paths to differ only when their files match."""
+    original_path = Path(str((original.get("config") or {}).get("task", {}).get("path", "")))
+    candidate_path = Path(str((candidate.get("config") or {}).get("task", {}).get("path", "")))
+    if not original_path.is_dir() or not candidate_path.is_dir():
+        return False
+    original_files = {p.relative_to(original_path): p for p in original_path.rglob("*") if p.is_file()}
+    candidate_files = {p.relative_to(candidate_path): p for p in candidate_path.rglob("*") if p.is_file()}
+    if set(original_files) != set(candidate_files):
+        return False
+    for relative in original_files:
+        original_bytes = original_files[relative].read_bytes()
+        candidate_bytes = candidate_files[relative].read_bytes()
+        if original_bytes == candidate_bytes:
+            continue
+        if relative.as_posix() != "task.toml":
+            return False
+        try:
+            original_toml = tomllib.loads(original_bytes.decode("utf-8"))
+            candidate_toml = tomllib.loads(candidate_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError):
+            return False
+        original_image = original_toml.get("environment", {}).get("docker_image")
+        candidate_image = candidate_toml.get("environment", {}).get("docker_image")
+        if (
+            original_image != (change.get("previous_condition") or {}).get("image")
+            or candidate_image != (change.get("target_condition") or {}).get("image")
+        ):
+            return False
+        original_toml["environment"].pop("docker_image", None)
+        candidate_toml["environment"].pop("docker_image", None)
+        if original_toml != candidate_toml:
+            return False
+    return True
+
+
+def _is_authorized_condition_change(original: dict, candidate: dict, task_name: str, change: dict) -> bool:
+    """Recognize only the explicit Claude Code runtime/preinstalled transition."""
+    if (
+        change.get("schema_version") != "preinstalled-condition-change.v1"
+        or change.get("condition_id")
+        != "claude-code-qwen-repeat1-advanced-preinstalled-20261017"
+        or not change.get("authorization")
+        or task_name not in change.get("task_names", [])
+        or (change.get("previous_condition") or {}).get("installation_mode") != "runtime_install"
+        or (change.get("target_condition") or {}).get("installation_mode") != "preinstalled"
+        or change.get("statistical_role") != "new_condition_observation"
+    ):
+        return False
+    original_identity = execution_identity(original)
+    candidate_identity = execution_identity(candidate)
+    if not _task_content_equal(original, candidate, change):
+        return False
+    if original_identity["task_checksum"] == candidate_identity["task_checksum"]:
+        return False
+    original_agent = original_identity["agent"]
+    candidate_agent = candidate_identity["agent"]
+    if (
+        original_agent.get("name") != "claude-code"
+        or candidate_agent.get("import_path") != "adapters.preinstalled:ClaudeCodeAgent"
+        or "preinstalled" not in (candidate_agent.get("kwargs") or {})
+    ):
+        return False
+    original_identity.pop("task_checksum", None)
+    candidate_identity.pop("task_checksum", None)
+    original_agent = dict(original_identity["agent"])
+    candidate_agent = dict(candidate_identity["agent"])
+    candidate_kwargs = dict(candidate_agent.get("kwargs") or {})
+    candidate_kwargs.pop("preinstalled", None)
+    candidate_agent["kwargs"] = candidate_kwargs
+    candidate_agent["name"] = original_agent.get("name")
+    candidate_agent["import_path"] = original_agent.get("import_path")
+    original_identity["agent"] = original_agent
+    candidate_identity["agent"] = candidate_agent
+    return original_identity == candidate_identity
+
+
+def plan_native_merge(
+    original: Path,
+    recoveries: list[Path],
+    *,
+    allow_condition_change: bool = False,
+) -> NativeMergePlan:
     original = original.resolve()
     recoveries = [root.resolve() for root in recoveries]
     envelope = read_json(original / "results.json")
     run_id = envelope["run_id"]
-    plan = NativeMergePlan(original, recoveries, run_id)
+    plan = NativeMergePlan(
+        original,
+        recoveries,
+        run_id,
+        condition_change_allowed=allow_condition_change,
+    )
     run_manifest = original / "run-manifest.json"
     if run_manifest.is_file():
         saved = read_json(run_manifest)
@@ -243,7 +335,7 @@ def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan
         by_anchor[anchor_key] = slot
     for root in recoveries:
         try:
-            _add_recovery(plan, by_anchor, root)
+            _add_recovery(plan, by_anchor, root, allow_condition_change=allow_condition_change)
         except (ValueError, KeyError, OSError) as exc:
             plan.conflicts.append(f"{root.name}: {exc}")
     for slot in plan.slots:
@@ -253,8 +345,16 @@ def plan_native_merge(original: Path, recoveries: list[Path]) -> NativeMergePlan
     return plan
 
 
-def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
+def _add_recovery(
+    plan: NativeMergePlan,
+    by_anchor: dict,
+    root: Path,
+    *,
+    allow_condition_change: bool = False,
+) -> None:
     manifest = RecoveryManifest.load(root / "recovery-manifest.json")
+    raw_manifest = read_json(root / "recovery-manifest.json")
+    condition_change = (raw_manifest.get("metadata") or {}).get("condition_change") or {}
     if manifest.run_name != plan.run_id:
         raise ValueError("Recovery manifest belongs to another original run")
     summary_path = root / "recovery-result.json"
@@ -316,7 +416,13 @@ def _add_recovery(plan: NativeMergePlan, by_anchor: dict, root: Path) -> None:
             if job_stats.get("n_running_trials", 0) or job_stats.get("n_pending_trials", 0):
                 raise ValueError("Recovery Job still has active or pending trials")
             if execution_identity(trial) != execution_identity(slot.original_trial):
-                raise ValueError("Frozen trial execution conditions or task checksum changed")
+                if not allow_condition_change or not _is_authorized_condition_change(
+                    slot.original_trial, trial, approved_slot.task_id, condition_change
+                ):
+                    raise ValueError("Frozen trial execution conditions or task checksum changed")
+                plan.condition_change_overrides.append(
+                    f"{approved_slot.task_id}: runtime_install -> preinstalled"
+                )
             ordinal = meta.get("substitution_attempt")
             if ordinal != approved_slot.substitution_count + 1 or ordinal not in (1, 2):
                 raise ValueError("Recovery attempt ordinal/budget mismatch")

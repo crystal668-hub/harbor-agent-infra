@@ -46,6 +46,8 @@ class ResultMerger:
         original_run_dir: Path,
         recovery_dirs: list[Path],
         output_dir: Path,
+        *,
+        allow_condition_change: bool = False,
     ):
         """Initialize merger.
 
@@ -57,6 +59,7 @@ class ResultMerger:
         self.original_run_dir = original_run_dir
         self.recovery_dirs = recovery_dirs
         self.output_dir = output_dir
+        self.allow_condition_change = allow_condition_change
         self.conflicts: list[str] = []
 
     def merge(self) -> MergedResult:
@@ -69,7 +72,11 @@ class ResultMerger:
             from harbor_agent_infra.recovery.native_plan import plan_native_merge
             from harbor_agent_infra.recovery.native_snapshot import publish_native_snapshot
 
-            plan = plan_native_merge(self.original_run_dir, self.recovery_dirs)
+            plan = plan_native_merge(
+                self.original_run_dir,
+                self.recovery_dirs,
+                allow_condition_change=self.allow_condition_change,
+            )
             metadata = publish_native_snapshot(plan, self.output_dir)
             merged = sum(slot.selected is not None for slot in plan.slots)
             total = sum(bool(slot.candidates) for slot in plan.slots)

@@ -171,6 +171,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true",
         help="validate native slot selections without writing files",
     )
+    merge.add_argument(
+        "--allow-runtime-condition-change",
+        action="store_true",
+        help="allow the explicit Claude Code runtime_install -> preinstalled transition",
+    )
 
     analyze = subparsers.add_parser(
         "analyze",
@@ -627,7 +632,11 @@ def main(argv: list[str] | None = None) -> int:
             from harbor_agent_infra.recovery.native_plan import plan_native_merge
 
             try:
-                plan = plan_native_merge(args.original_run, args.recovery_runs)
+                plan = plan_native_merge(
+                    args.original_run,
+                    args.recovery_runs,
+                    allow_condition_change=args.allow_runtime_condition_change,
+                )
             except (ValueError, KeyError, OSError) as exc:
                 print(f"Conflict: {exc}")
                 return 1
@@ -647,6 +656,7 @@ def main(argv: list[str] | None = None) -> int:
             original_run_dir=args.original_run,
             recovery_dirs=args.recovery_runs,
             output_dir=args.output_dir,
+            allow_condition_change=args.allow_runtime_condition_change,
         )
 
         try:
