@@ -679,7 +679,7 @@ uv run --locked hai aggregate \
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
 | Claude Code | Qwen | 已验收；advanced 使用来源 G 的临时条件合并快照，basic 使用来源 C | 20 / 20；0.356398 | 51 / 51；0.827732 |
-| Claude Code | GPT | 已结束；71 个安装/Provider 网络连接失败，见来源 D | 0 / 20；— | 0 / 51；— |
+| Claude Code | GPT | 已验收；71 个 slots 全部结束，Advanced 004 超时按 0 计入，见来源 D | 20 / 20；0.691408 | 51 / 51；0.885740 |
 | Claude Code | Claude | 已验收；1 个安全限制拒答与 1 个超时均按 0 计入，见来源 E | 20 / 20；0.606868 | 51 / 51；0.859013 |
 | Codex | DeepSeek | 未启动 | — | — |
 | Codex | Qwen | 未启动 | — | — |
@@ -743,7 +743,7 @@ uv run --locked hai aggregate \
 | A | `claude-code-deepseek-repeat1` | `claude-code-deepseek-repeat1-merged` | 2026-10-16 | 已验收；advanced/basic 缺失均为 0。3 条 basic 记录为 7200 秒正常超时，属于有效能力观测，保留分数且不再补跑；其余工程失败已由 recovery batch1/2 处理 |
 | B | `claude-code-qwen-repeat1` | `claude-code-qwen-repeat1` | 2026-10-17 | 旧条件根汇总已从 20 份原生 Trial 结果重建；JobConfig、协议范围、slot 清单与 tasks 已收敛为 advanced 20 题，51 个未执行 basic 预定项移除并归档原 71 题版本。12 个原始结果已评分，7 个 setup 工程失败转为来源 F 的新条件恢复；020 为超时记录 |
 | C | `claude-code-qwen-repeat1-preinstalled` | `claude-code-qwen-repeat1-preinstalled` | 2026-10-17 | 预装镜像条件；51 个 basic slots 全部结束，49 个有原始评分，另 2 个为 7200 秒 AgentTimeoutError；最终均分按 51 个 slots 计，两个超时各按 0 |
-| D | `claude-code-openai-repeat1` | `claude-code-openai-repeat1` | 2026-10-17 | 预装镜像条件；71 个 slots 全部结束，均为 `NetworkConnectionError`（连接被拒绝），advanced/basic 均 0 个已评分。错误观测已保留，是否恢复待后续处理 |
+| D | `claude-code-openai-repeat1` | `claude-code-openai-repeat1` | 2026-10-18 | 预装镜像条件；71 个 slots 全部结束，70 个有 VGB 评分，Advanced 004 为 7200 秒 `AgentTimeoutError`，按 0 计入 Advanced 最终均分 0.691408；Basic 51/51，均分 0.885740。 |
 | E | `claude-code-anthropic-repeat1` | `claude-code-anthropic-repeat1` | 2026-10-18 | 预装镜像条件；71 个 slots 全部结束。advanced 有 18 个原始评分，1 个 `AgentSafetyRefusalError` 与 1 个 `AgentTimeoutError` 均按用户决定计 0，最终 advanced 20/20、均分 0.606868；basic 51/51、均分 0.859013。 |
 | F | `claude-code-qwen-repeat1-advanced-preinstalled-recovery-batch1` | `claude-code-qwen-repeat1-advanced-preinstalled-recovery-batch1` | 2026-10-18 | 7 个获批 setup 工程失败均已结束；4 个补跑 Job 成功，3 个虽生命周期失败但保留有效 VGB 证据。按用户批准的临时条件变更参与来源 G 的 advanced 合并选择。 |
 | G | `claude-code-qwen-repeat1` + 来源 F | `claude-code-qwen-repeat1-merged` | 2026-10-18 | 临时允许原始 `runtime_install` 与补跑 `preinstalled` 条件合并；advanced 20 个 slots 中两个 7200 秒超时按 0 计入，最终均分 0.356398。该快照仅用于本轮最终统计，条件变更记录在 `merge-metadata.json`。 |
@@ -754,7 +754,7 @@ Qwen 的首轮 71 个 slot 跨两个冻结环境；本轮按用户明确授权�
 
 条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `reports/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
 
-GPT 与 Claude 使用预装镜像条件；GPT 的 71 条网络失败不计为得分。当前 4/48 个子实验首轮派发已结束，Qwen 与 Claude 的最终结果已写入台账；其余 44 个未启动，所有 repeat2、repeat3 仍未开始。每小时定时任务保持暂停。
+GPT 与 Claude 使用预装镜像条件；当前 4/48 个子实验首轮派发已结束，Claude Code 四个 repeat1 结果已完成审核并写入台账；其余 44 个未启动，所有 repeat2、repeat3 仍未开始。每小时定时任务保持暂停。
 
 核对现有结果的只读命令：
 
@@ -786,6 +786,7 @@ uv run --locked --python 3.12 hai formal-summary \
 - 2026-10-17: 核对 Claude Code repeat1 四个模型组合均已结束；更新 Qwen 分环境结果、GPT 全量网络失败和 Claude 分 track 评分，并标记其余 44 个子实验未启动
 - 2026-10-17: 根据用户授权，将 Qwen advanced 的 7 个工程失败转为显式预装新条件恢复；重建旧目录根汇总并将其范围收敛为 advanced 20 题，归档旧 71 题范围和 51 个未执行 basic 任务文件
 - 2026-10-18: 按用户决定不再恢复 Claude 的安全拒答与超时；将 Claude Advanced 的安全限制拒答和超时均按可评分 0 纳入最终均分，更新 Qwen/Claude repeat1 两个 track 的最终台账与来源快照
+- 2026-10-18: 审核 Claude Code × GPT repeat1；71 个 slots 全部终态，Advanced 超时按 0 纳入，更新 GPT 两个 track 的最终台账
 - 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json`
 
 ### 15.3 审批
