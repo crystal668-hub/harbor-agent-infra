@@ -25,6 +25,46 @@ CODEX_MODELS = {
 }
 
 
+def _normalize_assistant_input(payload: dict[str, object]) -> None:
+    """Remove empty assistant text items that Claude's chat endpoint rejects."""
+    input_items = payload.get("input")
+    if not isinstance(input_items, list):
+        return
+
+    normalized: list[object] = []
+    for item in input_items:
+        if (
+            not isinstance(item, dict)
+            or item.get("type", "message") != "message"
+            or item.get("role") != "assistant"
+        ):
+            normalized.append(item)
+            continue
+
+        content = item.get("content")
+        if isinstance(content, str):
+            if content:
+                normalized.append(item)
+            continue
+        if not isinstance(content, list):
+            normalized.append(item)
+            continue
+
+        filtered_content = [
+            part
+            for part in content
+            if not (
+                isinstance(part, dict)
+                and part.get("type") == "output_text"
+                and part.get("text") == ""
+            )
+        ]
+        if filtered_content:
+            normalized.append({**item, "content": filtered_content})
+
+    payload["input"] = normalized
+
+
 def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-opus-5.5") -> FastAPI:
     # Avoid LiteLLM's remote model-pricing refresh during local startup.
     os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
@@ -51,6 +91,8 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
         payload = await request.json()
         if payload.get("model") != model:
             raise HTTPException(400, "Model does not match the configured bridge route")
+        if not messages:
+            _normalize_assistant_input(payload)
         payload["max_tokens" if messages else "max_output_tokens"] = OUTPUT_CAP
         # A Claude credential is already validated with Chat Completions at
         # this gateway. Its Responses route has no upstream channel.

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from unittest.mock import AsyncMock
 
 import httpx
@@ -175,3 +176,151 @@ def test_capped_claude_route_uses_chat_conversion(client, monkeypatch):
     assert response.status_code == 200
     assert handler.await_args.kwargs["max_output_tokens"] == 64_000
     assert handler.await_args.kwargs["extra_body"]["max_tokens"] == 64_000
+
+
+@pytest.mark.parametrize("route", ["/anthropic/v1/responses", "/v1/responses"])
+def test_claude_route_omits_empty_assistant_text_after_tool_call(client, monkeypatch, route):
+    handler = AsyncMock(return_value=FakeResponse())
+    monkeypatch.setattr("litellm.aresponses", handler)
+    tool_call = {
+        "type": "function_call",
+        "name": "exec_command",
+        "call_id": "call-1",
+        "arguments": '{"cmd":"printf OK"}',
+    }
+    tool_result = {
+        "type": "function_call_output",
+        "call_id": "call-1",
+        "output": "OK",
+    }
+    assistant_text = {
+        "type": "message",
+        "role": "assistant",
+        "content": [
+            {"type": "output_text", "text": "Still working."},
+            {"type": "output_text", "text": ""},
+        ],
+    }
+    payload = {
+        "model": "claude-opus-5.5",
+        "input": [
+            tool_call,
+            tool_result,
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": ""}],
+            },
+            assistant_text,
+            {"type": "message", "role": "user", "content": "Continue."},
+        ],
+    }
+
+    response = client.post(
+        route,
+        headers={"authorization": "Bearer claude-test-key"},
+        json=payload,
+    )
+
+    assert response.status_code == 200
+    captured_input = handler.await_args.kwargs["input"]
+    assert captured_input == [
+        tool_call,
+        tool_result,
+        {
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": "Still working."}],
+        },
+        {"type": "message", "role": "user", "content": "Continue."},
+    ]
+
+
+def test_claude_normalization_preserves_nonempty_and_nontext_content(client, monkeypatch):
+    handler = AsyncMock(return_value=FakeResponse())
+    monkeypatch.setattr("litellm.aresponses", handler)
+    retained = [
+        {"role": "assistant", "content": " "},
+        {"type": "message", "role": "user", "content": ""},
+        {"type": "message", "role": "developer", "content": "instructions"},
+        {"type": "reasoning", "summary": []},
+        {
+            "type": "message",
+            "role": "assistant",
+            "id": "msg-refusal",
+            "content": [{"type": "refusal", "refusal": "Cannot do that."}],
+        },
+    ]
+    payload = {
+        "model": "claude-opus-5.5",
+        "input": [
+            {"role": "assistant", "content": ""},
+            {"type": "message", "role": "assistant", "content": []},
+            *deepcopy(retained),
+        ],
+    }
+    payload["input"][-1]["content"].append({"type": "output_text", "text": ""})
+    response = client.post(
+        "/anthropic/v1/responses",
+        headers={"authorization": "Bearer claude-test-key"},
+        json=payload,
+    )
+    assert response.status_code == 200
+    assert handler.await_args.kwargs["input"] == retained
+
+
+@pytest.mark.parametrize("rounds", [1, 3])
+def test_claude_tool_history_passes_real_chat_conversion(client, monkeypatch, rounds):
+    import litellm
+
+    history = [{"role": "user", "content": "Use the supplied tool results to answer."}]
+    for index in range(rounds):
+        history.extend([
+            {
+                "type": "function_call",
+                "name": "exec_command",
+                "call_id": f"call-{index}",
+                "arguments": '{"cmd":"printf OK"}',
+            },
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": ""}],
+            },
+            {"type": "function_call_output", "call_id": f"call-{index}", "output": "OK"},
+        ])
+
+    async def strict_chat_endpoint(**kwargs):
+        messages = kwargs["messages"]
+        for message in messages:
+            content = message.get("content")
+            if content == "" or (
+                isinstance(content, list)
+                and any(part.get("type") == "text" and part.get("text") == "" for part in content)
+            ):
+                raise ValueError("messages: text content blocks must be non-empty")
+        calls = [call for message in messages for call in message.get("tool_calls", [])]
+        results = [message for message in messages if message["role"] == "tool"]
+        assert [call["id"] for call in calls] == [result["tool_call_id"] for result in results]
+        assert len(calls) == rounds
+        assert all(call["function"]["arguments"] == '{"cmd":"printf OK"}' for call in calls)
+        assert all(result["content"] == "OK" for result in results)
+        return litellm.ModelResponse(
+            model="claude-opus-5.5",
+            choices=[{"message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}],
+        )
+
+    endpoint = AsyncMock(side_effect=strict_chat_endpoint)
+    monkeypatch.setattr(litellm, "acompletion", endpoint)
+    response = client.post(
+        "/anthropic/v1/responses",
+        headers={"authorization": "Bearer claude-test-key"},
+        json={"model": "claude-opus-5.5", "input": history},
+    )
+    assert response.status_code == 200, response.text
+    assert any(
+        part.get("text") == "OK"
+        for item in response.json()["output"]
+        for part in item.get("content", [])
+    )
+    endpoint.assert_awaited_once()
