@@ -26,9 +26,7 @@ async def _run_provider_smoke() -> None:
     if not os.environ.get("QWEN_API_KEY") or not os.environ.get("QWEN_BASE_URL"):
         pytest.skip("QWEN_API_KEY and QWEN_BASE_URL are required for the configured model")
 
-    model = os.environ.get("OPENCLAW_MODEL")
-    if not model or not model.startswith("qwen/"):
-        raise RuntimeError("OPENCLAW_MODEL must select the configured qwen provider")
+    model = "qwen/qwen3.8-max"
 
     raw = yaml.safe_load(Path("scripts/fake-agent-job.yaml").read_text(encoding="utf-8"))
     lock = load_runtime_lock(Path("runtime-lock.json"))

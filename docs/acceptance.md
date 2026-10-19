@@ -70,7 +70,6 @@ four records and `report.json` contains the schema-v5 envelope:
 
 ```bash
 set -a; source .env; set +a
-export OPENCLAW_MODEL=openai/gpt-5.6-sol
 export VGB_PYTHON=.vgb-runtime/bin/python
 uv run python scripts/run_openclaw_vgb_e2e.py \
   --model openai/gpt-5.6-sol \

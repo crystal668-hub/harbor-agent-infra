@@ -142,7 +142,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run one real Hermes VGB E2E task")
     parser.add_argument("--lock", type=Path, default=Path("runtime-lock.json"))
     parser.add_argument("--output-dir", type=Path, default=Path("run-artifacts/hermes-vgb-e2e"))
-    parser.add_argument("--model", default=os.environ.get("OPENCLAW_MODEL", ""))
+    parser.add_argument("--model", required=True)
     args = parser.parse_args()
     report = asyncio.run(run(lock_path=args.lock, output_dir=args.output_dir, model=args.model))
     print(json.dumps(report, indent=2, sort_keys=True))

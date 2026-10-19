@@ -102,7 +102,6 @@ The real provider-backed OpenClaw E2E runs one Harbor Trial for each allowlisted
 
 ```bash
 set -a; source .env; set +a
-export OPENCLAW_MODEL=openai/gpt-5.6-sol
 export VGB_PYTHON=.vgb-runtime/bin/python
 uv run python scripts/run_openclaw_vgb_e2e.py \
   --model openai/gpt-5.6-sol \
