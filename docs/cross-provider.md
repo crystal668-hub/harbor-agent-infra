@@ -35,6 +35,27 @@ object causes an upstream JSON type error. This does not establish an equal
 model reasoning budget. Codex also falls back from unsupported gateway/bridge
 WebSockets to HTTP streaming; its native logs preserve those transport attempts.
 
+## Codex DeepSeek/Qwen compaction
+
+The Codex Qwen and DeepSeek templates select distinct custom Responses provider
+IDs through `agent.codex_config`. In the locked Codex 0.162.1 runtime this uses
+Codex-managed text-summary compaction instead of the incompatible remote
+compaction-v2 request sent by the built-in `openai` provider. Harbor forwards
+the native config to Codex and binds its provider `base_url` to the resolved
+`CODEX_QWEN_BASE_URL` or `CODEX_DEEPSEEK_BASE_URL`, so normal and summary requests
+remain on the existing 64,000-token cap bridge.
+
+The current bridge supports HTTP/SSE, not the Responses WebSocket transport, so
+these two custom provider definitions explicitly set `supports_websockets: false`.
+No context-window, auto-compaction threshold, or `compact_prompt` override is
+set. The original requested model, high reasoning effort, output cap, skills-off
+selection, and default Codex instruction injection are retained. Provider usage
+is passed through unchanged; DeepSeek server-side search usage and both
+providers' actual context windows remain unresolved by this configuration.
+This establishes a compatible request path, not summary state fidelity; do not
+use the templates for formal recovery until the required consecutive-compaction
+and state-retention checks pass.
+
 Configure the endpoint variables in the ignored `.env`. At the current gateway,
 Qwen/DeepSeek Messages use the service root, while Responses use the existing
 `/v1` base. Other gateways require separately verified addresses; the native

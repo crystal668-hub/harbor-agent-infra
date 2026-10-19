@@ -38,7 +38,12 @@ def test_native_templates_materialize_only_requested_group(
     )
     assert list(jobs.groups) == ["skills_off"]
     native = jobs.groups["skills_off"].job_config.agents[0]
-    assert native.name == agent and native.import_path is None
+    custom_codex = agent == "codex" and config.experiment.agent.codex_config is not None
+    if custom_codex:
+        assert native.name is None and native.import_path == "adapters.codex:CodexAgent"
+        assert native.kwargs["config"] == config.experiment.agent.codex_config
+    else:
+        assert native.name == agent and native.import_path is None
     assert native.model_name == model and native.kwargs["reasoning_effort"] == "high"
     assert native.skills == []
     assert config.experiment.agent.max_output_tokens == 64_000

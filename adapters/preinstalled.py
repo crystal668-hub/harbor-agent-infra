@@ -9,9 +9,10 @@ from functools import wraps
 from pathlib import Path
 
 from harbor.agents.installed.claude_code import ClaudeCode, ClaudeCodeOptions
-from harbor.agents.installed.codex import Codex, CodexOptions
+from harbor.agents.installed.codex import CodexOptions
 from pydantic import BaseModel, ConfigDict, Field
 
+from adapters.codex import CodexAgent as BridgeBoundCodex
 from adapters.runtime_patches import (
     hermes_model_id_patch_command,
     hermes_output_patch_command,
@@ -107,7 +108,7 @@ class StrictCodexOptions(PreinstalledOptions, CodexOptions):
     pass
 
 
-class CodexAgent(Codex):
+class CodexAgent(BridgeBoundCodex):
     options_model = StrictCodexOptions
 
     @verify_after_run

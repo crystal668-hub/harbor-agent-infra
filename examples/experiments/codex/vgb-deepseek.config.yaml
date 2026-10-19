@@ -49,6 +49,15 @@ experiment:
     model: deepseek-v4-pro
     provider: deepseek
     reasoning_effort: high
+    codex_config:
+      model_provider: deepseek-responses
+      model_providers:
+        deepseek-responses:
+          name: DeepSeek Responses via Harbor cap bridge
+          env_key: OPENAI_API_KEY
+          wire_api: responses
+          requires_openai_auth: true
+          supports_websockets: false
   image:
     reference: hai-base-env
     digest: sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936

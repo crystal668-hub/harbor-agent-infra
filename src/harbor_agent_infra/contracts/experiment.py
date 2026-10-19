@@ -19,6 +19,9 @@ class AgentSpec(BaseModel):
     provider: Literal["openai", "anthropic", "qwen", "deepseek"] | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
+    codex_config: dict[str, object] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     base_url_env: str | None = Field(
         default=None, pattern=r"^[A-Z][A-Z0-9_]*$", exclude_if=lambda value: value is None
     )
@@ -40,6 +43,8 @@ class AgentSpec(BaseModel):
                 )
             if self.provider is None:
                 raise ValueError("base_url_env requires an explicit provider")
+        if self.codex_config is not None:
+            self._validate_codex_config()
         if self.adapter != "openclaw" and self.thinking is not None:
             raise ValueError("thinking is only supported by the OpenClaw adapter")
         if self.adapter != "hermes" and self.reasoning is not None:
@@ -47,6 +52,67 @@ class AgentSpec(BaseModel):
         if self.adapter not in {"codex", "claude-code"} and self.reasoning_effort is not None:
             raise ValueError("reasoning_effort is only supported by Codex and Claude Code")
         return self
+
+    def _validate_codex_config(self) -> None:
+        if self.adapter != "codex":
+            raise ValueError("codex_config is only supported by the Codex adapter")
+        if self.provider not in {"qwen", "deepseek"}:
+            raise ValueError("codex_config requires the Qwen or DeepSeek provider")
+        expected_model = {
+            "qwen": "qwen3.8-max",
+            "deepseek": "deepseek-v4-pro",
+        }[self.provider]
+        if self.model != expected_model:
+            raise ValueError(f"codex_config requires model={expected_model}")
+        expected_endpoint = f"CODEX_{self.provider.upper()}_BASE_URL"
+        if self.base_url_env != expected_endpoint:
+            raise ValueError(f"codex_config requires base_url_env={expected_endpoint}")
+        if self.max_output_tokens != 64_000:
+            raise ValueError("codex_config requires the 64000-token output-cap bridge")
+        if self.reasoning_effort != "high":
+            raise ValueError("codex_config requires high reasoning effort")
+
+        provider_id = self.codex_config.get("model_provider")
+        providers = self.codex_config.get("model_providers")
+        expected_provider_id = f"{self.provider}-responses"
+        if provider_id != expected_provider_id:
+            raise ValueError(
+                f"codex_config requires model_provider={expected_provider_id}"
+            )
+        if not isinstance(providers, dict) or set(providers) != {provider_id}:
+            raise ValueError("codex_config must define exactly the selected custom model provider")
+        selected = providers[provider_id]
+        expected_provider_fields = {
+            "name", "env_key", "wire_api", "requires_openai_auth", "supports_websockets"
+        }
+        if not isinstance(selected, dict) or set(selected) != expected_provider_fields:
+            raise ValueError(
+                "codex_config custom provider fields do not match the supported contract"
+            )
+        expected_provider_name = {
+            "qwen": "Qwen Responses via Harbor cap bridge",
+            "deepseek": "DeepSeek Responses via Harbor cap bridge",
+        }[self.provider]
+        if selected.get("name") != expected_provider_name:
+            raise ValueError(
+                f"the selected custom provider name must be {expected_provider_name!r}"
+            )
+        if selected.get("wire_api") != "responses":
+            raise ValueError("the selected custom provider must use wire_api=responses")
+        if selected.get("requires_openai_auth") is not True:
+            raise ValueError("the selected custom provider must use OpenAI API-key authentication")
+        if selected.get("env_key") != "OPENAI_API_KEY":
+            raise ValueError("the selected custom provider must read OPENAI_API_KEY")
+        if selected.get("supports_websockets") is not False:
+            raise ValueError("the selected custom provider must disable unsupported WebSockets")
+        if "base_url" in selected:
+            raise ValueError("omit custom provider base_url; Harbor binds the CODEX_* bridge URL")
+        if "openai_base_url" in self.codex_config:
+            raise ValueError("openai_base_url is supplied by Harbor from the CODEX_* bridge URL")
+        if set(self.codex_config) != {"model_provider", "model_providers"}:
+            raise ValueError(
+                "codex_config may only select and define the custom Responses provider"
+            )
 
 
 class RetrySpec(BaseModel):

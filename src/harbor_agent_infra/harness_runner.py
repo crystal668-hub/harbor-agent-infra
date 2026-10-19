@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -158,6 +159,8 @@ class NativeHarnessRunner(HarnessRunner):
         kwargs: dict[str, object] = {"version": version, **_installation_kwargs(spec, lock)}
         if spec.reasoning_effort is not None:
             kwargs["reasoning_effort"] = spec.reasoning_effort
+        if self.agent_name == "codex" and spec.codex_config is not None:
+            kwargs["config"] = deepcopy(spec.codex_config)
         env: dict[str, str] = {}
         if spec.provider is not None:
             source = spec.provider.upper()
@@ -182,13 +185,16 @@ class NativeHarnessRunner(HarnessRunner):
                     raise ValueError(
                         "Codex output caps require an explicit CODEX_* bridge endpoint"
                     )
+        import_path = None
+        if spec.installation_mode == "preinstalled":
+            import_path = "adapters.preinstalled:" + (
+                "CodexAgent" if self.agent_name == "codex" else "ClaudeCodeAgent"
+            )
+        elif self.agent_name == "codex" and spec.codex_config is not None:
+            import_path = "adapters.codex:CodexAgent"
         return AgentConfig(
-            name=self.agent_name if spec.installation_mode == "runtime_install" else None,
-            import_path=(
-                "adapters.preinstalled:"
-                + ("CodexAgent" if self.agent_name == "codex" else "ClaudeCodeAgent")
-                if spec.installation_mode == "preinstalled" else None
-            ),
+            name=self.agent_name if import_path is None else None,
+            import_path=import_path,
             model_name=spec.model,
             env=env,
             skills=list(skills),
