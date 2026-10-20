@@ -677,10 +677,10 @@ uv run --locked hai aggregate \
 
 | Harness | Model | 进度 | Advanced：计分样本 / 20；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 已验收（见来源 A） | 20 / 20；0.382686 | 51 / 51；0.626115 |
-| Claude Code | Qwen | 已验收；advanced 使用来源 G 的临时条件合并快照，basic 使用来源 C | 20 / 20；0.356398 | 51 / 51；0.827732 |
-| Claude Code | GPT | 已验收；71 个 slots 全部结束，Advanced 004 超时按 0 计入，见来源 D | 20 / 20；0.691408 | 51 / 51；0.885740 |
-| Claude Code | Claude | 已验收；1 个安全限制拒答与 1 个超时均按 0 计入，见来源 E | 20 / 20；0.606868 | 51 / 51；0.859013 |
+| Claude Code | DeepSeek | 已验收 | 20 / 20；0.382686 | 51 / 51；0.626115 |
+| Claude Code | Qwen | 已验收 | 20 / 20；0.356398 | 51 / 51；0.827732 |
+| Claude Code | GPT | 已验收 | 20 / 20；0.691408 | 51 / 51；0.885740 |
+| Claude Code | Claude | 已验收 | 20 / 20；0.606868 | 51 / 51；0.859013 |
 | Codex | DeepSeek | 未启动 | — | — |
 | Codex | Qwen | 未启动 | — | — |
 | Codex | GPT | 未启动 | — | — |
@@ -688,7 +688,7 @@ uv run --locked hai aggregate \
 | Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
 | Hermes | GPT | 未启动 | — | — |
-| Hermes | Claude | 已验收；人工批准补充缺失 slot 的占位锚点，两个不可重跑终态错误均按 0 计入，见来源 H | 20 / 20；0.646396 | 51 / 51；0.869606 |
+| Hermes | Claude | 已验收 | 20 / 20；0.646396 | 51 / 51；0.869606 |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
 | OpenClaw | GPT | 未启动 | — | — |
