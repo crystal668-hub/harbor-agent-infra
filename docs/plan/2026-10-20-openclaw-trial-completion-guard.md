@@ -5,8 +5,9 @@
 ## 目标与边界
 
 OpenClaw CLI 的退出码 0 只说明命令正常返回，不能证明 Agent 已完成回答。
-在 adapter 中增加执行完成性校验：暂停、未完成、失败或缺少最终回答时，记录明确的
-Agent 未完成异常，并阻止 Harbor 调用 verifier；真正完成回答的 Trial 保持现有评分流程。
+在 adapter 中仅检查 `meta.yielded == true` 或 `meta.livenessState == "paused"`：
+命中任一条件时记录明确的 Agent 未完成异常，并阻止 Harbor 调用 verifier。
+未命中这两个条件时继续现有执行和评分流程。
 
 本轮交付此计划文档。后续实现限于 adapter、必要的错误分类和 provider-free 测试。
 本修复不实现 sessions_yield 自动恢复、子任务等待、DNS 重试或 OpenClaw 编辑工具补丁，
@@ -33,7 +34,7 @@ Agent 未完成异常，并阻止 Harbor 调用 verifier；真正完成回答的
 4. Harbor 在 agent 运行之后下载日志并调用 `populate_context_post_run()`，异常恢复时
    也可能重复调用。不能依赖该钩子完成准入校验，否则重复异常可能中断证据恢复。
 5. `response_from_openclaw_log()` 会读取 `finalAssistantVisibleText`，或回退到
-   `payloads[].text`；单凭存在文本，可能把工具告警或 incomplete-turn 提示当作答案。
+   `payloads[].text`；暂停结果中若附带工具告警，可能被当作答案评分。
 
 ## 拟议改动
 
@@ -43,9 +44,8 @@ Agent 未完成异常，并阻止 Harbor 调用 verifier；真正完成回答的
 不继承 Harbor 的 `NonZeroAgentExitCodeError`。增加稳定分类 `agent_incomplete`，
 在现有基于字符串的分类之前优先识别该异常。
 
-异常消息包含简短原因及相关状态字段，例如 `yielded`、`livenessState`、`stopReason`、
-`error.kind`；不嵌入整份输出或敏感配置。原因至少区分：暂停、显式失败、未完成终止、
-缺少最终回答、无有效 JSON envelope。
+异常消息说明 Agent 当前轮已暂停，并保留 `yielded`、`livenessState` 的值；
+不嵌入整份输出或敏感配置。
 
 原始非零退出、安装失败和网络异常保留原异常，不被新的完成性校验覆盖。
 
@@ -59,44 +59,24 @@ Agent 未完成异常，并阻止 Harbor 调用 verifier；真正完成回答的
    `logs_dir`。不假定 Harbor 此时已完成最终日志同步，不读取上一轮缓存作为替代。
 2. 复用现有 `_parse_stdout()` 对混合诊断日志中的最后一个合法 envelope 进行解析；
    保留纯解析函数，不在 token/trajectory 提取期间抛出完成性异常。
-3. 调用小型纯校验函数，按下述规则接受或抛出 `OpenClawAgentIncompleteError`。
+3. 检查下述两个暂停标记，命中任一条件即抛出 `OpenClawAgentIncompleteError`。
 4. 失败走已有异常证据记录路径，重新抛出至 Harbor 外层；成功继续现有运行后身份校验。
-
-日志读取/下载本身的基础设施故障应保留其原因并终止评分，不能伪装成模型没有回答。
 
 ### 3. 完成性判定规则
 
-先检查失败/暂停信号，再检查最终回答。即使存在看似完整的文本，失败信号也优先。
+本次只处理明确的暂停标记：
 
 | 条件 | 处理 |
 | --- | --- |
-| `meta.yielded == true` 或 `livenessState == paused` | Agent 未完成；禁止 verifier |
-| `meta.error` 非空、`aborted == true`、`livenessState` 为 `blocked`/`abandoned` | Agent 未完成；保留原因；禁止 verifier |
-| `pendingToolCalls` 非空，或 stop/finish reason 为 `toolUse`、`tool_calls`、`length`、`max_tokens`、`error`、`aborted` 等非完整终止状态 | Agent 未完成；禁止 verifier |
-| envelope 缺失/损坏，或最终文本为空白 | Agent 未完成；禁止 verifier |
-| 只有工具告警、错误 payload、推理内容或 `NO_REPLY` 等静默占位内容 | 缺少有效最终回答；禁止 verifier |
-| 无失败信号，存在完整的可见 assistant 回答 | 允许 verifier 正常评分 |
+| `meta.yielded == true` 或 `meta.livenessState == "paused"` | 记录 `OpenClawAgentIncompleteError`，禁止调用 verifier |
 
-识别顶层 `meta.stopReason` 和 `meta.completion.stopReason/finishReason`；任一明确
-非完整终止信号均不能被另一处正常值覆盖。非空且未知的终止枚举应拒绝并保留原值，
-避免静默接受未支持的状态。
-
-“有效最终回答”是运行完成性，不是答案正确性：不要求数字正确，也不在通用 adapter 中
-强制 VGB 专用 `FINAL ANSWER:` 格式。完整的自然语言回答、拒答或错误答案仍交 verifier。
-
-优先使用非空的 `finalAssistantVisibleText`；兼容仅有 payload 的正常返回时，要求明确
-的完整终止标记（例如 `stop`、`end_turn`、`completed`），并排除 `isError`、`isReasoning`
-及已观察到的 OpenClaw 工具告警/静默占位文本。没有终止标记时，仅接受明确的最终
-assistant 字段；不能仅凭任意 `payloads[].text` 推断任务完成。
-
-`livenessState=working` 在该版本也可能出现在正常完成结果中，不能单独拒绝；必须结合
-终止原因和最终文本。也不把历史工具失败计数、`replayInvalid` 或工具错误警告单独当成
-整轮失败：若 Agent 已恢复并完成最终回答，应正常评分。
+该规则与 payload 是否为空、是否包含文本或工具告警无关；暂停标记一旦命中，就不能
+把当前轮返回视为 Trial 完成。本次不增加其他状态或答案内容的判定规则。
 
 ### 4. 证据与结果
 
 - Harbor `result.json.exception_info.exception_type` 为 `OpenClawAgentIncompleteError`，
-  消息保留暂停/未完成原因；`verifier_result` 保持空，不产生正常评分或 VGB 0 分。
+  消息保留暂停原因；`verifier_result` 保持空，不产生正常评分或 VGB 0 分。
 - `openclaw.txt` 和已复制的会话文件保持原始证据；保留可提取的 trajectory/token 信息。
 - `openclaw-evidence.json` 记录 `agent_incomplete`。调整后处理证据写入，避免
   `populate_context_post_run()` 在日志同步/恢复时把已有 failure 覆盖成空值。
@@ -114,19 +94,15 @@ CLI 执行及 VGB runtime 等边界。不能用测试自行编写的“捕获后
 
 | 场景 | 合成输入 | 验收断言 |
 | --- | --- | --- |
-| yielded 且无答案 | CLI 返回 0，空 payload，`yielded=true`、`paused`、`end_turn` | verifier 的 `verify()` 调用次数为 0；持久化 Trial 记录未完成异常；无 reward；日志保留且清理执行 |
-| 未完成错误标记 | CLI 返回 0，错误提示文本，`error.kind=incomplete_turn`、`abandoned` | verifier 调用次数为 0；记录 `OpenClawAgentIncompleteError`；不会变成 `VgbVerifierError` 或正常 0 分 |
-| 正常最终答案 | CLI 返回 0，完整终止状态和非空最终回答 | verifier 调用一次；用实际 `VgbVerifier` 加假的确定性 VGB runtime 完成评分；Trial 无异常，reward 正确落盘 |
+| yielded 且无答案 | CLI 返回 0，空 payload，`meta.yielded=true`，无 paused 标记 | verifier 的 `verify()` 调用次数为 0；持久化 Trial 记录未完成异常；无 reward；日志保留且清理执行 |
+| paused 且附带工具告警 | CLI 返回 0，告警文本，`meta.livenessState="paused"`，无 yielded 标记 | verifier 调用次数为 0；记录 `OpenClawAgentIncompleteError`；不会变成 `VgbVerifierError` 或正常 0 分 |
+| 正常最终答案 | CLI 返回 0，无上述暂停标记，非空最终回答 | verifier 调用一次；用实际 `VgbVerifier` 加假的确定性 VGB runtime 完成评分；Trial 无异常，reward 正确落盘 |
 
 ### 边界回归
 
-- yielded 同时含文本、单独 paused、工具告警-only、`toolUse`、token 截断、aborted、
-  pending tools、空白文本、缺失/损坏 JSON 均禁止评分。
-- 顶层与 completion 内状态冲突时拒绝；日志前后夹杂诊断文本仍能解析。
-- 正常 payload-only 完整回答、`working` 加完整最终回答、历史工具失败后恢复作答均可评分。
-- 有效回答获得 0 分仍属于正常评分，不能据分数反推 Agent 未完成。
+- 两个暂停标记同时出现，或暂停同时附带回答文本，仍禁止评分。
+- 日志前后夹杂诊断文本时仍能解析暂停标记。
 - mounted 与下载日志两条路径均校验本次结果；后处理重复执行不覆盖 failure 或重复抛错。
-- 原始非零退出异常不被覆盖；回归只验证其原有行为，不扩展本次修复范围。
 
 ### 执行命令与完成标准
 
@@ -146,7 +122,7 @@ git diff --check
 
 ## 本轮文档交付检查
 
-本轮仅新增此文档；依据仓库要求，在提交文档前运行现有相关 provider-free 测试及
+本轮仅修改此文档；依据仓库要求，在提交文档前运行现有相关 provider-free 测试及
 `git diff --check`。该检查只证明计划提交未引入已有测试回归，不代表上述修复已实现。
 
 检查结果：Python 3.12.13，独立 `uv sync --locked` 环境；现有
