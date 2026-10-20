@@ -1,6 +1,6 @@
 # OpenClaw Anthropic 请求层网络退避重试计划
 
-日期：2026-10-20。状态：代码及 provider-free 验证已完成，候选镜像构建/容器验收待 Docker 空闲。
+日期：2026-10-20。状态：独立分支代码、镜像构建与容器验收均已完成；主分支切换尚未执行。
 实施状态见 [网络重试实施记录](../openclaw-network-retry-implementation.md)；下文保留审核方案。
 基线：`04d65be`，OpenClaw 固定版本 `2026.6.34`。
 规划分支：`codex/openclaw-provider-network-retry-plan`。

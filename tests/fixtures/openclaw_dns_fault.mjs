@@ -14,7 +14,7 @@ dns.lookup = async (hostname, options) => {
   fs.appendFileSync('/logs/agent/fixture-dns.jsonl', JSON.stringify({
     at: Date.now(), hostname, failed: shouldFail, failures
   }) + '\n');
-  if (shouldFail) throw Object.assign(new Error('fixture DNS failure'), {
+  if (shouldFail) throw Object.assign(new Error('getaddrinfo ENOTFOUND retry.fixture.test'), {
     code: 'ENOTFOUND', syscall: 'getaddrinfo', hostname
   });
   return options?.all ? [{address: '127.0.0.1', family: 4}] : {address: '127.0.0.1', family: 4};

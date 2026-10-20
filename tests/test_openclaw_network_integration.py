@@ -94,7 +94,14 @@ def test_native_anthropic_network_retry(tmp_path, monkeypatch, outcome):
                             "override_memory_mb": 2048},
             "agent": {"import_path": "adapters.openclaw.adapter:OpenClawAgent",
                       "model_name": "anthropic/claude-opus-5.5", "kwargs": {
-                          "version": "2026.6.34", "preinstalled": {
+                          "version": "2026.6.34",
+                          "openclaw_config": {"models": {"providers": {"anthropic": {
+                              # This fixture endpoint is deliberately container-local.
+                              "request": {"allowPrivateNetwork": True},
+                              "models": [{"id": "claude-opus-5.5", "name": "fixture",
+                                          "maxTokens": 4096}]
+                          }}}},
+                          "preinstalled": {
                               "manifest_sha256": image.manifest_sha256,
                               "image": image.immutable_reference,
                               "parent_image": lock.agent_base_image.immutable_reference,
@@ -169,6 +176,10 @@ def test_native_anthropic_network_retry(tmp_path, monkeypatch, outcome):
         else:
             assert 1 <= len(failed) < 4
             assert all(r["event"] == "retry" for r in retries)
+            state = json.loads((agent_dir / "openclaw-status.json").read_text())
+            assert state["state"] == "interrupted"
     if retries:
         assert len({r["request_id"] for r in retries}) == 1
         assert all(r["provider"] == "anthropic" and r["session_id"] for r in retries)
+        run = json.loads((agent_dir / "openclaw-run.json").read_text())
+        assert {r["session_id"] for r in retries} == {run["sessionId"]}

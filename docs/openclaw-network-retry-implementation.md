@@ -1,77 +1,94 @@
-# OpenClaw Anthropic 网络重试实施记录
+# OpenClaw Anthropic 网络重试实施与验收
 
-日期：2026-10-20。分支：codex/openclaw-provider-network-retry。
+日期：2026-10-20。状态：独立分支实现与剩余验收已完成；尚未合并主分支或切换正式配置。
+分支：codex/openclaw-provider-network-retry。
 工作树：/Users/xutao/.codex/worktrees/openclaw-trial-incomplete/harbor-agent-infra。
 
-## 已实现
+## 实现范围
 
-- OpenClaw 2026.6.34 原生 Anthropic Messages 请求的 Response 前边界增加有限重试。
-  保留原 guarded fetch，每次重新执行 DNS/SSRF 策略、代理及资源清理。
-- ENOTFOUND、EAI_AGAIN、ECONNREFUSED、UND_ERR_CONNECT_TIMEOUT，以及 syscall=connect
-  的 ETIMEDOUT 可重试；结构化 cause 链有限遍历，AbortError/SSRF 拒绝不重试。
-- 最多四次尝试，1/2/4 秒基础等待加 ±20% jitter；等待可取消。原 URL、headers、body
-  和 AbortSignal 沿用，原始任务与已完成工具不重新执行。HTTP/SSE 处理在循环外。
-- 每次重试、收到响应和耗尽记录结构化日志，关联 request ID、session ID、provider/model；
-  不输出请求内容或凭据。耗尽时抛出最后一次原错误，沿用现有 Trial 未完成/禁止评分流程。
-- 新增 openclaw-network-retry 安装补丁，校验精确版本和基线文件 SHA256，唯一锚点替换、
-  幂等重入、内容漂移拒绝。补丁只修改一个现有 JS 文件，保持安装文件集合不变。
-- strict preinstalled 和 runtime_install 接入同一定义；镜像构建纳入补丁清单，保留
-  原有 before/after 和运行后文件校验，未放宽校验。
+- 仅在 OpenClaw 2026.6.34 原生 Anthropic Messages 获取 Response 前重试；每次仍经过
+  原 guarded fetch 的 DNS/SSRF、代理和资源清理。其他三组 provider 的 SDK 重试不变。
+- 白名单为 ENOTFOUND、EAI_AGAIN、ECONNREFUSED、UND_ERR_CONNECT_TIMEOUT，及明确
+  syscall=connect 的 ETIMEDOUT。AbortError、SSRF 拒绝及其他错误不进入新增重试。
+- 首次请求之外最多重试三次；1/2/4 秒基础等待加 ±20% jitter。沿用同一 body、headers、
+  URL 和 AbortSignal，保留父会话与工具进度。HTTP 错误响应和 SSE 中断不被本层重放。
+- 重试、收到响应和耗尽均记录关联 request/session/provider/model 的结构化日志，
+  不记录请求内容或凭据。耗尽继续原异常路径并阻断评分。
+- 补丁验证版本、唯一代码锚点和原文件 SHA256，幂等且拒绝漂移。安装文件集合不变，
+  strict preinstalled 与 runtime_install 使用同一定义，原有哈希校验保持启用。
 
-固定版本原文件：dist/provider-stream-DTxv_b4P.js。
-基线 SHA256：03f9d627b15e955ab3143310ea9f6dbdfb15bedcf0a7b8dad0e30d3226300d20。
-在本机已保存的固定版本原始文件副本上验证过补丁应用和重复应用，未修改该原始副本。
+目标构建文件为 dist/provider-stream-DTxv_b4P.js：
 
-## 已验证与未验证
+| 身份 | SHA256 |
+| --- | --- |
+| 补丁前 | 03f9d627b15e955ab3143310ea9f6dbdfb15bedcf0a7b8dad0e30d3226300d20 |
+| 补丁后 | 390a78ed6cef76f64c8010624aa38e3a402bec7f69d0915503a34aac1c60041e |
+| 补丁定义 | 7619bf043f1d4be0e5610ecbc58b858e168660047e484ea285850377932bb025 |
 
-Provider-free 全量回归：487 passed；其中 pytest 入口执行 17 个 Node 重试测试。
-真实 Harbor Trial 控制流下，实际生产 retry helper 通过四项外部边界替换测试：
-恢复成功、耗尽、取消、总超时；等待期间 verifier/清理均未调用，最终只评分成功结果。
-补丁选择、旧清单拒绝、文件漂移、幂等及原有暂停恢复契约也通过。改动文件 Ruff 和
-git diff 检查通过。以上不是 Docker/真实 provider 验收结果。
+## 本轮发现并修复的退出竞态
 
-已增加七个独立标记的 Docker integration 场景：正常、DNS 恢复、耗尽、恢复后 yield、
-取消、总超时、SSE 中断。夹具使用本地 Anthropic SSE 服务与测试专用 node:dns/promises
-lookup 注入；生产驱动没有故障开关，安装文件不因测试注入而改变。
+真实超时测试发现：首次 agent RPC 尚未结束时主动关闭 SDK，会产生 gateway client
+stopped 拒绝，旧驱动 catch 将已写入的 interrupted 状态覆盖为 failed。Harbor 的
+AgentTimeoutError 和评分阻断原本正确，但驱动原因记录不准确。
 
-**Docker 场景尚未执行。** 本轮尝试构建时，仓库 require_idle_docker() 因两个现有实验
-容器仍在运行而拒绝操作，错误为：
+提交 2b1906c 保留主动中断状态，禁止关闭产生的异常或迟到结果覆盖它。新增两个
+provider-free 驱动进程测试实际发送 SIGTERM/SIGINT；同时在 Docker 中复验取消/超时。
+驱动由宿主上传，此项修复不修改镜像内的 OpenClaw 安装文件或补丁清单。
 
-    Docker has active containers; defer image validation until they finish
+## 验收结果
 
-现有实验未被停止，构建保护未被绕过，默认 runtime-lock.preinstalled.json、主工作目录
-和正式配置均未变更。没有产生或宣称通过候选镜像验收，也没有启动正式模型实验。
+- Provider-free 全量回归：489 passed；包含 17 个 Node 网络重试用例、真实 Harbor
+  Trial 控制流下的恢复/耗尽/取消/超时契约，以及两个驱动关闭竞态回归。
+- 镜像门禁：8 passed。覆盖两个并发离线 setup、原化学环境、其他 harness 隔离，
+  以及错版本、错 manifest、文件篡改、缺失、入口漂移负例。
+- Anthropic 原生请求网络故障注入：7 passed。
+- 原有暂停恢复 Docker 回归：4 passed，包括连续两次 yield、正常完成、暂停后超时、
+  断线期间完成后补查；该组使用 Qwen 的 openai-completions 路径。
+- 正式镜像仓库名下的新 digest 额外执行 recovered 用例：1 passed。
+- 改动文件 Ruff、git diff 检查通过。
 
-## 后续完成步骤
+所有 Docker 场景均使用固定 OpenClaw、真实 Harbor/Gateway 和容器内合成模型 endpoint；
+评分 runtime 为合成实现，无付费 provider 请求或私有 VGB 数据，不代表真实 Claude
+任务质量验收。夹具显式声明 maxTokens 和测试服务的容器内访问权限，不改变生产配置。
+DNS 故障通过测试专用 node:dns/promises lookup 注入；没有生产故障开关或安装文件替换。
 
-Docker 空闲后在本工作树执行（所有输出使用新目录，不覆盖历史证据）：
+| 原生请求场景 | 最终结果 |
+| --- | --- |
+| 正常 | 无重试，最终评分一次 |
+| 前两次 DNS 失败 | 第三次成功，原 session ID 不变，工具只执行一次，评分一次 |
+| 持续 DNS 失败 | 恰好四次尝试，OpenClawAgentIncompleteError，无评分 |
+| DNS 恢复后 yield | 原生子任务完成并恢复父会话，最终评分一次 |
+| 退避中取消 | CancelledError、interrupted；没有耗尽尝试，无评分 |
+| 退避中总超时 | AgentTimeoutError、interrupted；没有耗尽尝试，无评分 |
+| SSE 已开始后断开 | 不进入网络重试，保留失败，无评分 |
 
-~~~sh
-uv run --locked --python 3.12 python scripts/build_preinstalled_image.py openclaw \
-  --lock runtime-lock.preinstalled.json \
-  --reference hai-candidate-openclaw-network-retry-20261020 \
-  --output-dir outputs/openclaw-network-candidate
+工作树内原始证据（忽略目录，失败记录同样保留）：
 
-RUN_PREINSTALLED_IMAGE_GATES=1 \
-PREINSTALLED_RUNTIME_LOCK=outputs/openclaw-network-candidate/openclaw-runtime-lock.json \
-PREINSTALLED_GATE_OUTPUT_DIR=outputs/openclaw-network-offline \
-LITELLM_LOCAL_MODEL_COST_MAP=True \
-uv run --locked --python 3.12 pytest -q tests/test_preinstalled_image_integration.py -k openclaw
+- outputs/openclaw-network-candidate/：构建清单、候选锁、正式名称的镜像检查证据及四组
+  配置的内存投影校验结果。
+- outputs/openclaw-network-offline/：离线 Harbor setup 和网络隔离证据。
+- outputs/openclaw-network-gate-4/：最终七场景日志、DNS 注入计数、状态与 Trial 结果。
+- outputs/openclaw-network-resume-gate/：四场景暂停恢复回归。
+- outputs/openclaw-network-promoted-gate/：独立分支默认锁中正式仓库名的新 digest 实测。
 
-RUN_OPENCLAW_NETWORK=1 \
-PREINSTALLED_RUNTIME_LOCK=outputs/openclaw-network-candidate/openclaw-runtime-lock.json \
-LITELLM_LOCAL_MODEL_COST_MAP=True \
-uv run --locked --python 3.12 pytest -q tests/test_openclaw_network_integration.py \
-  --basetemp=outputs/openclaw-network-gate
+## 镜像身份与生效边界
 
-RUN_OPENCLAW_RESUME=1 \
-PREINSTALLED_RUNTIME_LOCK=outputs/openclaw-network-candidate/openclaw-runtime-lock.json \
-LITELLM_LOCAL_MODEL_COST_MAP=True \
-uv run --locked --python 3.12 pytest -q tests/test_openclaw_resume_integration.py \
-  --basetemp=outputs/openclaw-network-resume-gate
-~~~
+本分支 runtime-lock.preinstalled.json 只更新 OpenClaw 的 digest 和 manifest SHA256；
+版本 2026.6.34、基础镜像、化学环境、其他 harness 身份均保持原值。
 
-必须取得候选镜像门禁与真实传输测试结果后，才能完成整体验收。随后按审核计划成套
-切换代码、新 OpenClaw digest/manifest 及后续实验配置；其他 harness 不改变。
-**不要只合并该分支代码搭配旧预装镜像运行**：旧 manifest 没有授权新增补丁，setup
-会明确拒绝。这一兼容约束已通过测试，不能通过跳过新补丁或放松校验解除。
+- 正式引用：hai-openclaw-latest@sha256:485e1ca1e3962aedc59a7b1486c652a47f0028f2c71c60924ab767a4f276f83f
+- Manifest SHA256：08a64ff15c248e92c92a1c7ddab00bdc023c97086395eea1c75fe6466688dff6
+- 候选构建名：hai-candidate-openclaw-network-retry-20261020。
+
+添加了新的 network-retry-20261020 标签以建立正式仓库名的本地不可变引用；没有覆盖
+旧 latest 标签，旧 digest 仍可访问。运行必须使用锁中的完整 digest，不能裸用 latest。
+镜像仅在本机 Docker 验收，未发布 Registry。
+
+当前改动保留在独立工作树，主分支、主工作区四组正式配置及历史实验产物未修改。
+已验证四组现有配置仅替换镜像身份与锁路径就能通过正式契约，模型、资源、任务时限
+无需改变。后续合并时需同步四组 OpenClaw 配置的 image.digest；manifest 从新锁读取。
+不能只合并代码继续搭配旧 manifest，该组合会被 strict setup 明确拒绝。
+
+复验使用 Python 3.12 和 locked uv，设置 PREINSTALLED_RUNTIME_LOCK 指向本分支的
+runtime-lock.preinstalled.json；分别用 RUN_PREINSTALLED_IMAGE_GATES、RUN_OPENCLAW_NETWORK、
+RUN_OPENCLAW_RESUME 开启对应测试，并使用新的证据目录，不覆盖本轮结果。
