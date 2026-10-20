@@ -24,7 +24,7 @@ const gateway = spawn(process.execPath, [entry, "gateway", "run", "--bind", "loo
 });
 fs.writeFileSync(`${logs}/openclaw-driver.pid`, String(process.pid));
 status({state: "running", sessionId: input.sessionId});
-let client, ready = false, stopping = false;
+let client, ready = false, stopping = false, interrupted = false;
 let rejectExecution;
 const failed = new Promise((_, reject) => { rejectExecution = reject; });
 gateway.on("error", rejectExecution);
@@ -71,6 +71,7 @@ function stop() {
   return shutdown;
 }
 for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, async () => {
+  interrupted = true;
   status({state: "interrupted", paused: session.paused});
   await stop();
   process.exit(130);
@@ -97,6 +98,7 @@ try {
   const execute = async () => {
     await connected;
     const result = await session.run(client);
+    if (interrupted) return;
     snapshot();
     // The transcript is cumulative across resumed turns; account for it once.
     const transcript = `${logs}/openclaw.session.jsonl`;
@@ -115,8 +117,9 @@ try {
   };
   await Promise.race([execute(), failed]);
 } catch (error) {
-  status({state: "failed", paused: session.paused, error: error.message});
-  process.exitCode = 1;
+  // stop() rejects pending SDK requests; preserve the initiating cancellation.
+  if (!interrupted) status({state: "failed", paused: session.paused, error: error.message});
+  process.exitCode = interrupted ? 130 : 1;
 } finally {
   clearTimeout(startup);
   await stop();
