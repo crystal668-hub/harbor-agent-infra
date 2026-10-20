@@ -4,7 +4,12 @@ from enum import StrEnum
 from typing import Any
 
 
+class OpenClawAgentIncompleteError(RuntimeError):
+    """The parent session could not finish after waiting for native continuation."""
+
+
 class OpenClawFailureCode(StrEnum):
+    INCOMPLETE = "agent_incomplete"
     STATE_LOCK = "openclaw_state_lock"
     SESSION_OWNER_MISMATCH = "session_owner_mismatch"
     TRAJECTORY_EXPORT = "trajectory_export_failure"
@@ -16,7 +21,9 @@ def classify_failure(exc: BaseException) -> tuple[OpenClawFailureCode, dict[str,
     """Map Harbor/OpenClaw exceptions to a stable Infra code without changing them."""
     name = type(exc).__name__.lower()
     text = str(exc).lower()
-    if "lock" in name or "lock" in text:
+    if isinstance(exc, OpenClawAgentIncompleteError):
+        code = OpenClawFailureCode.INCOMPLETE
+    elif "lock" in name or "lock" in text:
         code = OpenClawFailureCode.STATE_LOCK
     elif "owner" in name or "owner" in text or "session" in text and "mismatch" in text:
         code = OpenClawFailureCode.SESSION_OWNER_MISMATCH

@@ -8,6 +8,7 @@ from typing import Any
 from harbor.models.verifier.result import VerifierResult
 from harbor.verifier.base import BaseVerifier
 
+from adapters.openclaw.failure import OpenClawAgentIncompleteError
 from harbor_agent_infra.harness_runner import harness_runner_for
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.runtime import VgbRuntime
@@ -21,6 +22,11 @@ class VgbVerifier(BaseVerifier):
     """Score downloaded agent output with the isolated host-side VGB runtime."""
 
     async def verify(self) -> VerifierResult:
+        # Harbor deliberately reaches verification after an AgentTimeoutError.
+        # A Gateway run that never finished must not score an intermediate reply.
+        completion = self.trial_paths.agent_dir / "openclaw-status.json"
+        if completion.exists() and json.loads(completion.read_text()).get("state") != "completed":
+            raise OpenClawAgentIncompleteError("OpenClaw execution ended before parent completion")
         artifact = self.trial_paths.verifier_dir / "vgb-evaluation.json"
         artifact.parent.mkdir(parents=True, exist_ok=True)
         try:

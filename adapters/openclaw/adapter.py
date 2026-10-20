@@ -5,7 +5,7 @@ import json
 import shlex
 from typing import Any, override
 
-from harbor.agents.installed.base import NonZeroAgentExitCodeError
+from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_template
 from harbor.agents.installed.openclaw import OpenClaw as HarborOpenClaw
 from harbor.agents.installed.openclaw import OpenClawOptions as HarborOpenClawOptions
 from harbor.environments.base import BaseEnvironment
@@ -14,6 +14,7 @@ from harbor.models.agent.context import AgentContext
 from adapters.openclaw.config import project_agents_entries
 from adapters.openclaw.evidence import collect_evidence
 from adapters.openclaw.failure import classify_failure
+from adapters.openclaw.gateway import run_gateway
 from adapters.openclaw.session import (
     SessionIdentity,
     session_inventory_command,
@@ -232,7 +233,18 @@ class OpenClawAgent(HarborOpenClaw):
         )
 
     @override
+    def _build_register_skills_command(self) -> str | None:
+        if not self.skills_dir:
+            return None
+        target = shlex.quote(str(self.session_identity().state_dir / "skills"))
+        return (
+            f"mkdir -p {target} && cp -r {shlex.quote(self.skills_dir)}/* "
+            f"{target}/ 2>/dev/null || true"
+        )
+
+    @override
     @verify_after_run
+    @with_prompt_template
     async def run(
         self,
         instruction: str,
@@ -242,13 +254,14 @@ class OpenClawAgent(HarborOpenClaw):
         identity = self.session_identity()
         self._extra_env.update(identity.environment())
         try:
-            await super().run(instruction, environment, context)
+            await run_gateway(self, instruction, environment)
         except BaseException as exc:
             code, details = classify_failure(exc)
+            self._run_failure = {"code": code.value, **details}
             collect_evidence(
                 self.logs_dir,
                 identity,
-                failure={"code": code.value, **details},
+                failure=self._run_failure,
             ).write(self.logs_dir / "openclaw-evidence.json")
             raise
 
@@ -279,4 +292,6 @@ class OpenClawAgent(HarborOpenClaw):
         if not self.session_id:
             return
         identity = self.session_identity()
-        collect_evidence(self.logs_dir, identity).write(self.logs_dir / "openclaw-evidence.json")
+        collect_evidence(
+            self.logs_dir, identity, failure=getattr(self, "_run_failure", None)
+        ).write(self.logs_dir / "openclaw-evidence.json")

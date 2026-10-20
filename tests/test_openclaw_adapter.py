@@ -92,6 +92,16 @@ def test_openclaw_config_keeps_workspace_bootstrap_disabled(tmp_path: Path) -> N
     assert config["agents"]["defaults"]["skipBootstrap"] is True
 
 
+def test_skills_are_registered_in_the_trial_state_directory(tmp_path: Path) -> None:
+    agent = _agent(tmp_path)
+    assert agent._build_register_skills_command() is None
+    agent.skills_dir = "/opt/trial skills"
+    command = agent._build_register_skills_command()
+    assert "'/opt/trial skills'/*" in command
+    assert str(agent.session_identity().state_dir / "skills") in command
+    assert "~/.openclaw" not in command
+
+
 def test_openai_gpt_56_sol_custom_provider_preserves_thinking_profile(
     tmp_path: Path, monkeypatch
 ) -> None:
