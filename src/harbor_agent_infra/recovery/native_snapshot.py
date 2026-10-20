@@ -57,6 +57,10 @@ def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict
             agent = "claude-code"
         elif import_path.endswith(":CodexAgent"):
             agent = "codex"
+        elif import_path.endswith(":OpenClawAgent"):
+            agent = "openclaw"
+        elif import_path.endswith(":HermesAgent"):
+            agent = "hermes"
     sink = RunEventSink(
         path.parents[3] / "events" / "trials.jsonl",
         run_id=run_id,

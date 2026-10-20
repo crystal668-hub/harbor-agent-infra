@@ -546,10 +546,24 @@ def test_native_analyzer_and_reaudit_use_actual_recovery_results(native_runs):
 
 
 @pytest.mark.parametrize("harness", ["openclaw", "hermes", "codex", "claude-code"])
-def test_snapshot_projection_supports_each_harness(tmp_path, harness):
+@pytest.mark.parametrize("use_import_path", [False, True])
+def test_snapshot_projection_supports_each_harness(tmp_path, harness, use_import_path):
     from harbor_agent_infra.recovery.merger import ResultMerger
 
     original, recovery = fixture_run(tmp_path, harness=harness)
+    if use_import_path:
+        import_paths = {
+            "openclaw": "adapters.openclaw.adapter:OpenClawAgent",
+            "hermes": "adapters.hermes.adapter:HermesAgent",
+            "codex": "adapters.preinstalled:CodexAgent",
+            "claude-code": "adapters.preinstalled:ClaudeCodeAgent",
+        }
+        for root in (original, recovery):
+            for path in root.glob("jobs/*/*/result.json"):
+                trial = json.loads(path.read_text())
+                trial["config"]["agent"]["name"] = None
+                trial["config"]["agent"]["import_path"] = import_paths[harness]
+                write(path, trial)
     output = tmp_path / "merged"
     ResultMerger(original, [recovery], output).merge()
     record = json.loads((output / "results.json").read_text())["results"][0]
