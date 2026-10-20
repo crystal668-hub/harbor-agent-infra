@@ -1,6 +1,6 @@
 # OpenClaw Anthropic 网络重试实施与验收
 
-日期：2026-10-20。状态：独立分支实现与剩余验收已完成；尚未合并主分支或切换正式配置。
+日期：2026-10-20。状态：实现与验收已完成，已合并本地 main 并切换本机正式实验配置。
 分支：codex/openclaw-provider-network-retry。
 工作树：/Users/xutao/.codex/worktrees/openclaw-trial-incomplete/harbor-agent-infra。
 
@@ -84,10 +84,19 @@ DNS 故障通过测试专用 node:dns/promises lookup 注入；没有生产故�
 旧 latest 标签，旧 digest 仍可访问。运行必须使用锁中的完整 digest，不能裸用 latest。
 镜像仅在本机 Docker 验收，未发布 Registry。
 
-当前改动保留在独立工作树，主分支、主工作区四组正式配置及历史实验产物未修改。
-已验证四组现有配置仅替换镜像身份与锁路径就能通过正式契约，模型、资源、任务时限
-无需改变。后续合并时需同步四组 OpenClaw 配置的 image.digest；manifest 从新锁读取。
-不能只合并代码继续搭配旧 manifest，该组合会被 strict setup 明确拒绝。
+已将 codex/openclaw-provider-network-retry 快进合并至本地 main（a9e86f5），并切换本机
+configs/experiments/openclaw 下 gpt、claude、qwen、deepseek 四组正式配置的 image.digest。
+manifest 从主工作区新锁读取；package_lock 路径仍指向主工作区。模型、推理、token 上限、
+资源、时限、skills_off 分组及其他 harness 配置均未改变，历史实验产物不改写。
+
+主工作区 Python 3.12 locked uv 环境已确认加载新 adapter；四组配置生成的新 AgentConfig
+均携带新镜像和 manifest 身份，全部 16 组正式配置校验通过。配置属于本机忽略文件，
+未强制加入 Git；更新前的四份配置、旧锁及切换证据保存在：
+outputs/openclaw-network-activation-wy6jxus2/。
+
+主工作区额外复验记录：outputs/openclaw-network-main-activation-gate/。
+正式实验继续由用户按既有入口新建运行；本次切换不启动付费 provider 实验，不推送远端。
+旧 manifest 与新补丁的混用仍会被 strict setup 拒绝。
 
 复验使用 Python 3.12 和 locked uv，设置 PREINSTALLED_RUNTIME_LOCK 指向本分支的
 runtime-lock.preinstalled.json；分别用 RUN_PREINSTALLED_IMAGE_GATES、RUN_OPENCLAW_NETWORK、
