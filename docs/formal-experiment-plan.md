@@ -662,7 +662,7 @@ uv run --locked hai aggregate \
 ## 14. 实验进度与分 track 得分台账
 
 **最后核对日期**：2026-10-20。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-截至本次更新，**台账已收录 5/48 个子实验的最终验收结果**，包括 Claude Code repeat1 的四个模型组合和 Hermes × Claude repeat1。本次仅新增 Hermes × Claude 的验收记录；其他组合的运行或暂停状态未在本次重新核对，旧表中的“未启动”不作为当前进程状态依据。Hermes × Claude repeat1 已完成临时补充、合并和最终评分核对。Qwen 的 advanced 原始轮与预装补跑轮按已批准的临时条件变更合并为最终快照，basic 使用独立的预装结果。
+截至本次更新，**台账已收录 7/48 个子实验的最终验收结果**，包括 Claude Code repeat1 的四个模型组合、Hermes × Claude repeat1、Codex × GPT repeat1 和 Hermes × GPT repeat1。Qwen 的 advanced 原始轮与预装补跑轮按已批准的临时条件变更合并为最终快照，basic 使用独立的预装结果。
 
 ### 14.1 更新与统计口径
 
@@ -683,11 +683,11 @@ uv run --locked hai aggregate \
 | Claude Code | Claude | 已验收 | 20 / 20；0.606868 | 51 / 51；0.859013 |
 | Codex | DeepSeek | 未启动 | — | — |
 | Codex | Qwen | 未启动 | — | — |
-| Codex | GPT | 未启动 | — | — |
+| Codex | GPT | 已验收 | 20 / 20；0.615901 | 51 / 51；0.908060 |
 | Codex | Claude | 未启动 | — | — |
 | Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
-| Hermes | GPT | 未启动 | — | — |
+| Hermes | GPT | 已验收 | 20 / 20；0.610831 | 51 / 51；0.905121 |
 | Hermes | Claude | 已验收 | 20 / 20；0.646396 | 51 / 51；0.869606 |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
@@ -748,6 +748,8 @@ uv run --locked hai aggregate \
 | F | `claude-code-qwen-repeat1-advanced-preinstalled-recovery-batch1` | `claude-code-qwen-repeat1-advanced-preinstalled-recovery-batch1` | 2026-10-18 | 7 个获批 setup 工程失败均已结束；4 个补跑 Job 成功，3 个虽生命周期失败但保留有效 VGB 证据。按用户批准的临时条件变更参与来源 G 的 advanced 合并选择。 |
 | G | `claude-code-qwen-repeat1` + 来源 F | `claude-code-qwen-repeat1-merged` | 2026-10-18 | 临时允许原始 `runtime_install` 与补跑 `preinstalled` 条件合并；advanced 20 个 slots 中两个 7200 秒超时按 0 计入，最终均分 0.356398。该快照仅用于本轮最终统计，条件变更记录在 `merge-metadata.json`。 |
 | H | `hermes-anthropic-repeat1` + recovery batch1 | `hermes-anthropic-repeat1-merged` | 2026-10-20 | 按用户批准在独立 reconciled 快照中补充 7 个缺失 slot 的合成占位锚点，实际评分取自 recovery 原生结果；原始 run 与原 recovery 保留。71/71 可评分；Advanced 20/20、均分 0.646396，Basic 51/51、均分 0.869606。`AgentSafetyRefusalError` 标准化为 `safety_refusal_error`，与 Advanced 004 的 `AgentTimeoutError` 均按 0 计入且不可重跑。`hai formal-summary` 保留 2 条执行错误，但全部 71 条参与评分；内部 run ID 为 `hermes-anthropic-repeat1-reconciled`。来源与人工评分记录见 `operator-reconciliation.json`、`operator-scoring-override.json`。 |
+| I | `codex-openai-repeat1` | `codex-openai-repeat1` | 2026-10-20 | Audit 未发现失败 slot；71/71 完成评分。Advanced 20/20、均分 0.615901；Basic 51/51、均分 0.908060。 |
+| J | `hermes-openai-repeat1` | `hermes-openai-repeat1` | 2026-10-20 | Audit 未发现失败 slot；71/71 完成评分。Advanced 20/20、均分 0.610831；Basic 51/51、均分 0.905121。 |
 
 来源 A 的 `formal-summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
 与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
@@ -755,7 +757,7 @@ Qwen 的首轮 71 个 slot 跨两个冻结环境；本轮按用户明确授权�
 
 条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `reports/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
 
-本台账已收录 Claude Code 四个 repeat1 与 Hermes × Claude repeat1 的最终验收结果，共 5/48。本次不更新其他组合的执行状态或定时任务状态。来源 H 按人工批准的临时补充与终态错误计零口径验收；评分完成不改变底层执行失败事实。
+本台账已收录 7/48 个 repeat1 子实验的最终验收结果。来源 H 按人工批准的临时补充与终态错误计零口径验收；评分完成不改变底层执行失败事实。来源 I、J 均经 audit 确认无失败 slot，71/71 结果完整。
 
 核对现有结果的只读命令：
 
@@ -789,6 +791,7 @@ uv run --locked --python 3.12 hai formal-summary \
 - 2026-10-18: 按用户决定不再恢复 Claude 的安全拒答与超时；将 Claude Advanced 的安全限制拒答和超时均按可评分 0 纳入最终均分，更新 Qwen/Claude repeat1 两个 track 的最终台账与来源快照
 - 2026-10-18: 审核 Claude Code × GPT repeat1；71 个 slots 全部终态，Advanced 超时按 0 纳入，更新 GPT 两个 track 的最终台账
 - 2026-10-20: 同步 Hermes × Claude repeat1 最终结果；人工批准为 7 个缺失 slot 补充合成占位锚点并使用真实 recovery 评分，71/71 计分，两个不可重跑终态错误按 0 计入，新增来源 H
+- 2026-10-20: 审计 Codex × GPT 与 Hermes × GPT repeat1；两组均 71/71 全部评分、无失败 slot，更新分轨均分并标记已验收
 - 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json`
 
 ### 15.3 审批
