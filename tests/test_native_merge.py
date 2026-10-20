@@ -224,6 +224,51 @@ def test_qwen_preinstalled_condition_override_is_explicit_and_narrow(tmp_path):
     )
 
 
+def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(tmp_path):
+    from harbor_agent_infra.recovery.native_plan import _is_authorized_condition_change
+
+    old_image = "openclaw@sha256:old"
+    new_image = "openclaw@sha256:new"
+    before = tmp_path / "before"
+    after = tmp_path / "after"
+    for directory, image in ((before, old_image), (after, new_image)):
+        directory.mkdir()
+        (directory / "instruction.md").write_text("same instruction")
+        (directory / "task.toml").write_text(
+            f'[environment]\ndocker_image = "{image}"\nos = "linux"\n'
+        )
+    agent = {
+        "name": None,
+        "import_path": "adapters.openclaw.adapter:OpenClawAgent",
+        "model_name": "anthropic/claude-opus-5.5",
+        "kwargs": {"version": "2026.6.34", "preinstalled": {"image": old_image}},
+    }
+    original = {
+        "task_checksum": "old-checksum",
+        "config": {"task": {"path": str(before)}, "agent": agent},
+    }
+    candidate = copy.deepcopy(original)
+    candidate["task_checksum"] = "new-checksum"
+    candidate["config"]["task"]["path"] = str(after)
+    candidate["config"]["agent"]["kwargs"]["preinstalled"]["image"] = new_image
+    change = {
+        "schema_version": "preinstalled-condition-change.v1",
+        "condition_id": "openclaw-anthropic-repeat1-network-retry-image-20261020",
+        "authorization": "user approved",
+        "task_names": ["track__task-0"],
+        "previous_condition": {"installation_mode": "preinstalled", "image": old_image},
+        "target_condition": {"installation_mode": "preinstalled", "image": new_image},
+        "statistical_role": "new_condition_observation",
+    }
+    assert _is_authorized_condition_change(original, candidate, "track__task-0", change)
+    assert not _is_authorized_condition_change(original, candidate, "track__other", change)
+    changed = copy.deepcopy(change)
+    changed["target_condition"]["image"] = "openclaw@sha256:other"
+    assert not _is_authorized_condition_change(original, candidate, "track__task-0", changed)
+    (after / "instruction.md").write_text("different instruction")
+    assert not _is_authorized_condition_change(original, candidate, "track__task-0", change)
+
+
 def test_native_plan_handles_renamed_run(native_runs):
     original, recovery = native_runs
     renamed = original.with_name("renamed-original")

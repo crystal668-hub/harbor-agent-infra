@@ -629,6 +629,38 @@ async def test_explicit_condition_change_uses_preinstalled_tasks_and_records_pro
 
 
 @pytest.mark.asyncio
+async def test_preinstalled_image_change_preserves_other_agent_settings(changed_condition):
+    executor, original, snapshot = changed_condition
+    target = json.loads(snapshot.read_text())["groups"]["skills_off"]["job_config"]
+    old = original.model_dump(mode="json")
+    old_agent = old["agents"][0]
+    old_agent["name"] = None
+    old_agent["import_path"] = target["agents"][0]["import_path"]
+    old_agent["kwargs"]["preinstalled"] = {
+        **target["agents"][0]["kwargs"]["preinstalled"],
+        "image": "old@sha256:fixture",
+    }
+    frozen = JobConfig.model_validate(old)
+    change = executor.manifest.metadata["condition_change"]
+    change["previous_condition"] = {
+        "installation_mode": "preinstalled", "image": "old@sha256:fixture",
+    }
+    change["target_condition"] = {
+        "installation_mode": "preinstalled",
+        "image": target["agents"][0]["kwargs"]["preinstalled"]["image"],
+    }
+    with patch.object(executor, "_load_original_job_config",
+                      new=AsyncMock(return_value=frozen)):
+        job = await executor.prepare_job_config(executor.manifest.slots[0])
+        assert job.agents[0].kwargs["preinstalled"] == (
+            target["agents"][0]["kwargs"]["preinstalled"]
+        )
+        change["previous_condition"]["image"] = "other@sha256:fixture"
+        with pytest.raises(ValueError, match="frozen preinstalled image transition"):
+            await executor.prepare_job_config(executor.manifest.slots[0])
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("fault", ["hash", "model", "resources", "prompt", "timeout", "scope"])
 async def test_condition_change_rejects_unapproved_drift_before_launch(changed_condition, fault):
     import hashlib

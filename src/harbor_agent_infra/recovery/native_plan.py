@@ -213,7 +213,9 @@ def _task_content_equal(original: dict, candidate: dict, change: dict) -> bool:
 
 
 def _is_authorized_condition_change(original: dict, candidate: dict, task_name: str, change: dict) -> bool:
-    """Recognize only the explicit Claude Code runtime/preinstalled transition."""
+    """Recognize only the explicitly approved formal condition transitions."""
+    if change.get("condition_id") == "openclaw-anthropic-repeat1-network-retry-image-20261020":
+        return _is_authorized_openclaw_image_change(original, candidate, task_name, change)
     if (
         change.get("schema_version") != "preinstalled-condition-change.v1"
         or change.get("condition_id")
@@ -251,6 +253,45 @@ def _is_authorized_condition_change(original: dict, candidate: dict, task_name: 
     original_identity["agent"] = original_agent
     candidate_identity["agent"] = candidate_agent
     return original_identity == candidate_identity
+
+
+def _is_authorized_openclaw_image_change(
+    original: dict, candidate: dict, task_name: str, change: dict
+) -> bool:
+    previous = change.get("previous_condition") or {}
+    target = change.get("target_condition") or {}
+    if (
+        change.get("schema_version") != "preinstalled-condition-change.v1"
+        or not change.get("authorization")
+        or task_name not in change.get("task_names", [])
+        or previous.get("installation_mode") != "preinstalled"
+        or target.get("installation_mode") != "preinstalled"
+        or change.get("statistical_role") != "new_condition_observation"
+        or not _task_content_equal(original, candidate, change)
+    ):
+        return False
+    original_task = Path(str((original.get("config") or {}).get("task", {}).get("path", "")))
+    if tomllib.loads((original_task / "task.toml").read_text())["environment"].get(
+        "docker_image"
+    ) != previous.get("image"):
+        return False
+    old = execution_identity(original)
+    new = execution_identity(candidate)
+    if old["task_checksum"] == new["task_checksum"]:
+        return False
+    for identity, expected_image in ((old, previous.get("image")), (new, target.get("image"))):
+        agent = dict(identity["agent"])
+        kwargs = dict(agent.get("kwargs") or {})
+        preinstalled = kwargs.pop("preinstalled", None)
+        if (agent.get("name") is not None
+                or agent.get("import_path") != "adapters.openclaw.adapter:OpenClawAgent"
+                or not isinstance(preinstalled, dict)
+                or preinstalled.get("image") != expected_image):
+            return False
+        agent["kwargs"] = kwargs
+        identity["agent"] = agent
+        identity.pop("task_checksum")
+    return previous.get("image") != target.get("image") and old == new
 
 
 def plan_native_merge(

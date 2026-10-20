@@ -65,6 +65,21 @@ def preinstalled_condition_job(original, run_config, manifest, slot) -> JobConfi
     if (new_agent["import_path"] != expected.import_path or new_agent["name"] is not None
             or new_agent["kwargs"].get("preinstalled") != expected.kwargs["preinstalled"]):
         raise ValueError("Condition change must use the locked preinstalled adapter")
+    old_preinstalled = old_agent["kwargs"].get("preinstalled")
+    if old_preinstalled is not None:
+        previous = change.get("previous_condition") or {}
+        target_condition = change.get("target_condition") or {}
+        if (previous.get("installation_mode") != "preinstalled"
+                or target_condition.get("installation_mode") != "preinstalled"
+                or old_agent["import_path"] != expected.import_path
+                or old_agent["name"] is not None
+                or old_preinstalled.get("image") != previous.get("image")
+                or expected.kwargs["preinstalled"]["image"] != target_condition.get("image")
+                or previous.get("image") == target_condition.get("image")):
+            raise ValueError(
+                "Condition change must identify the frozen preinstalled image transition"
+            )
+        old_agent["kwargs"].pop("preinstalled")
     new_agent["kwargs"].pop("preinstalled")
     for agent in (old_agent, new_agent):
         agent.pop("name")
