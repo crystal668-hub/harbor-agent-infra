@@ -214,8 +214,14 @@ def _task_content_equal(original: dict, candidate: dict, change: dict) -> bool:
 
 def _is_authorized_condition_change(original: dict, candidate: dict, task_name: str, change: dict) -> bool:
     """Recognize only the explicitly approved formal condition transitions."""
-    if change.get("condition_id") == "openclaw-anthropic-repeat1-network-retry-image-20261020":
-        return _is_authorized_openclaw_image_change(original, candidate, task_name, change)
+    openclaw_model = {
+        "openclaw-anthropic-repeat1-network-retry-image-20261020": "anthropic/claude-opus-5.5",
+        "openclaw-openai-repeat1-network-retry-image-20261020": "openai/gpt-6.1-sol",
+    }.get(change.get("condition_id"))
+    if openclaw_model:
+        return _is_authorized_openclaw_image_change(
+            original, candidate, task_name, change, openclaw_model
+        )
     if (
         change.get("schema_version") != "preinstalled-condition-change.v1"
         or change.get("condition_id")
@@ -256,7 +262,7 @@ def _is_authorized_condition_change(original: dict, candidate: dict, task_name: 
 
 
 def _is_authorized_openclaw_image_change(
-    original: dict, candidate: dict, task_name: str, change: dict
+    original: dict, candidate: dict, task_name: str, change: dict, expected_model: str
 ) -> bool:
     previous = change.get("previous_condition") or {}
     target = change.get("target_condition") or {}
@@ -285,6 +291,7 @@ def _is_authorized_openclaw_image_change(
         preinstalled = kwargs.pop("preinstalled", None)
         if (agent.get("name") is not None
                 or agent.get("import_path") != "adapters.openclaw.adapter:OpenClawAgent"
+                or agent.get("model_name") != expected_model
                 or not isinstance(preinstalled, dict)
                 or preinstalled.get("image") != expected_image):
             return False

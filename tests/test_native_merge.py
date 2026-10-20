@@ -224,7 +224,18 @@ def test_qwen_preinstalled_condition_override_is_explicit_and_narrow(tmp_path):
     )
 
 
-def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(tmp_path):
+@pytest.mark.parametrize(
+    ("condition_id", "model_name"),
+    [
+        ("openclaw-anthropic-repeat1-network-retry-image-20261020",
+         "anthropic/claude-opus-5.5"),
+        ("openclaw-openai-repeat1-network-retry-image-20261020",
+         "openai/gpt-6.1-sol"),
+    ],
+)
+def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(
+    tmp_path, condition_id, model_name
+):
     from harbor_agent_infra.recovery.native_plan import _is_authorized_condition_change
 
     old_image = "openclaw@sha256:old"
@@ -240,7 +251,7 @@ def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(tmp_path):
     agent = {
         "name": None,
         "import_path": "adapters.openclaw.adapter:OpenClawAgent",
-        "model_name": "anthropic/claude-opus-5.5",
+        "model_name": model_name,
         "kwargs": {"version": "2026.6.34", "preinstalled": {"image": old_image}},
     }
     original = {
@@ -253,7 +264,7 @@ def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(tmp_path):
     candidate["config"]["agent"]["kwargs"]["preinstalled"]["image"] = new_image
     change = {
         "schema_version": "preinstalled-condition-change.v1",
-        "condition_id": "openclaw-anthropic-repeat1-network-retry-image-20261020",
+        "condition_id": condition_id,
         "authorization": "user approved",
         "task_names": ["track__task-0"],
         "previous_condition": {"installation_mode": "preinstalled", "image": old_image},
@@ -265,6 +276,9 @@ def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(tmp_path):
     changed = copy.deepcopy(change)
     changed["target_condition"]["image"] = "openclaw@sha256:other"
     assert not _is_authorized_condition_change(original, candidate, "track__task-0", changed)
+    changed = copy.deepcopy(candidate)
+    changed["config"]["agent"]["model_name"] = "other-model"
+    assert not _is_authorized_condition_change(original, changed, "track__task-0", change)
     (after / "instruction.md").write_text("different instruction")
     assert not _is_authorized_condition_change(original, candidate, "track__task-0", change)
 
