@@ -238,7 +238,9 @@ def test_openclaw_retries_npm_connection_reset(tmp_path: Path, monkeypatch) -> N
     sleep = AsyncMock()
     monkeypatch.setattr(HarborOpenClaw, "install", install)
     monkeypatch.setattr("adapters.openclaw.adapter.asyncio.sleep", sleep)
-    asyncio.run(_agent(tmp_path).install(None))
+    agent = _agent(tmp_path)
+    agent.exec_as_agent = AsyncMock()
+    asyncio.run(agent.install(None))
     assert install.await_count == 2
     sleep.assert_awaited_once_with(1)
 

@@ -21,7 +21,10 @@ from adapters.openclaw.session import (
     trajectory_export_command,
 )
 from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
-from adapters.runtime_patches import openclaw_adaptive_patch_command
+from adapters.runtime_patches import (
+    openclaw_adaptive_patch_command,
+    openclaw_network_retry_patch_command,
+)
 
 # OpenClaw's current model catalog declares this output limit for GPT-5.6 Sol.
 _OPENAI_GPT_56_SOL_MAX_TOKENS = 128_000
@@ -77,6 +80,9 @@ class OpenClawAgent(HarborOpenClaw):
         for attempt in range(3):
             try:
                 await super().install(environment)
+                await self.exec_as_agent(
+                    environment, command=openclaw_network_retry_patch_command(), timeout_sec=30
+                )
                 if self.model_name == "anthropic/claude-opus-5.5":
                     await self.exec_as_agent(
                         environment, command=openclaw_adaptive_patch_command(), timeout_sec=30

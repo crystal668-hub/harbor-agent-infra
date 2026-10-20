@@ -39,7 +39,7 @@ def test_strict_setup_preserves_harbor_lifecycle_and_never_installs(tmp_path, na
     if accepted:
         asyncio.run(agent.setup(env))
         assert env.exec.await_count == 3
-        assert agent.exec_as_agent.await_count == (1 if name == "hermes" else 0)
+        assert agent.exec_as_agent.await_count == (1 if name in {"hermes", "openclaw"} else 0)
     else:
         with pytest.raises(RuntimeError, match="version mismatch"):
             asyncio.run(agent.setup(env))
@@ -131,6 +131,13 @@ def test_manifest_checksum_is_checked_before_commands(installation, monkeypatch)
     path.write_text("{}")
     monkeypatch.setattr(probe, "actual_identity", lambda _: pytest.fail("untrusted manifest"))
     with pytest.raises(ValueError, match="checksum"):
+        probe.verify(expected, manifest_path=str(path))
+
+
+def test_old_manifest_rejects_new_network_patch(installation):
+    expected, path, *_ = installation
+    expected["patches"] = {"openclaw-network-retry": "f" * 64}
+    with pytest.raises(ValueError, match="patch definition mismatch"):
         probe.verify(expected, manifest_path=str(path))
 
 

@@ -17,6 +17,7 @@ from adapters.runtime_patches import (
     hermes_model_id_patch_command,
     hermes_output_patch_command,
     openclaw_adaptive_patch_command,
+    openclaw_network_retry_patch_command,
 )
 
 PROBE_SOURCE = Path(__file__).with_name("preinstalled_probe.py").read_text()
@@ -36,8 +37,11 @@ class PreinstalledOptions(BaseModel):
 
 
 def selected_patches(agent) -> dict[str, str]:
-    if agent.name() == "openclaw" and agent.model_name == "anthropic/claude-opus-5.5":
-        return {"openclaw-adaptive": openclaw_adaptive_patch_command()}
+    if agent.name() == "openclaw":
+        patches = {"openclaw-network-retry": openclaw_network_retry_patch_command()}
+        if agent.model_name == "anthropic/claude-opus-5.5":
+            patches["openclaw-adaptive"] = openclaw_adaptive_patch_command()
+        return patches
     if agent.name() == "hermes":
         patches = {}
         if agent.options.max_output_tokens is not None:
