@@ -177,6 +177,33 @@ def openclaw_edit_noop_patch_command() -> str:
     )
 
 
+
+OPENCLAW_OPENAI_TRANSPORT_SHA256 = (
+    "6b93df2b9ea93b9f862b4cda2d2bd8149823544d7053a417ef34c39aeb19126c"
+)
+_OPENCLAW_ENCRYPTED_BEFORE = (
+    '\treturn typeof record.message === "string" && (record.message.includes('
+    '"invalid_encrypted_content") || record.message.includes("thinking_signature_invalid"));'
+)
+OPENCLAW_ENCRYPTED_REPLACEMENTS = ((
+    _OPENCLAW_ENCRYPTED_BEFORE,
+    '\t// HAI recognize the observed HTTP 400 encrypted-content rejection.\n'
+    '\tif (record.status === 400 && (record.code === 400 || record.code === "400") &&\n'
+    '\t\trecord.type === "invalid_params" && typeof record.message === "string" &&\n'
+    '\t\t/The encrypted content .+ could not be verified\\. Reason: Encrypted content '
+    'could not be decrypted or parsed\\./.test(record.message)) return true;\n'
+    + _OPENCLAW_ENCRYPTED_BEFORE,
+),)
+
+
+def openclaw_encrypted_content_patch_command() -> str:
+    """Extend only the native classifier; retain its existing single recovery attempt."""
+    return _openclaw_release_patch_command(
+        "openai-transport-stream-DdwLSFjO.js", OPENCLAW_OPENAI_TRANSPORT_SHA256,
+        OPENCLAW_ENCRYPTED_REPLACEMENTS,
+    )
+
+
 def openclaw_adaptive_patch_command() -> str:
     # Opus 5.5 requires adaptive thinking but is absent from this release's
     # model predicate. Extend the predicate without changing the wire model ID.

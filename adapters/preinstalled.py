@@ -18,6 +18,7 @@ from adapters.runtime_patches import (
     hermes_output_patch_command,
     openclaw_adaptive_patch_command,
     openclaw_edit_noop_patch_command,
+    openclaw_encrypted_content_patch_command,
     openclaw_network_retry_patch_command,
 )
 
@@ -43,6 +44,10 @@ def selected_patches(agent) -> dict[str, str]:
             "openclaw-network-retry": openclaw_network_retry_patch_command(),
             "openclaw-edit-noop": openclaw_edit_noop_patch_command(),
         }
+        if agent.model_name.startswith("openai/"):
+            patches["openclaw-openai-encrypted-content"] = (
+                openclaw_encrypted_content_patch_command()
+            )
         if agent.model_name == "anthropic/claude-opus-5.5":
             patches["openclaw-adaptive"] = openclaw_adaptive_patch_command()
         return patches
