@@ -307,6 +307,19 @@ Verifier or scoring system issues:
 
 ### Recovery Limits
 
+For an explicitly reviewed replacement of an apparently scored attempt, native
+merge accepts `metadata.replacement_adjudications` in a recovery manifest. Each
+decision must contain `original_trial_id`, `task_name`, `trial_id`,
+`trial_result_sha256`, a nonempty `authorization`, and a nonempty `reason`.
+The SHA256 binds the decision to the exact result.json bytes. The trial must
+belong to that original slot and have a next approved replacement attempt in
+the supplied recovery chain. Such decisions mark only the reviewed attempts
+ineligible for selection; they do not rewrite scores or historical results.
+Decisions remain in merge-metadata.json. Without a decision, valid originals
+remain protected. Identity, execution-condition, and two-attempt budget checks
+still apply. This is an explicit human adjudication, not automatic approval
+based on a low score. Run `hai merge --dry-run` before publishing.
+
 To prevent infinite retry loops, the system enforces limits:
 - Maximum 2 substitution attempts per slot
 - Recovery manifest tracks `n_previous_attempts`

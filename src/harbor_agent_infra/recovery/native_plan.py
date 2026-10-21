@@ -115,6 +115,7 @@ class SlotPlan:
     selected: Candidate | None = None
     action: str = "original"
     substitution_count: int = 0
+    replacement_adjudications: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -152,6 +153,7 @@ class NativeMergePlan:
                         )
                     ),
                     "substitution_count": slot.substitution_count,
+                    "replacement_adjudications": slot.replacement_adjudications,
                     "attempts": [
                         {
                             "trial_id": c.trial["id"],
@@ -387,6 +389,13 @@ def plan_native_merge(
             _add_recovery(plan, by_anchor, root, allow_condition_change=allow_condition_change)
         except (ValueError, KeyError, OSError) as exc:
             plan.conflicts.append(f"{root.name}: {exc}")
+    for root in recoveries:
+        try:
+            metadata = read_json(root / "recovery-manifest.json").get("metadata") or {}
+            for decision in metadata.get("replacement_adjudications", []):
+                _apply_replacement_adjudication(plan, decision)
+        except (ValueError, KeyError, OSError, TypeError) as exc:
+            plan.conflicts.append(f"{root.name}: Invalid replacement adjudication: {exc}")
     for slot in plan.slots:
         _select(slot, plan)
     # Hashes cover evidence and configs, without copying private content into metadata.
@@ -487,6 +496,36 @@ def _add_recovery(
         raise ValueError("Recovery contains unapproved or unaccounted trial results")
 
 
+def _apply_replacement_adjudication(plan: NativeMergePlan, decision: dict) -> None:
+    """Honor an explicit replacement decision, never a score-based preference."""
+    for key in ("authorization", "reason"):
+        if not isinstance(decision.get(key), str) or not decision[key].strip():
+            raise ValueError(f"Missing adjudication {key}")
+    slots = [s for s in plan.slots
+             if s.original_trial["id"] == decision["original_trial_id"]
+             and s.record["task_name"] == decision["task_name"]]
+    if len(slots) != 1:
+        raise ValueError("Adjudication does not identify exactly one original slot")
+    slot = slots[0]
+    trial_id = decision["trial_id"]
+    if any(d["trial_id"] == trial_id for d in slot.replacement_adjudications):
+        raise ValueError("Duplicate replacement adjudication")
+    candidate = next((c for c in slot.candidates if c.trial["id"] == trial_id), None)
+    if trial_id == slot.original_trial["id"]:
+        path, ordinal = slot.original_path, 0
+    elif candidate is not None:
+        path, ordinal = candidate.path, candidate.ordinal
+    else:
+        raise ValueError("Adjudicated trial is not an attempt of this slot")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != decision["trial_result_sha256"]:
+        raise ValueError("Adjudicated trial evidence hash mismatch")
+    if not any(c.ordinal == ordinal + 1 for c in slot.candidates):
+        raise ValueError("Adjudication requires the next approved replacement attempt")
+    slot.replacement_adjudications.append(dict(decision))
+    if candidate is not None:
+        candidate.validity = "engineering"
+
+
 def _select(slot: SlotPlan, plan: NativeMergePlan) -> None:
     previous = slot.record.get("attempts") or []
     previous_ids = {a.get("trial_id") for a in previous}
@@ -509,6 +548,9 @@ def _select(slot: SlotPlan, plan: NativeMergePlan) -> None:
         return
     slot.substitution_count += len(fresh)
     validity, _ = assessment(slot.original_path, slot.original_trial)
+    if any(d["trial_id"] == slot.original_trial["id"]
+           for d in slot.replacement_adjudications):
+        validity = "engineering"
     if validity in ("valid", "scoring_pending"):
         if validity == "scoring_pending":
             slot.action = "scoring_pending"

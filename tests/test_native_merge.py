@@ -298,6 +298,129 @@ def test_native_plan_handles_renamed_run(native_runs):
     assert duplicate.conflicts
 
 
+def replacement_decision(original_trial, path):
+    import hashlib
+
+    trial = json.loads(path.read_text())
+    return {
+        "original_trial_id": original_trial["id"],
+        "task_name": original_trial["task_name"],
+        "trial_id": trial["id"],
+        "trial_result_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "authorization": "User explicitly approved replacement after evidence review",
+        "reason": "Reported score did not represent completed execution",
+    }
+
+
+def make_scored_original(original, recovery):
+    import shutil
+
+    path = next(original.glob("jobs/*/trial-0/result.json"))
+    trial = json.loads(path.read_text())
+    trial.update(exception_info=None, verifier_result={"rewards": {"vgb_score": 1.0}})
+    write(path, trial)
+    artifact = next(recovery.glob("jobs/*/*/verifier/vgb-evaluation.json"))
+    target = path.parent / "verifier" / artifact.name
+    target.parent.mkdir()
+    shutil.copy2(artifact, target)
+    scored = json.loads(target.read_text())
+    scored["domain_result"]["scores"]["score"] = 1.0
+    write(target, scored)
+    return path, trial
+
+
+def test_adjudicated_replacement_preserves_zero_and_input_evidence(native_runs, tmp_path):
+    from harbor_agent_infra.recovery.merger import ResultMerger
+    from harbor_agent_infra.recovery.native_plan import fingerprint_inputs
+
+    original, recovery = native_runs
+    path, trial = make_scored_original(original, recovery)
+    assert plan_native_merge(original, [recovery]).conflicts
+    manifest_path = recovery / "recovery-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    decision = replacement_decision(trial, path)
+    manifest["metadata"] = {"replacement_adjudications": [decision]}
+    write(manifest_path, manifest)
+    before = fingerprint_inputs([original, recovery])
+    plan = plan_native_merge(original, [recovery])
+    assert not plan.conflicts
+    assert plan.slots[0].selected.domain["scores"]["score"] == 0.0
+    assert plan.to_dict()["slots"][0]["replacement_adjudications"] == [decision]
+    output = tmp_path / "merged"
+    ResultMerger(original, [recovery], output).merge()
+    assert fingerprint_inputs([original, recovery]) == before
+    metadata = json.loads((output / "merge-metadata.json").read_text())
+    assert metadata["slots"][0]["replacement_adjudications"] == [decision]
+
+
+@pytest.mark.parametrize("fault", [
+    "authorization", "reason", "hash", "trial", "anchor", "task", "duplicate", "no_next",
+])
+def test_replacement_adjudication_rejects_unbound_decisions(native_runs, fault):
+    original, recovery = native_runs
+    path, trial = make_scored_original(original, recovery)
+    decision = replacement_decision(trial, path)
+    if fault in ("authorization", "reason"):
+        decision[fault] = ""
+    elif fault == "hash":
+        decision["trial_result_sha256"] = "stale"
+    elif fault == "trial":
+        decision["trial_id"] = "unrelated"
+    elif fault == "anchor":
+        decision["original_trial_id"] = "unrelated"
+    elif fault == "task":
+        decision["task_name"] = "other-task"
+    elif fault == "no_next":
+        decision = replacement_decision(trial, next(recovery.glob("jobs/*/*/result.json")))
+    decisions = [decision, decision] if fault == "duplicate" else [decision]
+    p = recovery / "recovery-manifest.json"
+    manifest = json.loads(p.read_text())
+    manifest["metadata"] = {"replacement_adjudications": decisions}
+    write(p, manifest)
+    assert any("Invalid replacement adjudication" in c
+               for c in plan_native_merge(original, [recovery]).conflicts)
+
+
+@pytest.mark.parametrize("first_validity", ["valid", "review", "scoring_pending"])
+def test_adjudication_allows_second_attempt_without_score_selection(native_runs, first_validity):
+    import shutil
+
+    original, batch1 = native_runs
+    op, ot = make_scored_original(original, batch1)
+    first = next(batch1.glob("jobs/*/*/result.json"))
+    batch2 = batch1.with_name(batch1.name.replace("batch1", "batch2"))
+    shutil.copytree(batch1, batch2)
+    second = next(batch2.glob("jobs/*/*/result.json"))
+    fresh = json.loads(second.read_text())
+    fresh["id"] = str(uuid5(NAMESPACE_URL, "second-attempt"))
+    write(second, fresh)
+    meta_path = second.parent.parent / "recovery-metadata.json"
+    meta = json.loads(meta_path.read_text()); meta["substitution_attempt"] = 2
+    write(meta_path, meta)
+    failed = json.loads(first.read_text())
+    if first_validity != "valid":
+        failed["exception_info"] = {
+            "exception_type": "OpenClawAgentIncompleteError" if first_validity == "review"
+            else "VgbVerifierError", "exception_message": "incomplete execution",
+        }
+        failed["verifier_result"] = None
+        (first.parent / "verifier/vgb-evaluation.json").unlink()
+        write(first, failed)
+    p = batch2 / "recovery-manifest.json"
+    manifest = json.loads(p.read_text()); manifest["slots"][0]["substitution_count"] = 1
+    manifest["metadata"] = {"replacement_adjudications": [
+        replacement_decision(ot, op), replacement_decision(ot, first),
+    ]}
+    write(p, manifest)
+    plan = plan_native_merge(original, [batch2, batch1])
+    assert not plan.conflicts
+    slot = plan.slots[0]
+    assert slot.selected.trial["id"] == fresh["id"]
+    assert slot.selected.domain["scores"]["score"] == 0.0
+    assert slot.substitution_count == 2
+    assert len(slot.candidates) == 2
+
+
 @pytest.mark.parametrize(
     "fault",
     [
