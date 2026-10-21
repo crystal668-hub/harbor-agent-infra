@@ -119,6 +119,64 @@ if (patched !== original) fs.writeFileSync(files[0], patched);
     return ". ~/.nvm/nvm.sh && nvm use 22 && node -e " + shlex.quote(script)
 
 
+OPENCLAW_EDIT_SHA256 = "491e97fd7fd5815f343f1576c17281f1226ee206564961474ed874900b94d5d9"
+OPENCLAW_EDIT_NOOP_REPLACEMENTS = tuple(
+    (
+        f'...textResult(`No changes made to ${{path}}. {message}`, void 0),\n'
+        '\t\t\t\t\t\tterminate: true',
+        f'...textResult(`No changes made to ${{path}}. {message}`, void 0)\n'
+        '\t\t\t\t\t\t// HAI no-op edit continues the current tool loop.',
+    )
+    for message in (
+        "The replacement text is identical to the original.",
+        "The replacement produced identical content.",
+    )
+)
+
+
+def _openclaw_release_patch_command(
+    filename: str, baseline_hash: str, replacements: tuple[tuple[str, str], ...]
+) -> str:
+    """Apply exact edits to one pinned release file, including verified reentry."""
+    script = r"""
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const npmRoot = require('node:child_process').execSync('npm root -g').toString().trim();
+const root = path.join(npmRoot, 'openclaw');
+if (JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version !== '2026.6.34')
+  throw new Error('Unexpected OpenClaw version');
+const file = path.join(root, 'dist', FILENAME);
+const original = fs.readFileSync(file, 'utf8');
+const replacements = REPLACEMENTS;
+const hash = text => crypto.createHash('sha256').update(text).digest('hex');
+let baseline = original;
+if (hash(baseline) !== BASELINE_HASH) {
+  for (const [before, after] of [...replacements].reverse()) {
+    if (baseline.split(after).length !== 2) throw new Error('OpenClaw patch drift');
+    baseline = baseline.replace(after, before);
+  }
+}
+if (hash(baseline) !== BASELINE_HASH) throw new Error('Unexpected OpenClaw release checksum');
+let patched = baseline;
+for (const [before, after] of replacements) {
+  if (patched.split(before).length !== 2) throw new Error('Unexpected OpenClaw patch anchor');
+  patched = patched.replace(before, after);
+}
+if (patched !== original) fs.writeFileSync(file, patched);
+""".replace("FILENAME", json.dumps(filename)).replace(
+        "REPLACEMENTS", json.dumps(replacements)
+    ).replace("BASELINE_HASH", json.dumps(baseline_hash))
+    return ". ~/.nvm/nvm.sh && nvm use 22 && node -e " + shlex.quote(script)
+
+
+def openclaw_edit_noop_patch_command() -> str:
+    """Keep both native no-op edit results from terminating the model tool loop."""
+    return _openclaw_release_patch_command(
+        "sessions-BFCD5uPV.js", OPENCLAW_EDIT_SHA256, OPENCLAW_EDIT_NOOP_REPLACEMENTS
+    )
+
+
 def openclaw_adaptive_patch_command() -> str:
     # Opus 5.5 requires adaptive thinking but is absent from this release's
     # model predicate. Extend the predicate without changing the wire model ID.

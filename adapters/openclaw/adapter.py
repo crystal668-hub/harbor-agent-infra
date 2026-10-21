@@ -23,6 +23,7 @@ from adapters.openclaw.session import (
 from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import (
     openclaw_adaptive_patch_command,
+    openclaw_edit_noop_patch_command,
     openclaw_network_retry_patch_command,
 )
 
@@ -82,6 +83,9 @@ class OpenClawAgent(HarborOpenClaw):
                 await super().install(environment)
                 await self.exec_as_agent(
                     environment, command=openclaw_network_retry_patch_command(), timeout_sec=30
+                )
+                await self.exec_as_agent(
+                    environment, command=openclaw_edit_noop_patch_command(), timeout_sec=30
                 )
                 if self.model_name == "anthropic/claude-opus-5.5":
                     await self.exec_as_agent(

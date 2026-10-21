@@ -10,6 +10,7 @@ import pytest
 from harbor.agents.factory import AgentFactory
 
 from adapters import preinstalled_probe as probe
+from adapters.preinstalled import selected_patches
 from harbor_agent_infra.contracts.experiment import AgentSpec
 from harbor_agent_infra.harness_runner import harness_runner_for
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
@@ -39,7 +40,9 @@ def test_strict_setup_preserves_harbor_lifecycle_and_never_installs(tmp_path, na
     if accepted:
         asyncio.run(agent.setup(env))
         assert env.exec.await_count == 3
-        assert agent.exec_as_agent.await_count == (1 if name in {"hermes", "openclaw"} else 0)
+        assert agent.exec_as_agent.await_count == (
+            len(selected_patches(agent)) if name == "openclaw" else int(name == "hermes")
+        )
     else:
         with pytest.raises(RuntimeError, match="version mismatch"):
             asyncio.run(agent.setup(env))

@@ -17,6 +17,7 @@ from adapters.runtime_patches import (
     hermes_model_id_patch_command,
     hermes_output_patch_command,
     openclaw_adaptive_patch_command,
+    openclaw_edit_noop_patch_command,
     openclaw_network_retry_patch_command,
 )
 
@@ -38,7 +39,10 @@ class PreinstalledOptions(BaseModel):
 
 def selected_patches(agent) -> dict[str, str]:
     if agent.name() == "openclaw":
-        patches = {"openclaw-network-retry": openclaw_network_retry_patch_command()}
+        patches = {
+            "openclaw-network-retry": openclaw_network_retry_patch_command(),
+            "openclaw-edit-noop": openclaw_edit_noop_patch_command(),
+        }
         if agent.model_name == "anthropic/claude-opus-5.5":
             patches["openclaw-adaptive"] = openclaw_adaptive_patch_command()
         return patches

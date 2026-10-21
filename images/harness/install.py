@@ -26,6 +26,7 @@ from runtime_patches import (
     hermes_model_id_patch_command,
     hermes_output_patch_command,
     openclaw_adaptive_patch_command,
+    openclaw_edit_noop_patch_command,
     openclaw_network_retry_patch_command,
 )
 
@@ -88,6 +89,7 @@ def capture_patches(name: str, roots: list[str], commit: str | None) -> dict:
     if name == "openclaw":
         commands["openclaw-adaptive"] = openclaw_adaptive_patch_command()
         commands["openclaw-network-retry"] = openclaw_network_retry_patch_command()
+        commands["openclaw-edit-noop"] = openclaw_edit_noop_patch_command()
     elif name == "hermes":
         commands["hermes-output"] = hermes_output_patch_command(commit)
         commands["hermes-model-id"] = hermes_model_id_patch_command(commit)
