@@ -137,9 +137,12 @@ def test_manifest_checksum_is_checked_before_commands(installation, monkeypatch)
         probe.verify(expected, manifest_path=str(path))
 
 
-def test_old_manifest_rejects_new_network_patch(installation):
+@pytest.mark.parametrize("patch", [
+    "openclaw-network-retry", "openclaw-edit-noop", "openclaw-openai-encrypted-content",
+])
+def test_old_manifest_rejects_unlisted_patch(installation, patch):
     expected, path, *_ = installation
-    expected["patches"] = {"openclaw-network-retry": "f" * 64}
+    expected["patches"] = {patch: "f" * 64}
     with pytest.raises(ValueError, match="patch definition mismatch"):
         probe.verify(expected, manifest_path=str(path))
 

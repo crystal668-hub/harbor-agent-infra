@@ -98,7 +98,7 @@ def capture_patches(name: str, roots: list[str], commit: str | None) -> dict:
     patches = {}
     for key, command in commands.items():
         original = inventory(roots)
-        # Only two small known source locations can be patched; do not retain a
+        # Only known release source files can be patched; do not retain a
         # second in-memory copy of the full binary/dependency installation.
         candidates = (list(Path(shell(name, "npm root -g")).joinpath("openclaw/dist").glob("*.js"))
                       if name == "openclaw" else
