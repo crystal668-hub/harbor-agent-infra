@@ -231,6 +231,8 @@ def test_qwen_preinstalled_condition_override_is_explicit_and_narrow(tmp_path):
          "anthropic/claude-opus-5.5"),
         ("openclaw-openai-repeat1-network-retry-image-20261020",
          "openai/gpt-6.1-sol"),
+        ("openclaw-openai-repeat1-gpt-two-fixes-20261021",
+         "openai/gpt-6.1-sol"),
     ],
 )
 def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(

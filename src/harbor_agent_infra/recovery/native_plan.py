@@ -217,6 +217,7 @@ def _is_authorized_condition_change(original: dict, candidate: dict, task_name: 
     openclaw_model = {
         "openclaw-anthropic-repeat1-network-retry-image-20261020": "anthropic/claude-opus-5.5",
         "openclaw-openai-repeat1-network-retry-image-20261020": "openai/gpt-6.1-sol",
+        "openclaw-openai-repeat1-gpt-two-fixes-20261021": "openai/gpt-6.1-sol",
     }.get(change.get("condition_id"))
     if openclaw_model:
         return _is_authorized_openclaw_image_change(
