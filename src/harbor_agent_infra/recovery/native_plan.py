@@ -216,6 +216,18 @@ def _task_content_equal(original: dict, candidate: dict, change: dict) -> bool:
 
 def _is_authorized_condition_change(original: dict, candidate: dict, task_name: str, change: dict) -> bool:
     """Recognize only the explicitly approved formal condition transitions."""
+    from harbor_agent_infra.recovery.codex_provider import SCHEMA, validate_transition
+
+    if change.get("schema_version") == SCHEMA:
+        if task_name not in change.get("task_names", []):
+            return False
+        before = execution_identity(original)
+        after = execution_identity(candidate)
+        try:
+            validate_transition(before.pop("agent"), after.pop("agent"), change)
+        except (ValueError, KeyError, TypeError):
+            return False
+        return before == after
     openclaw_model = {
         "openclaw-anthropic-repeat1-network-retry-image-20261020": "anthropic/claude-opus-5.5",
         "openclaw-openai-repeat1-network-retry-image-20261020": "openai/gpt-6.1-sol",

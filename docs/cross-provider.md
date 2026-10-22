@@ -140,3 +140,25 @@ A successful smoke proves this model/CLI route can execute tools. It does not
 establish VGB scores or equal reasoning budgets across model families. Reports
 and native Trial evidence from the initial six-route verification are stored
 locally under `run-artifacts/native-cross-provider-2026-10-13/`.
+
+### Applying custom providers to frozen Codex recovery Jobs
+
+Changing the current run YAML alone does not alter an original Job snapshot.
+For preinstalled Codex Qwen/DeepSeek recovery, declare a condition change in the
+recovery manifest's metadata.condition_change with:
+
+- schema_version: codex-provider-condition-change.v1
+- condition_id: a distinct identifier for this provider configuration
+- authorization: the user authorization for the configuration change
+- statistical_role: new_condition_observation
+- task_names: canonical task names covered by the change
+- agent_spec: the exact validated experiment.agent object from the selected run config
+
+The executor adds only kwargs.config to the frozen agent; model, credentials,
+bridge environment references, reasoning effort, pinned runtime/image, tasks and
+Job settings remain frozen. The transition is checked during preparation and
+before execution, and recorded in recovery metadata. Slot approval remains a
+separate requirement. Without this declaration, a selected custom provider that
+differs from the frozen Job now raises an error instead of silently using the old
+provider. Native merge recognizes the declared transition only through the
+existing explicit condition-change opt-in; it does not automatically merge runs.

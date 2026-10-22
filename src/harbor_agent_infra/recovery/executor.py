@@ -275,10 +275,25 @@ class RecoveryExecutor:
         if original_job_config is None:
             raise ValueError("Could not load original job config")
 
+        spec = getattr(self.run_config, "experiment", None)
+        requested = getattr(getattr(spec, "agent", None), "codex_config", None)
+        if (requested is not None and not self.manifest.metadata.get("condition_change")
+                and any(a.kwargs.get("config") != requested for a in original_job_config.agents)):
+            raise ValueError(
+                "Codex provider recovery requires an explicit condition_change; "
+                "the frozen Job still uses the original provider config"
+            )
+
         if self.manifest.metadata.get("condition_change"):
+            from harbor_agent_infra.recovery.codex_provider import SCHEMA, condition_job
             from harbor_agent_infra.recovery.condition_change import preinstalled_condition_job
 
-            original_job_config = preinstalled_condition_job(
+            change = self.manifest.metadata["condition_change"]
+            apply_change = (
+                condition_job if change.get("schema_version") == SCHEMA
+                else preinstalled_condition_job
+            )
+            original_job_config = apply_change(
                 original_job_config, self.run_config, self.manifest, slot
             )
 
