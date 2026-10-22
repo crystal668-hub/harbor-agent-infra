@@ -162,3 +162,11 @@ separate requirement. Without this declaration, a selected custom provider that
 differs from the frozen Job now raises an error instead of silently using the old
 provider. Native merge recognizes the declared transition only through the
 existing explicit condition-change opt-in; it does not automatically merge runs.
+
+A recovery manifest may set metadata.batch_concurrency to a positive integer at
+or below the original frozen concurrency. This batch-only reduction controls
+both the shared recovery semaphore and each single-task Job's concurrency;
+omitting it preserves the frozen limit. The selected value is retained in the
+manifest, recovery state and per-job metadata. It does not change per-Trial CPU,
+memory, model, retries, timeout or task inputs, and does not rewrite the original
+Job snapshot. Dry-run prints the effective concurrency.

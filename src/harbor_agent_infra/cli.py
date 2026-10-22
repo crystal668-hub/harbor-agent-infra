@@ -512,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
                     output_dir=args.output_dir or args.manifest.parent / "recovery-dry-run",
                 )
             if executor is not None:
-                print(f"Frozen recovery concurrency: {asyncio.run(executor.concurrency_limit())}")
+                print(f"Effective recovery concurrency: {asyncio.run(executor.concurrency_limit())}")
             print(f"Dry run: would recover {len(approved)} approved slots:")
             for slot in approved:
                 print(f"  - {slot.job_name} :: {slot.task_id}")

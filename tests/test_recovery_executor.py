@@ -689,3 +689,74 @@ async def test_condition_change_rejects_unapproved_drift_before_launch(changed_c
             await executor.execute()
     create.assert_not_awaited()
     assert not executor.output_dir.exists()
+
+
+@pytest.mark.asyncio
+async def test_explicit_single_concurrency_serializes_recovery_and_preserves_jobs(native_recovery):
+    import asyncio
+
+    from harbor_agent_infra.recovery.executor import SlotExecutionResult
+
+    executor, original, _ = native_recovery
+    executor.manifest.metadata['batch_concurrency'] = 1
+    before = original.model_dump(mode='json')
+    assert await executor.concurrency_limit() == 1
+    for slot in executor.manifest.get_approved_slots():
+        job = await executor.prepare_job_config(slot)
+        assert job.n_concurrent_trials == 1
+        assert job.agents == original.agents
+        assert job.environment == original.environment
+        assert job.retry == original.retry
+        assert job.verifier == original.verifier
+    active = peak = 0
+
+    async def run_slot(slot):
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        await asyncio.sleep(0)
+        active -= 1
+        return SlotExecutionResult(slot.slot_id, slot.job_name, slot.task_id, True, True)
+
+    with patch.object(executor, '_execute_slot', side_effect=run_slot):
+        result = await executor.execute()
+    assert peak == 1 and result.executed == 2
+    assert original.model_dump(mode='json') == before
+    state = json.loads((executor.output_dir / 'recovery-state.json').read_text())
+    assert state['concurrency'] == 1
+    saved = RecoveryManifest.load(executor.output_dir / 'recovery-manifest.json')
+    assert saved.metadata['batch_concurrency'] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('value', [0, -1, 3, True, '1', 1.5, None])
+async def test_batch_concurrency_rejects_invalid_or_increased_limit(native_recovery, value):
+    executor, _, _ = native_recovery
+    executor.manifest.metadata['batch_concurrency'] = value
+    with pytest.raises(ValueError, match='batch_concurrency'):
+        await executor.concurrency_limit()
+    with pytest.raises(ValueError, match='batch_concurrency'):
+        await executor.prepare_job_config(executor.manifest.slots[0])
+    with patch.object(executor, '_execute_slot', new_callable=AsyncMock) as run_slot:
+        with pytest.raises(ValueError, match='batch_concurrency'):
+            await executor.execute()
+        run_slot.assert_not_called()
+    assert not executor.output_dir.exists()
+
+
+@pytest.mark.asyncio
+async def test_single_concurrency_is_recorded_in_job_provenance(native_recovery):
+    executor, _, _ = native_recovery
+    executor.manifest.metadata['batch_concurrency'] = 1
+    job = AsyncMock()
+    job.run.return_value = MagicMock(stats=MagicMock(n_errored_trials=0, n_cancelled_trials=0))
+    with patch('harbor_agent_infra.recovery.executor.Job.create', new_callable=AsyncMock) as create:
+        create.return_value = job
+        result = await executor.execute()
+    assert result.succeeded == 2
+    for call in create.await_args_list:
+        config = call.args[0]
+        assert config.n_concurrent_trials == 1
+        metadata_path = config.jobs_dir / config.job_name / 'recovery-metadata.json'
+        meta = json.loads(metadata_path.read_text())
+        assert meta['batch_concurrency'] == 1

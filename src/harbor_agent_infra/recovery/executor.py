@@ -124,7 +124,7 @@ class RecoveryExecutor:
         )
 
     async def concurrency_limit(self) -> int:
-        """Read the frozen batch limit without creating Jobs or writing files."""
+        """Resolve the frozen limit and an optional batch-only reduction."""
         limits = set()
         identities = set()
         for slot in self.manifest.get_approved_slots():
@@ -140,7 +140,15 @@ class RecoveryExecutor:
                 limits.add(config.n_concurrent_trials)
         if len(identities) > 1 or len(limits) > 1:
             raise ValueError("Recovery batch must have one original run and concurrency limit")
-        return next(iter(limits), 1)
+        return self._batch_concurrency(next(iter(limits), 1))
+
+    def _batch_concurrency(self, frozen_limit: int) -> int:
+        selected = self.manifest.metadata.get("batch_concurrency", frozen_limit)
+        if type(selected) is not int or not 1 <= selected <= frozen_limit:
+            raise ValueError(
+                "batch_concurrency must be a positive integer no greater than the frozen limit"
+            )
+        return selected
 
     async def _execute_slot(self, slot: RecoverySlot) -> SlotExecutionResult:
         """Execute a single recovery slot.
@@ -185,6 +193,8 @@ class RecoveryExecutor:
         if change := self.manifest.metadata.get("condition_change"):
             recovery_metadata["condition_change"] = change
             recovery_metadata["statistical_role"] = "new_condition_observation"
+        if "batch_concurrency" in self.manifest.metadata:
+            recovery_metadata["batch_concurrency"] = recovery_job_config.n_concurrent_trials
 
         recovery_metadata_path = job_dir / "recovery-metadata.json"
         recovery_metadata_path.write_text(json.dumps(recovery_metadata, indent=2) + "\n")
@@ -322,6 +332,9 @@ class RecoveryExecutor:
                 "tasks": matching_tasks,
                 "job_name": recovery_job_name,
                 "jobs_dir": self.output_dir / "jobs",
+                "n_concurrent_trials": self._batch_concurrency(
+                    original_job_config.n_concurrent_trials
+                ),
             }
         )
         return JobConfig.model_validate(original_config)
