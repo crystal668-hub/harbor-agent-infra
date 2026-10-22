@@ -57,12 +57,45 @@ def execution_identity(trial: dict) -> dict:
     return identity
 
 
+def scoring_evidence_sha256(trial: dict) -> str:
+    """Bind a disposition to evidence that survives snapshot path relocation."""
+    evidence = {key: trial.get(key) for key in (
+        "id", "task_name", "task_checksum", "exception_info", "verifier_result",
+    )}
+    return hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest()
+
+
 def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
     """Validity and scoring are independent of Harbor lifecycle success."""
     exception = trial.get("exception_info") or {}
     kind = exception.get("exception_type")
     setup = trial.get("agent_setup") or {}
     execution = trial.get("agent_execution") or {}
+    decision_path = path.parent / "operator-scoring-disposition.json"
+    if decision_path.is_file():
+        decision = read_json(decision_path)
+        if (
+            decision.get("schema_version") != "capability-zero-disposition.v1"
+            or decision.get("approved_by_user") is not True
+            or not isinstance(decision.get("authorization"), str)
+            or not decision["authorization"].strip()
+            or decision.get("category") != "capability"
+            or type(decision.get("score")) not in (int, float)
+            or decision["score"] != 0
+            or decision.get("trial_id") != trial.get("id")
+            or decision.get("task_name") != trial.get("task_name")
+            or decision.get("evidence_sha256") != scoring_evidence_sha256(trial)
+            or kind != "VgbVerifierError"
+            or trial.get("verifier_result") is not None
+        ):
+            raise ValueError("Invalid capability-zero scoring disposition")
+        track, task_id = trial["task_name"].split("__", 1)
+        return "valid", {
+            "status": "scored", "track": track, "task_id": task_id,
+            "scores": {"score": 0.0},
+            "scoring_source": "operator_capability_zero",
+            "operator_disposition": decision,
+        }
     artifact_path = path.parent / "verifier" / "vgb-evaluation.json"
     artifact = read_json(artifact_path) if artifact_path.is_file() else {}
     domain = artifact.get("domain_result")

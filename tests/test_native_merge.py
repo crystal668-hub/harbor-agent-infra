@@ -792,3 +792,41 @@ def test_consolidated_timeout_keeps_exception_and_zero_score(native_runs, tmp_pa
     assert projected["exception_info"]["exception_type"] == "AgentTimeoutError"
     assert row["run_lifecycle_status"] == "failed" and row["scored"]
     assert row["vgb_domain_result"]["scores"]["score"] == 0
+
+
+def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp_path):
+    from harbor_agent_infra.recovery.native_plan import assessment, scoring_evidence_sha256
+    from harbor_agent_infra.recovery.merger import ResultMerger
+    original, recovery = native_runs
+    path = next(recovery.glob("jobs/*/*/result.json"))
+    trial = json.loads(path.read_text())
+    trial.update(verifier_result=None, exception_info={
+        "exception_type": "VgbVerifierError", "exception_message": "empty final response",
+        "exception_traceback": "fixture", "occurred_at": "2026-10-15T00:01:00Z",
+    })
+    write(path, trial)
+    write(path.parent / "verifier/vgb-evaluation.json", {"vgb_status": "error"})
+    decision = {
+        "schema_version": "capability-zero-disposition.v1", "approved_by_user": True,
+        "authorization": "User explicitly accepts empty output as capability zero",
+        "category": "capability", "score": 0.0, "trial_id": trial["id"],
+        "task_name": trial["task_name"], "evidence_sha256": scoring_evidence_sha256(trial),
+    }
+    decision_path = path.parent / "operator-scoring-disposition.json"
+    write(decision_path, decision)
+    assert assessment(path, trial)[0] == "valid"
+    for key, value in [("score", 1), ("score", False), ("authorization", ""),
+                       ("trial_id", "wrong"), ("evidence_sha256", "stale"),
+                       ("approved_by_user", False)]:
+        write(decision_path, {**decision, key: value})
+        with pytest.raises(ValueError, match="Invalid capability-zero"):
+            assessment(path, trial)
+    write(decision_path, decision)
+    output = tmp_path / "merged-zero"
+    ResultMerger(original, [recovery], output).merge()
+    record = json.loads((output / "results.json").read_text())["results"][0]
+    assert record["scored"] and record["vgb_domain_result"]["scores"]["score"] == 0
+    assert record["vgb_domain_result"]["scoring_source"] == "operator_capability_zero"
+    copied = Path(record["trial_result_path"])
+    assert assessment(copied, json.loads(copied.read_text()))[0] == "valid"
+    assert json.loads(path.read_text()) == trial
