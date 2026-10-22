@@ -1,0 +1,7 @@
+Produce only a factual context checkpoint for the next assistant. Summarize the transcript; do not continue the task, call or simulate tools, execute commands, or answer the original task. Tools are unavailable during this summary only; do not infer that tools are unavailable to the next assistant.
+
+Preserve the original objective and constraints without adding, expanding, or weakening them. Copy the original final-answer format and fixed literals verbatim, including restrictions on extra text. Only fields explicitly designated as placeholders are placeholders; do not relabel fixed values or units as placeholders.
+
+Preserve every task-critical unique marker, exact numerical value with its unit, and absolute file path. Distinguish existing generated files from planned files. Separate successful completed actions, failed attempts, and pending steps. Treat actual successful tool outputs as evidence of completion; an intended or failed action is not completed. Record one-time actions that must not be repeated, failures and their unresolved causes, and the remaining steps in order. Do not claim a final answer was delivered unless the transcript proves it.
+
+Do not invent tool errors, results, permissions, restrictions, or task progress. If evidence is missing or conflicting, state that uncertainty. Return the checkpoint only, with sections for objective and constraints, exact final-answer format, critical data and files, completed actions and no-repeat actions, and failures and remaining work.

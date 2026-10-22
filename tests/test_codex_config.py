@@ -124,3 +124,87 @@ def test_custom_provider_cannot_bypass_bridge_or_auth_contract(change):
     spec["codex_config"]["model_providers"]["qwen-responses"].update(change)
     with pytest.raises(ValidationError):
         AgentSpec(**spec)
+
+
+@pytest.mark.parametrize('value', [None, '', ' \n\t', True, 42, [], {}])
+def test_deepseek_rejects_invalid_compact_prompt(value):
+    spec = custom_spec('deepseek')
+    spec['codex_config']['compact_prompt'] = value
+    with pytest.raises(ValidationError, match='compact_prompt must be a non-empty string'):
+        AgentSpec(**spec)
+
+
+@pytest.mark.parametrize('installation_mode', ['runtime_install', 'preinstalled'])
+def test_deepseek_prompt_survives_native_config_upload(installation_mode, tmp_path, monkeypatch):
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    import toml
+
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'fixture-provider-secret')
+    endpoint = 'http://bridge.example:4141/deepseek/v1'
+    monkeypatch.setenv('CODEX_DEEPSEEK_BASE_URL', endpoint)
+    prompt = Path('examples/experiments/codex/deepseek-compaction-prompt.txt').read_text()
+    payload = custom_spec('deepseek', installation_mode=installation_mode)
+    payload['codex_config']['compact_prompt'] = prompt
+    spec = AgentSpec(**payload)
+    original = spec.model_dump(mode='json')
+    config = harness_runner_for('codex').build_agent_config(
+        spec, load_runtime_lock(Path('runtime-lock.preinstalled.json'))
+    )
+    assert config.kwargs['config']['compact_prompt'] == prompt
+    assert config.kwargs['reasoning_effort'] == 'high'
+    assert config.skills == []
+    agent = AgentFactory.create_agent_from_config(config, logs_dir=tmp_path)
+    effective = agent._build_effective_config(endpoint)
+    agent._upload_config_text = AsyncMock()
+    asyncio.run(agent._upload_effective_config(object(), effective, '/tmp/codex-home/config.toml'))
+    uploaded = toml.loads(agent._upload_config_text.await_args.kwargs['content'])
+    assert uploaded['compact_prompt'] == prompt
+    assert uploaded['model_providers']['deepseek-responses']['base_url'] == endpoint
+    assert set(uploaded) == {
+        'model_provider', 'model_providers', 'openai_base_url', 'compact_prompt',
+    }
+    assert spec.model_dump(mode='json') == original
+    assert config.kwargs['config'] == original['codex_config']
+    assert 'fixture-provider-secret' not in config.model_dump_json()
+
+
+def test_deepseek_prompt_is_hashed_and_omission_preserves_historical_payload():
+    import hashlib
+    import json
+
+    import yaml
+
+    from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
+    from harbor_agent_infra.preparation.experiments import experiment_sha256
+
+    raw = yaml.safe_load(
+        Path('examples/experiments/codex/vgb-deepseek.config.yaml').read_text()
+    )['experiment']
+    spec = ExperimentSpecV2.model_validate(raw)
+    before = spec.model_dump(mode='json')
+    assert 'compact_prompt' not in before['agent']['codex_config']
+    old_hash = hashlib.sha256(
+        json.dumps(before, sort_keys=True, separators=(',', ':')).encode()
+    ).hexdigest()
+    assert experiment_sha256(spec) == old_hash
+    raw['agent']['codex_config']['compact_prompt'] = 'Checkpoint A\nKeep exact units.'
+    candidate = ExperimentSpecV2.model_validate(raw)
+    raw['agent']['codex_config']['compact_prompt'] = 'Checkpoint B\nKeep exact units.'
+    edited = ExperimentSpecV2.model_validate(raw)
+    assert len({old_hash, experiment_sha256(candidate), experiment_sha256(edited)}) == 3
+    assert spec.model_dump(mode='json') == before
+
+
+@pytest.mark.parametrize('change', [
+    {'model_auto_compact_token_limit': 15000},
+    {'model_context_window': 999999},
+    {'experimental_compact_prompt_file': '/mutable/prompt.txt'},
+    {'features': {'disable_environment_context': True}},
+])
+def test_deepseek_prompt_does_not_enable_unrelated_overrides(change):
+    spec = custom_spec('deepseek')
+    spec['codex_config'].update(compact_prompt='Preserve state.', **change)
+    with pytest.raises(ValidationError):
+        AgentSpec(**spec)

@@ -56,6 +56,17 @@ This establishes a compatible request path, not summary state fidelity; do not
 use the templates for formal recovery until the required consecutive-compaction
 and state-retention checks pass.
 
+DeepSeek may explicitly opt in to a non-empty `agent.codex_config.compact_prompt`
+string. Qwen and other agents cannot set this override. Omission preserves the
+native default and historical serialization. The exact inline prompt is included
+in the experiment hash and Harbor `kwargs.config`; it is not resolved from a
+mutable external file at Trial startup. A candidate is stored in
+`examples/experiments/codex/deepseek-compaction-prompt.txt`. Copy its full contents
+into a new candidate configuration's `compact_prompt` before validation. Merely
+adding this file does not enable the override in any existing template or run.
+Treat enabling or editing it as an explicit experimental condition change and
+validate summary fidelity before requesting approval for recovery.
+
 Configure the endpoint variables in the ignored `.env`. At the current gateway,
 Qwen/DeepSeek Messages use the service root, while Responses use the existing
 `/v1` base. Other gateways require separately verified addresses; the native

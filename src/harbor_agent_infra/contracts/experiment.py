@@ -109,9 +109,17 @@ class AgentSpec(BaseModel):
             raise ValueError("omit custom provider base_url; Harbor binds the CODEX_* bridge URL")
         if "openai_base_url" in self.codex_config:
             raise ValueError("openai_base_url is supplied by Harbor from the CODEX_* bridge URL")
-        if set(self.codex_config) != {"model_provider", "model_providers"}:
+        allowed_fields = {"model_provider", "model_providers"}
+        if "compact_prompt" in self.codex_config:
+            if self.provider != "deepseek":
+                raise ValueError("compact_prompt is only supported by the DeepSeek provider")
+            prompt = self.codex_config["compact_prompt"]
+            if not isinstance(prompt, str) or not prompt.strip():
+                raise ValueError("compact_prompt must be a non-empty string")
+            allowed_fields.add("compact_prompt")
+        if set(self.codex_config) != allowed_fields:
             raise ValueError(
-                "codex_config may only select and define the custom Responses provider"
+                "codex_config supports custom Responses providers and DeepSeek compact_prompt only"
             )
 
 
