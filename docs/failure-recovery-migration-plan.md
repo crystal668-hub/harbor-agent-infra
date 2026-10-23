@@ -51,8 +51,8 @@
 | C1 | [实验契约](../src/harbor_agent_infra/contracts/experiment.py) 的 `RetrySpec` 只有 `n_attempts=1`、`max_retries=0`；Harbor `job.py` 按 `n_attempts × task × agent` 建立 TrialConfig | 有正式重复，但没有独立、稳定的 `slot_id/repeat_id` 与替代预算契约 |
 | C2 | [JobConfig 材料化](../src/harbor_agent_infra/harbor/job_config.py) 仅传 `RetryConfig(max_retries=...)`，其他重试设置继承 Harbor 默认 | 不能假定 AIREADY 的异常排除列表适用；需显式冻结有效重试配置 |
 | C3 | Harbor `trial/queue.py::_execute_trial_with_retries` 在重试前 `rmtree(trial.paths.trial_dir)`，再基于同一 TrialConfig 创建执行；[生命周期测试](../tests/test_harbor_lifecycle_integration.py) 验证新上下文与清理 | 事件中的旧 TrialResult 不等于旧日志、轨迹、评分原件仍然存在；开启内部重试前必须验证归档能力 |
-| C4 | [运行器](../src/harbor_agent_infra/harbor/run.py) 的 `failed_task_names_from_results` 只选 `run_lifecycle_status != completed` 的 task；`_replacement_artifacts` 按 group/task 收集旧数据；`_remove_replaced_records` 删除 per-record、Trial 目录和事件 | `--rerun-failed` 不是有效性分类器，也不是 repeat 级补跑；同 task 的其他重复可能被一并处理。`job.run()` 正常返回后即执行删除，即使 stats 仍显示失败 |
-| C5 | [CLI](../src/harbor_agent_infra/cli.py) 的 `--task-name + --job-name-suffix` 可追加新 Job；[运行器](../src/harbor_agent_infra/harbor/run.py) 按 `(group_id, trial_name)` 聚合事件并选最后一次 | 能保留显式补跑的旧目录，但不同 Job 的同一逻辑样本可能同时进入汇总；没有按 slot 的确定性入选关系 |
+| C4 | 历史任务级覆盖机制曾按 lifecycle 非 completed 选择 task 并删除旧产物；该执行路径已移除 | 当前恢复统一使用审查后的 slot 清单，不覆盖原始证据 |
+| C5 | 历史任务级追加机制没有独立的 slot 替代预算，已从运行入口移除 | 当前 `recover` 使用冻结配置与获批 slot，`merge` 发布独立快照 |
 | C6 | `_job_execution_settings` 对比重复数、并发、retry、environment、agents、verifier；允许任务选择变化时可放宽来源配置哈希比较；[任务材料化](../src/harbor_agent_infra/harbor/task_materializer.py) 在共享 `tasks/` 路径写入 task.toml 和 prompt | 该比较不覆盖完整任务文件内容及其时间／网络设置，不能当作严格同条件补跑证明；物化发生在部分已有 manifest 校验之前，需防止先改旧任务快照再拒绝 |
 | C7 | `RunEventSink` 按 exception 决定 completed/failed/cancelled，并据此设置 protocol completion；[audit.failure_mode](../src/harbor_agent_infra/harbor/audit.py) 映射 setup、provider、timeout、verifier 等标签 | 有诊断线索，缺少执行机会、因果证据、有效性与处置分层；不能从标签自动推出补跑许可 |
 | C8 | [VgbVerifier](../adapters/vgb_verifier.py) 保存 `vgb-evaluation.json`，返回相同的 `vgb_score/reward`；non-scored 或非法分数被包装为 `VgbVerifierError`，错误产物只保留异常 type/message，不保留已返回的 domain_result | 已保留有效零分，但领域根因可能丢失。合成复现确认 failure_type 未保存；先补齐官方返回值与提取输入证据，不能假定现有错误文件足以分类 |
@@ -60,7 +60,7 @@
 | C10 | [VgbRuntime.call](../integrations/vgb/runtime.py) 使用无显式 timeout 的 `subprocess.run`；verifier 通过 `asyncio.to_thread` 调用，Harbor 外层用 `wait_for` 限时 | 协程超时不保证线程及评分子进程停止。恢复前需确认旧评分已结束，后续增加评分子进程期限与回收契约并验证，不推断为已发生泄漏 |
 | C11 | [任务设置](../src/harbor_agent_infra/contracts/run.py) 默认 Agent 900 秒、Verifier 60 秒；[Codex 模板](../examples/experiments/codex/vgb-gpt.config.yaml) 明确 1800/120 秒、4 CPU/4096 MB、单并发、无内部 retry | 超时必须读取实际物化配置，不能硬编码 1800 秒；资源额度与资源峰值是两回事 |
 | C12 | [可观测性实施记录](plan/2026-10-11-native-observability-and-configs.md) 与 [观测实现](../src/harbor_agent_infra/harbor/observability.py) 提供阶段时长、usage、成本来源和工具失败下界；HTTP 请求重试、CPU 时间、内存峰值不可完整观测 | 未知继续为 null/unknown；不能把响应计数当 HTTP attempts，不能靠资源上限确认 OOM |
-| C13 | [历史补跑计划](plan/2026-10-08-skills-off-five-batch-rerun-plan.md) 按缺 `FINAL ANSWER:` 选任务；[历史合并脚本](../scripts/merge_successful_skills_off_reruns.py) 选择有该标记且 finished_at 最新的候选，备份后覆盖原 Trial 并删除补跑 Job | 属于旧操作口径，不符合新规则；保留历史解释，停止作为新正式批次入口，不能据此直接宣布历史样本无效 |
+| C13 | 历史补跑曾按缺最终答案标记选任务，并按最新完成时间选结果；相关执行代码已清除 | 历史结果和备份保留，当前选择采用[恢复与合并契约](recovery-system-guide.md)，不以旧规则判断新正式样本 |
 | C14 | Harbor `job.py::_maybe_init_existing_job` 在 Job 创建时删除没有 `result.json` 的 Trial 目录；regrade 要求 separate verifier 与足够的 artifact manifest | 保全必须早于 `Job.create()`，不能依赖其后的 hook。首版通过新 Job 恢复；宿主 VGB 离线重评可独立实现，原生 regrade 兼容性不再作为前置门槛 |
 | C15 | [CLI](../src/harbor_agent_infra/cli.py) 的 run 不传 `--group` 仍执行双组；materialize 没有 group 参数且材料化双组；native E2E helper 已要求显式 paired opt-in | run 与 materialize 都应默认 skills_off，并提供显式 paired 选择；保持 experiment.v2 双组 schema 兼容，不为单组执行强制重做整个配置 schema |
 | C16 | Harbor `Trial.run` 的 CANCEL 早于输出恢复和最终 result 落盘，END 在容器停止和 result 写入之后；END 之后仍会做日志脱敏和关闭。`_emit` 会 await hook 且异常向外传播 | CANCEL 与 END 属于同一个 attempt；hook 不等于最终稳定快照，END 也无法抓已删除的容器现场。首版在原生执行终止后核对归档，内部 retry 继续关闭；更早遥测需单独验证 Harbor 能力 |
@@ -277,19 +277,19 @@ A0 以目录及 Viewer 后端验收单独上线；P2 完成即可提供只读分
 
 本节历史迁移仅用于整理临时测试证据、验证恢复流程和保留可追溯性，不将现有任何实验产物转为正式样本。历史文档或目录名中的“正式”字样不改变本次统一归属；后续对这些测试数据的补跑、重评和分析仍归入 `temporary/`。
 
-旧协议、旧脚本与旧结果保持原貌，默认只做分类搬迁和读取兼容。仅在选择旧样本演练恢复流程时读取原配置、原生 ID、日志与备份；有确定关系才建立 lineage，无法确认标 `legacy_unmapped`。不为所有临时数据强制补建完整 repeat/slot，也不按 task_name、最新 finished_at 或 FINAL ANSWER 标记猜测。
+旧协议与旧结果保持原貌；一次性执行代码退役不改变历史产物，历史数据仅做分类与读取兼容。仅在选择旧样本演练恢复流程时读取原配置、原生 ID、日志与备份；有确定关系才建立 lineage，无法确认标 `legacy_unmapped`。不为所有临时数据强制补建完整 repeat/slot，也不按 task_name、最新 finished_at 或 FINAL ANSWER 标记猜测。
 
 历史合并脚本曾设计保留 backup tree，但本文未核实每批备份是否存在或完整。未来导入先做只读清单和哈希检查，从备份引用原件，不把备份内容覆盖回当前 Job。旧口径报告与新协议分析分别命名，记录政策变化和无法恢复的证据／成本。
 
 新入口完成前的临时规则：
 
 1. 新正式批次维持 Harbor `max_retries=0`，显式 `--group skills_off`；这不声称关闭原生 CLI/SDK 的请求级 retry。
-2. 不把现有 `--rerun-failed`、历史成功合并脚本或原地 resume 作为新协议下的自动恢复入口。
-3. 已有显式 task 追加 Job 能力只作为执行工具：先审查、快照、确认 repeat 和条件，输出到独立 repair run；当前测试的后续执行仍归 temporary，不能直接把其 results.json 当作已完成 slot 去重的正式结果。
+2. 正式恢复仅使用 `audit → 人工审查 → recover → merge`，不以原地覆盖作为恢复方式。
+3. 恢复执行须先审查、确认 repeat 和条件，再输出独立 repair run；临时测试不直接进入正式统计。
 4. 缺最终答案、reward=0、普通超时先判因果，不按历史“未出最终答案即补跑”规则批量执行。
 5. 没有独立评分恢复命令时保留评分缺口，安排 P3；不因入口缺失而重新抽主 Agent。
 
-后续 CLI 兼容策略：旧参数先给出明确迁移错误／指引，再映射为“生成待审计划”，不得继续隐式删除旧证据；脚本名称含 successful 的历史工具标为历史专用。旧 schema-v5 字段仍可供 Viewer/消费者使用，但新分析以分层状态和 selection map 为准，新增 schema 显式版本化。
+当前入口不保留已退役执行方式的兼容包装或命令别名。历史 schema 字段继续供数据读取使用，新分析以分层状态和 selection map 为准。
 
 回退只切换分析快照或停止新恢复计划，保持所有原始数据与新增审计记录；不得回退到覆盖原件的旧恢复行为。已启动 Job 的停止与取消仍交给 Harbor。
 

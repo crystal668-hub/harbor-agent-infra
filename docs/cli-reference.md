@@ -148,14 +148,13 @@ uv run --locked --python 3.12 hai formal-summary \
 例如脚本支持 `--dry-run`，不表示 `hai run` 支持 `--dry-run`。
 历史实验报告中的尝试性命令保留为历史记录；实际执行只采用本文列明的现行接口。
 
-仍存旧参数、脚本与兼容分支的后续处置见
-[旧接口盘点与清理计划](plan/2026-10-23-legacy-interface-cleanup-plan.md)。
-该计划区分拟退役写入入口与必须保留的历史读取兼容；清理尚未实施，
-不能把计划中的删除目标当作当前 CLI 已删除的接口。
+本轮标准化清理与保全范围见
+[实施记录](plan/2026-10-23-legacy-interface-cleanup-plan.md)。
+执行代码已完成收敛，历史产物读取兼容与正式恢复契约继续保留。
 
 ## 核对依据
 
 - [安装入口](../pyproject.toml)：`[project.scripts]`。
 - [CLI 注册与执行分支](../src/harbor_agent_infra/cli.py)：命令、参数、正式入口约束及输出行为。
 - 核对时已实际运行顶层、全部 10 个顶级命令及两个 image 子命令的 `--help`。
-- 本次仅整理文档及离线验证命令语法；不运行 provider、Docker／Registry 集成或正式实验。
+- 正式分析与流程收敛由 provider-free 契约测试验证；本次不运行 provider、Docker／Registry 集成或正式实验。

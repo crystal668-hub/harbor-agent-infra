@@ -1,7 +1,7 @@
 # skills_off 五阶段补跑计划
 
 日期：2026-10-08  
-状态：阶段 1 已配置、待执行；阶段 2-5 待预检  
+状态：历史任务范围记录；执行入口已统一，当前操作参见[CLI 参考](../cli-reference.md)
 范围：只处理 `skills_off` 中没有产生 `FINAL ANSWER:` 的 trial；不读取、不修改或执行备份目录
 
 ## 目标与边界
@@ -10,14 +10,7 @@
 `run-artifacts/<run-id>/` 下创建一个新 Harbor job，旧 job、旧 trial、per-record
 和 events 均保留。新 job 的后缀依次为 `rerun-batch-1` 到 `rerun-batch-5`。
 
-显式任务补跑使用 `hai run --task-name ... --job-name-suffix ...`，而不使用
-`--rerun-failed`。这些 trial 的 Harbor lifecycle 通常已是 `completed`，因此
-`--rerun-failed` 不会选中它们。
-
-运行器前置版本：
-
-- `ca81150`：增加 `--task-name` 与 `--job-name-suffix`；显式任务补跑保留旧 artifacts。
-- `0ff2384`：将 retry exception 列表按集合语义比较，避免无语义的序列顺序导致 manifest 不兼容。
+当时使用任务级追加方式处理这些历史测试；该执行方式已退役。以下保留历史任务范围，当前恢复遵循审查后的 slot 清单及独立快照流程。
 
 本地 `configs/` 被 `.gitignore` 忽略。每个阶段开始前只修改对应 Qwen 或 GPT
 配置的 `experiment.benchmark.cases` 和必要的 retry 值；不提交该本地配置。
@@ -65,17 +58,13 @@
 
 设置 `retry.max_retries: 0`，然后执行：
 
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-qwen-3.8-flash-pca \
-  --task-name property_calculation_advanced__property_calculation_advanced_001_free_energy \
-  --task-name property_calculation_advanced__property_calculation_advanced_007_polymorph_free_energy_crossover \
-  --task-name property_calculation_advanced__property_calculation_advanced_015_formaldehyde_socme \
-  --task-name property_calculation_advanced__property_calculation_advanced_017_biacetyl_phosphorescence_rate \
-  --job-name-suffix rerun-batch-1
-```
+历史任务清单（非执行指令）：
+
+- `property_calculation_advanced__property_calculation_advanced_001_free_energy`
+- `property_calculation_advanced__property_calculation_advanced_007_polymorph_free_energy_crossover`
+- `property_calculation_advanced__property_calculation_advanced_015_formaldehyde_socme`
+- `property_calculation_advanced__property_calculation_advanced_017_biacetyl_phosphorescence_rate`
+
 
 ### 批次 2：Qwen PCB
 
@@ -87,16 +76,12 @@ uv run --locked hai run \
 
 设置 `retry.max_retries: 0`，然后执行：
 
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-qwen-3.8-flash-pcb \
-  --task-name property_calculation_basic__property_calculation_basic_017_benzene_polarizability \
-  --task-name property_calculation_basic__property_calculation_basic_022_naphthalene_bridge_bond_order \
-  --task-name property_calculation_basic__property_calculation_basic_038_acetonitrile_standard_entropy \
-  --job-name-suffix rerun-batch-2
-```
+历史任务清单（非执行指令）：
+
+- `property_calculation_basic__property_calculation_basic_017_benzene_polarizability`
+- `property_calculation_basic__property_calculation_basic_022_naphthalene_bridge_bond_order`
+- `property_calculation_basic__property_calculation_basic_038_acetonitrile_standard_entropy`
+
 
 ### 批次 3：Qwen OG
 
@@ -107,16 +92,12 @@ uv run --locked hai run \
 
 设置 `retry.max_retries: 0`，然后执行：
 
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-qwen-3.8-flash-og \
-  --task-name open_generation_rdkit__rdkit_012_sa_logp_target \
-  --task-name open_generation_xtb__xtb_004_gap_min \
-  --task-name open_generation_xtb__xtb_018_ritonavir_optimized_energy_min \
-  --job-name-suffix rerun-batch-3
-```
+历史任务清单（非执行指令）：
+
+- `open_generation_rdkit__rdkit_012_sa_logp_target`
+- `open_generation_xtb__xtb_004_gap_min`
+- `open_generation_xtb__xtb_018_ritonavir_optimized_energy_min`
+
 
 ### 批次 4：GPT PCA
 
@@ -128,16 +109,12 @@ uv run --locked hai run \
 
 设置 `retry.max_retries: 2`，然后执行：
 
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-gpt-5.6-sol-pca \
-  --task-name property_calculation_advanced__property_calculation_advanced_001_free_energy \
-  --task-name property_calculation_advanced__property_calculation_advanced_017_biacetyl_phosphorescence_rate \
-  --task-name property_calculation_advanced__property_calculation_advanced_018_anthracene_ht_contribution \
-  --job-name-suffix rerun-batch-4
-```
+历史任务清单（非执行指令）：
+
+- `property_calculation_advanced__property_calculation_advanced_001_free_energy`
+- `property_calculation_advanced__property_calculation_advanced_017_biacetyl_phosphorescence_rate`
+- `property_calculation_advanced__property_calculation_advanced_018_anthracene_ht_contribution`
+
 
 ### 批次 5：GPT PCB
 
@@ -164,31 +141,27 @@ uv run --locked hai run \
 
 设置 `retry.max_retries: 2`，然后执行：
 
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-gpt-5.6-sol-pcb \
-  --task-name property_calculation_basic__property_calculation_basic_001_toluene_aqueous_solvation_free_energy \
-  --task-name property_calculation_basic__property_calculation_basic_003_diethyl_ether_aqueous_solvation_free_energy \
-  --task-name property_calculation_basic__property_calculation_basic_007_dimethylaniline_oxidation_potential \
-  --task-name property_calculation_basic__property_calculation_basic_016_thiophene_polarizability \
-  --task-name property_calculation_basic__property_calculation_basic_017_benzene_polarizability \
-  --task-name property_calculation_basic__property_calculation_basic_018_octatetraene_polarizability \
-  --task-name property_calculation_basic__property_calculation_basic_025_phenol_surface_esp_minimum \
-  --task-name property_calculation_basic__property_calculation_basic_030_picric_acid_crystal_density \
-  --task-name property_calculation_basic__property_calculation_basic_034_indole_c3_fukui_minus \
-  --task-name property_calculation_basic__property_calculation_basic_037_benzene_standard_entropy \
-  --task-name property_calculation_basic__property_calculation_basic_038_acetonitrile_standard_entropy \
-  --task-name property_calculation_basic__property_calculation_basic_039_neopentane_standard_entropy \
-  --task-name property_calculation_basic__property_calculation_basic_043_acetic_acid_dimerization_enthalpy \
-  --task-name property_calculation_basic__property_calculation_basic_044_caffeine_most_negative_mulliken_atom \
-  --task-name property_calculation_basic__property_calculation_basic_045_trifluoroacetic_acid_hydrogen_charge \
-  --task-name property_calculation_basic__property_calculation_basic_047_formaldehyde_s1_vertical_excitation_energy \
-  --task-name property_calculation_basic__property_calculation_basic_048_acetaldehyde_s1_vertical_excitation_energy \
-  --task-name property_calculation_basic__property_calculation_basic_050_pyrazine_s1_vertical_excitation_energy \
-  --job-name-suffix rerun-batch-5
-```
+历史任务清单（非执行指令）：
+
+- `property_calculation_basic__property_calculation_basic_001_toluene_aqueous_solvation_free_energy`
+- `property_calculation_basic__property_calculation_basic_003_diethyl_ether_aqueous_solvation_free_energy`
+- `property_calculation_basic__property_calculation_basic_007_dimethylaniline_oxidation_potential`
+- `property_calculation_basic__property_calculation_basic_016_thiophene_polarizability`
+- `property_calculation_basic__property_calculation_basic_017_benzene_polarizability`
+- `property_calculation_basic__property_calculation_basic_018_octatetraene_polarizability`
+- `property_calculation_basic__property_calculation_basic_025_phenol_surface_esp_minimum`
+- `property_calculation_basic__property_calculation_basic_030_picric_acid_crystal_density`
+- `property_calculation_basic__property_calculation_basic_034_indole_c3_fukui_minus`
+- `property_calculation_basic__property_calculation_basic_037_benzene_standard_entropy`
+- `property_calculation_basic__property_calculation_basic_038_acetonitrile_standard_entropy`
+- `property_calculation_basic__property_calculation_basic_039_neopentane_standard_entropy`
+- `property_calculation_basic__property_calculation_basic_043_acetic_acid_dimerization_enthalpy`
+- `property_calculation_basic__property_calculation_basic_044_caffeine_most_negative_mulliken_atom`
+- `property_calculation_basic__property_calculation_basic_045_trifluoroacetic_acid_hydrogen_charge`
+- `property_calculation_basic__property_calculation_basic_047_formaldehyde_s1_vertical_excitation_energy`
+- `property_calculation_basic__property_calculation_basic_048_acetaldehyde_s1_vertical_excitation_energy`
+- `property_calculation_basic__property_calculation_basic_050_pyrazine_s1_vertical_excitation_energy`
+
 
 ## 每批验收与记录
 

@@ -1,347 +1,58 @@
-# 旧接口盘点与下一步清理计划
+# 标准化实验流程清理实施记录
 
-日期：2026-10-23（Asia/Shanghai）。核对基线：`a4216f9`。
-状态：退役范围与功能保留取舍已确认，尚未获准执行；本轮仅更新计划，代码和脚本均未修改或删除。
-W1/W2 与 W3/W4/W5/W7/C7 五个脚本纳入待统一批准的退役计划；C7 的排名／分箱功能先迁入 `hai formal-summary`，迁移验收后再删除独立脚本。最新决定见第 9 节。
+日期：2026-10-23（Asia/Shanghai）。状态：已按用户批准实施。
 
-本轮只登记仍存入口、实际行为、调用依赖、迁移顺序和验收条件；不移除参数、
-不启动实验、不改写历史结果。现行命令仍以[当前 CLI 参考](../cli-reference.md)为准。
+## 唯一正式流程
 
-## 1. 清理边界
+```text
+run → audit → 人工审查 → recover → merge → formal-summary
+```
 
-目标是只保留一套正式写入流程：`run → audit → 审查 → recover → merge → formal-summary`。
-不能把所有带 legacy、fallback 或旧版本字样的代码一并删除。
-本次将旧写入入口、历史读取兼容、仍有效的配置接口和不存在的拟议命令分别登记。
+命令和参数以[当前 CLI 参考](../cli-reference.md)、CLI 注册代码及 `--help` 为准。
+`recover` 和 `merge` 均先预览并审查；每个原始 slot 仅保留一个正式代表，
+全部实际尝试及其成本、错误和来源仍保留在产物中。
 
-盘点依据为 CLI 注册及执行分支、相关脚本、运行器、恢复模块、文档引用和既有测试；
-另用 `build_parser().parse_args()` 离线确认旧参数和参数缩写仍被接受。
-该检查没有执行其运行分支，不能视为一次真实补跑验证。
-仓库内引用检查也不能证明外部 shell、自动化或本机忽略配置已不再使用这些接口；
-实施删除前还需定向核对本机调用方，只记录路径和参数名，不输出凭据。
+## 已完成清理
 
-## 2. 优先退役的旧写入入口
+- 删除两类任务级覆盖／追加运行入口及其专用执行分支、孤立 helper 和专属测试。
+- 删除五个一次性独立脚本；不建立兼容包装、别名、转发入口或脚本备份副本。
+- 共享运行器、任务材料化、正式精确恢复、条件校验与按 slot 合并继续保留。
+- 任务子集的临时测试使用独立配置和新的 temporary 目录；正式失败按审查清单恢复。
+- 当前文档只提供标准命令；历史计划保留事实说明，移除已失效的可执行入口。
 
-下表是拟清理清单，不表示这些入口已经不可用。
+## 正式成绩分析
 
-| 编号 | 现存入口 | 已核对的行为与问题 | 下一步处置 |
-| --- | --- | --- | --- |
-| W1 | `hai run --rerun-failed RESULTS_JSON` | 以 lifecycle 非 completed 选 task；运行器通过 `_replacement_artifacts`／`_remove_replaced_records` 删除旧 per-record、Trial 目录和事件。不是按原 slot 审查的替代流程 | 先在任何预检、材料化或写盘前拒绝调用并给出迁移提示；迁移调用方后删除参数和仅服务此路径的删除链，正式补跑转 `audit/recover/merge` |
-| W2 | `hai run --task-name ... --job-name-suffix ...` | 成对参数，可按 task 追加 Job，并放宽部分任务选择比较；本身不消费恢复批准和 slot 级替代预算 | 从正式补跑操作中退役，先阻断旧入口再移除 CLI 参数；临时子集测试使用独立配置与新 temporary 输出。仅清除无其他调用的 helper，不删除共用 Job 命名能力 |
-| W3 | `scripts/merge_successful_skills_off_reruns.py --apply`／`--rebuild-only` | 历史固定任务脚本：按 `FINAL ANSWER` 与最新 finished_at 选样；`--apply` 备份后覆盖旧 Trial、重写事件并删除 rerun Job；`--rebuild-only` 也会写汇总，不能当作预览 | 优先关闭两个写入入口，保留 Git 历史及历史文档解释；当前合并统一使用 `hai merge`，不能静默转换旧选择规则 |
-| W4 | `scripts/audit_vgb_results.py` | 另有一套分类逻辑：零分也列入失败清单；部分无分记录标 SCORING 且可替代；Job 名与审计时间硬编码；默认覆盖 recovery-manifest.json | 退役独立审计入口，改用 `hai audit`；已有脚本生成清单只作来源证据，重新审查原生记录后生成新清单，不能自动沿用旧批准 |
-| W5 | `scripts/approve_substitutable.py` | 原地修改 approved；按类别字符串和 is_substitutable 选择，允许传 SCORING；未使用当前 manifest 的置信度、预算等统一门禁 | 关闭独立批量批准入口；保留正式审查步骤及现有 manifest 契约，不另造 approve 子命令，不把历史 approved 自动视作现行授权 |
-| W6 | `hai merge` 内部 `_merge_legacy` 分支 | 原始 run 无根 results.json 时进入旧 `jobs/<job>/trials/` 路径；按任务前缀与 outcome=success 合并，不执行同一套原生 slot 选择契约 | 正式写入只允许已验证的原生选择路径；缺根汇总不能静默降级。旧数据先只读核对／导入新快照，证据不足即报错；完成调用方迁移后删除旧写入分支 |
-| W7 | `scripts/run-experiment-with-proxy.sh` | 固定读取 Claude Code/DeepSeek 配置，创建 formal 日志目录，但调用 `uv run hai run` 时没有 `--locked`、Python 3.12 选择及正式 provider/repeat flags；不是规范正式启动器 | 核对使用方后退役硬编码启动包装，迁移到统一正式入口；代理设置单独保留并验证，不在接口清理中悄悄改变原运行路由 |
+`hai formal-summary` 通过显式参数启用 Top/Bottom 排名和分数分箱：
 
-W1/W2 的正式参数拒绝目前仅在 CLI 提供 `--formal-repeat` 或 `--formal-provider`
-而进入正式分支时触发。通用运行器以 `formal_context` 决定是否允许已有输出目录，
-而且先执行预检／材料化再核对部分旧 manifest。**目录位于 formal/ 并不等价于已进入
-该正式参数门禁。** 下一步必须覆盖省略 formal flags、配置输出指向已有正式 run、
-自定义 formal-root 及路径别名等情况，在任何写入前识别并拒绝旧式修改；
-不能只在 argparse 中藏起参数，也不能只按目录 basename 判断正式身份。
+```bash
+uv run --locked --python 3.12 hai formal-summary   'run-artifacts/formal/<selected-snapshot>' --top-n 10 --score-bins 0,0.2,0.4,0.6,0.8,1
+```
 
-W6 已有临时副本与新输出发布保护，当前不会直接修改原始输入目录；
-问题是旧选样／身份语义仍然存在，不能将其误述为与 W3 相同的原地覆盖行为。
+- 排名条数可配置；只指定分箱时默认 Top/Bottom 10。
+- 分箱边界严格从 0 递增至 1，区间左闭右开，恰好 1 分单列。
+- 基于已选定快照的代表记录，按 track/run_track 区分；不会重选 attempt、重跑或重评。
+- 保留已计分零分和人工计分来源，未评分不补零，非法值单独计数。
+- 同分排序确定，排名携带完整任务身份和可用来源。混合 summary 仅为辅助。
+- 未开启分析选项时，既有 JSON 汇总字段与输出结构保持不变。
 
-证据：
-- [CLI](../../src/harbor_agent_infra/cli.py)：`build_parser`、`main` 的 run 分支。
-- [运行器](../../src/harbor_agent_infra/harbor/run.py)：`failed_task_names_from_results`、`_replacement_artifacts`、`_remove_replaced_records`、`run_paired_jobs`。
-- [历史合并脚本](../../scripts/merge_successful_skills_off_reruns.py)、[历史审计脚本](../../scripts/audit_vgb_results.py)、[历史批准脚本](../../scripts/approve_substitutable.py)。
-- [历史代理启动包装](../../scripts/run-experiment-with-proxy.sh)：固定配置与最终启动命令。
-- [合并器](../../src/harbor_agent_infra/recovery/merger.py)：`merge`、`_merge_legacy`、`_merge_trial`。
+## 保全范围
 
-## 3. 需要收紧，但不能直接删除的兼容入口
+历史结果、logs、reports、run-artifacts、选择备份、现有代理配置和冻结环境锁
+不随代码清理。源码仅在明确批准的仓库文件中修改，没有重写历史执行或评分事实。
+本次保留必要的数据读取兼容；其他未列入本批的配置与恢复契约不自动删除。
 
-| 编号 | 接口／兼容行为 | 核对结论 | 清理边界 |
-| --- | --- | --- | --- |
-| C1 | `run/materialize --experiment` 配合 `--resource-config` | 仍是受支持的拆分配置入口，存在 CLI 和契约测试；不能仅因正式运行推荐 `--config` 就宣布其已废弃 | 登记为后续收敛候选。先列出调用方并迁移到等价配置；未完成迁移前继续支持，正式 repeat 仍只用 `--config` |
-| C2 | `experiment.v1`、`ExperimentSpec`、`materialize_job_config` | 仍由加载器、materialize、镜像／契约测试使用；`hai run` 已要求 v2 | 与 C1 分开评估；可先限制旧格式产生新正式运行，保留历史读取和既有测试。删除 schema 需独立迁移验收，不与危险写入入口一起删除 |
-| C3 | `original_run` 为空／unknown 时回退到 manifest 名；多位置查找 JobConfig | 为早期缺字段／目录迁移数据保留；执行器与原生 merge 仍有相关兼容 | 新正式数据要求显式身份；历史恢复只有核对 run/Job/Trial、任务和冻结配置后才能使用兼容映射。保留历史原件，映射单独记录；歧义报错，不重置预算 |
-| C4 | `harbor.json`、嵌套 `trials/`、旧 recovery_metadata | auditor、executor、analyzer 和旧测试仍读取这些结构；旧 auditor 扫描与原生 results 分支并存 | 保留只读历史解析；明确格式分流，避免旧文件遮蔽原生记录或主导新的恢复成功判定。删除旧写入分支不等于删除读取器 |
-| C5 | 顶层 `run-artifacts/<run>`、Viewer 的旧 run 定位与分类缓存 | 用于查看历史产物，已有分类、重名和路径测试 | 保留只读访问；新正式执行必须使用规范身份。原件不搬迁、不删除，不为了清理命令而重写历史路径 |
-| C6 | argparse 自动参数前缀缩写 | 离线确认 `run --output` 被当作 `--output-dir`、`recover --dry` 被当作 `--dry-run`；不是显式注册的别名 | 核对调用方后，在根 parser 及各级 subparser 关闭缩写，统一使用完整参数名；对合法参数如 `materialize --output`、`audit --output` 保持支持 |
-| C7 | `scripts/analyze_scores.py` | 固定读取首轮 Claude Code/DeepSeek 的原生 Job，缺少正式代表快照选择和人工计分视图 | 标记并移出当前操作推荐，仅保留历史诊断用途；正式成绩用 `formal-summary`，恢复统计用 `analyze`，不把该脚本报告当作完整正式成绩 |
+## 验收
 
-证据：[配置加载器](../../src/harbor_agent_infra/preparation/experiments.py)、
-[实验契约](../../src/harbor_agent_infra/contracts/experiment.py)、
-[恢复执行器](../../src/harbor_agent_infra/recovery/executor.py)、
-[审计器](../../src/harbor_agent_infra/recovery/auditor.py)、
-[Viewer](../../src/harbor_agent_infra/viewer.py)、[历史分数脚本](../../scripts/analyze_scores.py)。
-
-## 4. 不应误列为待删除旧接口的项目
-
-- `audit --auto-approve-substitutable`：现行参数，调用统一 manifest 的预算／置信度判断；
-  与 W5 不是同一实现。是否进一步限制其正式使用属于独立策略变更，不在本次清理中擅自改变。
-- `merge --allow-runtime-condition-change`：现行、已有授权案例依赖的接口；保留身份、
-  哈希、条件范围和预算检查。当前 help 只写 Claude Code 的历史转换场景，
-  与已有 OpenClaw 镜像／Codex provider 条件分支不完全一致，纳入说明修正，不能直接删除。
-- `runtime_install`、`runtime-lock.json`：旧冻结实验和测试可能仍依赖；新正式运行的
-  预装要求不构成删除历史恢复条件的理由。
-- `--group skills_on`、`run_paired_jobs` 等内部命名：显式技能比较与内部 API 兼容是另一范围；
-  默认 skills_off 保持，不因名称含 paired 就删掉能力。
-- `aggregate`、`reassess`、`regrade`、`resume`、`audit --run-dir`、`recover --plan`：
-  不是现存注册接口，只有文档清理事项，不新增同名别名或所谓兼容实现。
-- 正式矩阵启动器、镜像构建脚本、native protocol bridge 是现行工作流组件；
-  不因为它们位于 scripts/ 就一并退役。
-
-## 5. 下一步实施顺序
-
-每一行可以拆为多个聚焦提交；每次修改跟踪文件后先测试再提交。
-
-| 阶段 | 范围与交付 | 验收标准 | 状态 |
-| --- | --- | --- | --- |
-| S0 | 本文登记 W1–W7、C1–C7，链接唯一命令参考 | 每项有源码／调用方证据，明确保留与删除边界 | 本轮完成 |
-| S1a | 删除 W1/W2 的 CLI 参数及专用删除／追加执行分支，保留共享运行器；同步测试与当前文档 | 旧调用在预检／材料化／外部调用之前失败；原始输入哈希不变；正式 run/recover/merge 路径不依赖被删分支 | 范围已确认，待统一执行批准 |
-| S1b | 将 C7 的 Top/Bottom 排名与分数分箱参数化接入 `hai formal-summary` | 基于正式入选快照；按 track/run_track 区分；保留零分与来源，不补齐未知分数；兼容原汇总输出 | 取舍已确认，迁移尚未实施，待统一执行批准 |
-| S1c | 退役删除 W3/W4/W5/W7；C7 在 S1b 验收后删除独立脚本 | 五个脚本均无当前必需消费者；迁移功能测试通过；文档引用更新，原始结果与备份不变 | 范围已确认，待统一执行批准；不得提前删除 |
-| S2 | 恢复模块：隔离并退役 W6；限定 C3/C4 的历史读取与显式身份兼容 | 原生结果缺失不能降级旧选样；旧 fixture 仍可读取；原始有效零分、首条有效替代、预算和原件哈希不变量保持 | 待实施，依赖 S1 与历史样本盘点 |
-| S3 | 参数与配置：C6 关闭缩写；C1/C2 先迁移消费者再决定退役；修正条件变更 help | 完整参数全部可解析，缩写被拒；v1 和拆分配置在迁移完成前不被误删；现有获批条件变更仍可校验 | 待实施，拆分提交 |
-| S4 | 文档收尾：补充正式分析能力说明，当前文档删除旧执行示例；旧报告仅保留历史说明 | 活跃文档、脚本调用和 --help 与唯一参考一致；历史日志和结果没有被改写；全部回归通过 | 待统一执行批准 |
-
-统一执行批准后，S1a 可独立实施；C7 必须先完成 **S1b 功能迁移与验收**，再进入 S1c 删除。
-按小功能／模块拆分提交，迁移和删除不混成一个不可核对的大提交。S2 的 merger、
-auditor、executor 兼容清理仍属后续范围，不自动并入本轮。
-C1/C2 的最终删除是条件性工作项：必须先确认不存在未迁移消费者；否则明确保留。
-
-## 6. 调用方与验证清单
-
-已定位的仓库内消费者包括：
-
-- W1/W2：`docs/configuration.md`、历史五批补跑计划、`tests/test_cli.py`、
-  `tests/test_harbor_run.py`；后两者目前明确验证旧参数成功与旧产物删除。
-- W3–W5：失败恢复迁移文档、首轮恢复计划及脚本本身；本次未发现其他 tracked
-  自动调用方，不据此推断本机外部调用方不存在。
-- W6/C4：`tests/test_recovery_merger.py`、`tests/test_recovery_e2e.py`、
-  `tests/test_recovery_executor.py`；其中已有 legacy merge 不修改源输入的测试应保留其约束。
-- C1/C2：`tests/test_cli.py`、`tests/test_experiment_loading.py`、
-  `tests/test_contracts.py`、`tests/test_preinstalled_contracts.py`。
-- C5：`tests/test_viewer_categorization.py`；清理后旧路径、分类和重名读取仍要通过。
-
-实施时新增或调整的契约测试应验证真实边界，而非只断言参数不再显示：
-
-1. 旧写入命令被拒绝时，原始目录哈希、事件、批准和预算不变，未调用 Harbor Job、Docker 或 provider。
-2. 正式补跑仍只执行获批 slot；最早有效结果（包括零分）优先；不跨 repeat/group，替代预算不重置。
-3. 原始与恢复证据均保留，历史 unknown 身份必须经可验证关联才能用于恢复。
-4. 旧布局与原生布局混存、原生汇总缺失、多个候选配置等情形必须明确处理，不能静默切换写入语义。
-5. 已支持的完整命令及参数继续可用；关闭缩写时所有子 parser 同步生效。
-6. 正式统计继续使用选定快照，并保留人工计分、条件变更和完整尝试来源。
-
-默认回归入口：
+- 验证 CLI 的 run 参数集合只包含标准实验输入，未知操作在加载配置和写盘前拒绝。
+- 验证正式启动、获批恢复、原始有效结果优先、替代预算及独立快照发布。
+- 验证分析的排序、同分、分箱边界、满分、零分、未评分、人工计分、重复视图拒绝和输入不变。
+- 检查受控源码／文档中不存在已清除入口的残留引用，不留下兼容代码副本。
+- 核对现有配置、代理环境文件和锁文件哈希未变。
 
 ```bash
 uv run --locked --python 3.12 pytest -q -m 'not integration'
 git diff --check
 ```
 
-代码修改另对所改 Python 文件运行 Ruff。Docker／Registry 集成与 provider-free
-测试继续分离；只在对应实现变更需要时运行，不以真实正式实验充当清理测试。
-本计划提交的测试只验证当前基线，不代表未来退役行为已经实现。
-
-## 7. 第一批范围确认与调用复核
-
-复核日期：2026-10-23；代码基线：`c7210e4`。用户指定的第一批仅为：
-
-- W1：`hai run --rerun-failed`。
-- W2：`hai run --task-name` 与 `--job-name-suffix` 成对入口。
-
-结论：**当前规范正式启动和恢复调用链不依赖这两组参数；现有可查正式运行材料也未发现
-其使用痕迹。可以按此范围推进第一批删除实现，但不能连带删除共享运行器与材料化能力。**
-
-### 7.1 上游入口与调用链
-
-源码搜索与 Python AST 调用检查确认：在本仓库 `src/`、`scripts/` 的已解析调用点中，
-只有 `cli.main` 负责把这些 CLI 参数传入运行器的旧分支；其他直接调用方不传这些旧控制参数。
-测试和历史文档是剩余的明确消费者。两组旧路径为：
-
-```text
-pyproject.toml: hai → cli.main → build_parser
-  --rerun-failed
-    → failed_task_names_from_results
-    → _with_selected_task_names
-    → run_paired_jobs(replace_group_task_names=...)
-    → _replacement_artifacts → Harbor Job → _remove_replaced_records
-
-  --task-name + --job-name-suffix
-    → _with_selected_task_names
-    → run_paired_jobs(job_name_suffix=..., allow_task_selection_change=True)
-    → materialize_paired_job_configs → materialize_group_job_config
-    → 追加命名 Job／读取已有汇总
-```
-
-规范正式原始运行链为：
-
-```text
-run_formal_experiments.sh / run_formal_experiments_interactive.sh
-  → scripts/run_formal_matrix.py::matrix_commands
-  → hai run --config ... --group skills_off --formal-provider ... --formal-repeat ...
-  → cli.main 的正式约束校验
-  → run_paired_jobs（replace_group_task_names=None，job_name_suffix 为空，
-                     allow_task_selection_change=False）
-```
-
-只调用 `matrix_commands()` 枚举所得的 48 条命令均包含正式 provider/repeat flags，
-均不包含 W1/W2 参数；没有实际派发实验。正式补跑使用另一条执行链：
-
-```text
-hai recover → RecoveryExecutor.execute → prepare_job_config
-  → 读取冻结 JobConfig，按获批 slot 选择唯一 task
-  → 使用独立 recovery Job 名 → Harbor Job.create / job.run
-```
-
-该恢复路径没有调用 `hai run`、`_with_selected_task_names` 或 `run_paired_jobs`。
-恢复的 task 选择与 Job 命名在 `recovery/executor.py` 中独立实现，不依赖 W2 的 CLI 参数。
-
-### 7.2 正式运行材料的核对范围
-
-| 核对对象 | 本次结果 | 解释边界 |
-| --- | --- | --- |
-| 当前正式矩阵 | 48 条生成命令，W1/W2 参数出现 0 次 | 证明当前启动器不使用，不等于历史完整 argv 审计 |
-| 本机正式配置 | 16 份 YAML 与 4 份说明文件，未发现旧参数或旧控制字段 | 配置不保存完整 shell 命令，不能单独作为未使用证明 |
-| `logs/formal-experiments` | 19 份 log/json 文件未发现旧参数／旧调用标记 | 仅现存日志，未假设每条日志均记录 argv |
-| 本机 `reports/` | 扫描 1,149 份深度不超过 3 层、单文件不超过 4 MB 的相关文本／脚本；未发现旧参数或旧运行器调用标记 | 另外 2,334 份更深或更大的同类文件未扫描，多为嵌套证据／源码副本；不宣称全目录无引用 |
-| `run-artifacts/formal/` | 排除 tasks 与符号链接后核对 37 个原始／恢复／派生目录，读取 253 份指定元数据，其中 164 份为 recovery-metadata；未见旧参数，Job 名未见旧式 `-rerun-` | 文件数包含派生副本，不是独立尝试数；命名和元数据是补充证据 |
-| 运行中进程快照 | 2 个匹配 `hai` 的进程均未携带旧参数，其中一个为 recover | 只代表读取瞬间，不修改或中断进程 |
-| 正式 CLI 隔离派发检查 | 正常入口调用 mocked runner 一次，旧控制参数为默认值；分别附加 W1 或 W2 时均在 runner 调用前拒绝 | 使用隔离配置和 mocked runtime/runner，跳过环境身份实测；不是 Docker/provider 实验 |
-
-历史上 `docs/plan/2026-10-08-skills-off-five-batch-rerun-plan.md` 明确使用 W2，
-并明确未使用 W1。该计划属于后续已划为 temporary 的历史测试阶段，不能当作当前
-正式流程使用 W2 的证据；本次没有重做这些历史任务的逐条执行审计。
-未扫描用户全部 shell 历史、外部自动化及其他工作树，因此结论限定为上述已核对范围。
-
-### 7.3 删除时必须保留的共享依赖
-
-- `run_paired_jobs`：当前正式原始运行仍调用；`scripts/run_native_vgb_e2e.py` 也直接调用。
-- `run_group_jobs`：`scripts/verify_preinstalled_matrix.py` 使用它，再转入共享运行器。
-- `materialize_paired_job_configs`／`materialize_group_job_config`：正常 materialize/run 仍使用。
-  底层通用 `job_name_suffix` 命名能力先保留，不因同名 CLI 参数退役而直接删除。
-- `_job_execution_settings`、正常配置一致性检查、`source_experiment_sha256` 的来源记录与历史读取。
-- `RecoveryExecutor` 自己的 task 匹配与 recovery Job 名生成，以及正式 `merge` 的 slot/预算选择。
-
-拟随第一批移除的专用链为：CLI 三个参数及其组合分支、
-`failed_task_names_from_results`、`_with_selected_task_names`、
-`_replacement_artifacts`、`_remove_replaced_records`，以及运行器中仅服务
-W1/W2 的替代／追加执行控制分支。移除前再次检查调用点；不顺手改变共享 manifest 字段。
-
-测试调整范围：`tests/test_cli.py` 与 `tests/test_harbor_run.py` 中旧参数接受、
-旧记录删除和命名追加行为改为退役拒绝测试；共享配置／材料化测试继续保留。
-同时回归 `tests/test_formal.py`、`tests/test_recovery_executor.py`、
-`tests/test_native_merge.py`，证明正式启动、精确补跑和合并仍可用。
-文档移除当前配置指南中的可执行旧例子；历史计划保留并注明入口已退役，
-不改写当时的实际操作记录。本节记录 W1/W2 的范围核查；五个脚本后来追加的退役安排
-以第 9 节为准，其余兼容层不因此自动纳入。
-
-## 8. 五个候选脚本的消费依赖与复用评估
-
-复核日期：2026-10-23；代码基线：`8c387bd`。
-本节保留决策前的依赖与复用评估；用户后续取舍及执行等待要求见第 9 节。
-**五个脚本均未修改、删除或执行。**
-一次性用途、实际运行次数和可复用功能是不同概念，以下分别判断。
-
-### 8.1 共同的依赖核查结论
-
-- 扫描 253 份 tracked 文本，并对 Python import 做 AST 核对；未发现现行源码、
-  测试、正式启动器或其他 tracked 可执行脚本导入／显式调用这五个脚本。
-- 五项均未注册到 `[project.scripts]`；`hai` 的 audit、recover、merge、formal-summary
-  使用 `src/harbor_agent_infra` 中的实现，不转调这些历史脚本。
-- `cli.py` 的 `args.auto_approve_substitutable` 是同名参数字段，实际调用
-  `RecoveryManifest.approve_all_substitutable()`，不是导入 `scripts/approve_substitutable.py`。
-- 本机补充扫描 configs 24 份、logs 26 份及 reports 3,711 份文本；reports 有 2 份
-  大于 4 MB 的文件未读取。仅命中 analyze_scores 的历史完成清单和路径迁移记录；
-  这些是文档／迁移引用，不是当前自动执行依赖。读取时未发现这五项的运行中进程。
-- 此结论不覆盖未记录的手工命令、用户全部 shell 历史、仓库外自动化或其他工作树。
-  无直接代码依赖不等于历史产物没有消费者，也不证明某脚本只执行过一次。
-
-### 8.2 逐项结论
-
-| 脚本 | 上游与历史使用证据 | 一次性／后续复用判断 | 决策时需要保留的内容 | 评估时状态（历史） |
-| --- | --- | --- | --- | --- |
-| `merge_successful_skills_off_reruns.py`（W3） | 无当前自动调用方；迁移方案仅引用其旧行为。2026-10-09 新增并修正；五个 temporary run 下有 7 份选择备份，分属 3 组时间戳 | 固定 5 个历史 run、31 个 task 的专用维护脚本，曾多轮使用，不能称只执行过一次。默认旧顶层路径已全部不存在；五份数据位于 temporary。需要改路径／规则才能用于其他批次，不能原样复用于新正式实验 | 原始与补跑证据、7 份选择备份及 Git 历史；现行 `hai merge` 不按旧标记／最新时间规则自动重放这些历史选择 | 待用户决定 |
-| `audit_vgb_results.py`（W4） | 无当前自动调用方或专门测试；2026-10-15 新增。本轮未找到能确认实际调用次数的启动记录 | 接受任意 results 路径，技术上可重复调用，但内部 Job 名、审计时间、旧分类和输出 schema 绑定首轮工具口径。属于临时适配工具，不是可靠的通用正式审计入口 | 已有清单及批准来源作为历史证据；后续审计用 `hai audit`，不直接复用该脚本的旧结果或批准 | 待用户决定 |
-| `approve_substitutable.py`（W5） | 无当前自动调用方或专门测试；2026-10-15 新增，首轮恢复计划有显式手工命令示例。示例不等于已执行证明 | 设计上是参数化、可重复使用的批量批准工具，不能称一次性脚本；但默认大写 ENGINEERING 与当前小写枚举不同，且仅按类别／布尔值修改 approved，缺少统一置信度／预算判断及 approved_slot_ids 同步，不能原样用于正式批准 | 保留审查需求及当前 manifest 方法；`hai audit --auto-approve-substitutable` 独立存在。对已有清单的审查不能简单替换成重新 audit 并覆盖批准文件 | 待用户决定 |
-| `run-experiment-with-proxy.sh`（W7） | 无当前自动调用方或专门测试；2026-10-14 新增，固定启动 Claude Code/DeepSeek 配置；本轮无可确认调用次数的记录 | 固定实验的启动包装，不接受配置／repeat 参数；但将 localhost 代理地址转换为容器可达地址的需求可能反复出现。脚本的通用代理功能有复用价值，不能仅凭无调用方断言无用 | 如后续仍需要代理转换，先迁移到明确的环境配置／通用启动准备，再决定删除包装；保持正式 provider/repeat、Python 3.12 与锁定环境要求，不在清理中默改路由 | 待用户决定 |
-| `analyze_scores.py`（C7） | 无当前自动调用方或专门测试；2026-10-15 新增，随后调整历史路径。reports/experiment-1-checklist.md 明确记载分数分析已完成并引用该脚本；另有路径迁移清单引用 | 固定首轮单个 Job 的只读分析，当前目标目录仍存在，可重复查询同一历史 Job。Top/Bottom 10、分数分箱的分析需求可复用，但需要参数化并读取正式入选快照／人工计分来源；现文件不是通用正式分析器 | 历史报告；若需要保留排名／分箱功能，先明确承接方式。正式汇总用 `formal-summary`，不把两者当作输出完全等价的替换 | 待用户决定 |
-
-历史合并备份位于 temporary 中的五个旧 run 下，文件名为
-`harbor-view-merge-backup-*/selected-rerun-trials.json`。7 份文件不代表 7 次脚本调用，
-因为一次调用可能给多个 run 分别创建备份；不同时间戳仅支持多轮处理／维护的结论。
-
-### 8.3 数据消费者与未来复用的边界
-
-1. **合并产物的消费者依赖文件，不依赖脚本持续存在。** 已有 Viewer／报告读取
-   jobs、results、events 等产物；未来若移除 W3，仍须完整保留数据与来源，
-   不连带删除备份，也不为清理重做历史合并。
-2. **旧审计清单不是当前恢复清单的同义格式。** W4 输出 version/original_run/audit_timestamp
-   等旧顶层字段，classification 缺少 evidence/confidence 且类别为大写；
-   当前 `RecoveryManifest.from_dict` 读取 run_name/created_at 及完整分类字段。
-   `hai recover` 不导入 W4，旧清单需要原生证据复核，不能仅改文件名后直接交给它。
-3. **当前批准机制不依赖 W5。** 统一方法检查剩余预算和置信度，并维护批准索引；
-   删除该历史脚本不等于删除现行批准能力。其原地改 JSON 的通用用途如需保留，
-   必须先接入现行契约，不能照搬默认类别和旧判定。
-4. **代理和细粒度成绩分析属于可能复用的功能。** 当前没有证据表明正式启动器
-   必须调用 W7 或 C7，但删除文件前可以单独选择保留这两项功能。
-   C7 没有 main guard，import 即执行读取和打印；本次仅静态读取，未导入或运行它。
-
-### 8.4 原候选范围（已由第 9 节更新）
-
-- 历史写入／适配工具：W3、W4、W5。若选择加入第一批，需同步处理历史文档入口，
-  保留已有数据；不引入新的命令别名，也不改变当前审查规则。
-- 带潜在复用功能的工具：W7、C7。可选择保留、迁移通用功能后删除，或连同
-  当前功能一起退役；本轮不替用户选定。
-- 本节编写时第一批仅确定 W1/W2；现行退役范围与等待批准要求以第 9 节为准。
-
-证据入口：
-- 五个脚本源码链接见第 2、3 节；各自 Git 历史分别从 `fb486f1`、`eda1df5`、
-  `eda1df5`、`5d415fd`、`6dc52c5` 开始，提交时间不能作为实际运行次数证明。
-- [历史批准示例](../experiment-results/recovery-plan-20261015.md)、
-  [历史合并行为说明](../failure-recovery-migration-plan.md)。
-- [当前 manifest 契约](../../src/harbor_agent_infra/recovery/manifest.py)、
-  [当前 CLI 派发](../../src/harbor_agent_infra/cli.py)、
-  [当前正式汇总](../../src/harbor_agent_infra/formal.py)。
-- 本机历史使用记录：`reports/experiment-1-checklist.md`、
-  `reports/path-migrations/repeat1-20261015-235027/migration.json` 和上述 temporary 选择备份。
-  只登记来源与结构，不将私有评分内容或环境凭据复制到本文。
-
-## 9. 用户确认的退役范围与执行等待
-
-记录日期：2026-10-23。用户已明确：五个脚本中只保留 `analyze_scores.py` 的
-Top/Bottom 10 与分数分箱功能，参数化接入现有正式命令 `hai formal-summary`；
-其他四个脚本按一次性工具纳入删除计划。随后用户明确要求：
-**先记录退役计划，稍后批准后再统一执行删除。**
-
-因此，范围确认不等于本轮执行批准。本轮只更新此文档；不改动 CLI、分析实现、测试代码，
-不删除或禁用任何脚本。功能迁移和退役操作均安排在后续统一批准的执行阶段。
-
-### 9.1 已选定的五个脚本
-
-| 脚本 | 用户取舍 | 删除前置条件 | 当前状态 |
-| --- | --- | --- | --- |
-| `merge_successful_skills_off_reruns.py` | 纳入退役删除计划，不迁移旧选择规则 | 执行前复核无新增消费者，保留历史结果、选择备份及 Git 历史 | 待统一批准执行 |
-| `audit_vgb_results.py` | 纳入退役删除计划，不保留独立审计入口 | 正式审计继续使用 `hai audit`，已有清单作为历史证据保留 | 待统一批准执行 |
-| `approve_substitutable.py` | 纳入退役删除计划，不保留独立批准脚本 | 保留现行 manifest 审查／批准机制，不改历史批准证据 | 待统一批准执行 |
-| `run-experiment-with-proxy.sh` | 纳入退役删除计划，本轮不迁移其代理包装功能 | 保持现行正式启动入口；不改当前代理环境或既有运行配置 | 待统一批准执行 |
-| `analyze_scores.py` | 排名／分箱能力迁移后，退役删除独立脚本 | `hai formal-summary` 新能力实现、测试和文档验收全部完成 | 待统一批准执行；先迁移后删除 |
-
-### 9.2 formal-summary 功能迁移要求（尚未实现）
-
-- 输入仍为用户明确选定的原始／merged 正式快照；每个原始 run 只选一个视图，
-  沿用 slot 去重与重复视图拒绝逻辑，不遍历所有 Trial 重新选样。
-- 排名条数可配置，默认 Top 10／Bottom 10；不足 N 条时返回实际数量，
-  同分排序须确定且保留完整 run、group、task、repeat 及可用来源信息。
-- 分箱边界可配置；默认承接旧工具的 0、0.2、0.4、0.6、0.8、1.0，
-  采用左闭右开区间并将恰好 1.0 单列；边界合法性、覆盖与计数必须测试。
-- 基于已计分的入选结果分析，保留真实零分及已批准人工计分的来源；
-  未评分不补零，缺失／非法值单独说明，不把未完成执行自动视为成功。
-- 至少按 `track`、`run_track` 展示排名与分布；跨 track 的辅助汇总不能替代分轨主结果。
-- 保持现有汇总字段和统计口径兼容，详细分析以显式选项启用；
-  新参数名称及输出结构在实施时确定并同步 `--help`，当前 CLI 尚未新增参数。
-- 全程只读，不调用 Agent 或 VGB 重评，不改变成绩、审批和实验产物。
-
-验收覆盖：N 的边界、同分稳定排序、分箱边界和满分单列、正常零分、未评分、
-人工计分、跨 run/track 隔离、重复快照拒绝、原 JSON 输出兼容及输入文件哈希不变。
-
-### 9.3 执行门槛
-
-等待用户后续明确批准，再按确认范围实施；不因计划提交或测试通过自行开始删除。
-批准后先完成分析能力迁移并验证，再删除独立脚本；CLI 旧参数 W1/W2 的删除仍按
-第 7 节保护共享依赖。每个小功能／模块在 Python 3.12 的 locked uv 环境中测试后提交。
-不清理历史 logs、reports、run-artifacts、选择备份或现有代理配置。
+每个功能／模块测试后独立提交。Docker／Registry 和付费 provider 集成继续与
+默认测试分离，本次不以正式实验作为清理验收手段。

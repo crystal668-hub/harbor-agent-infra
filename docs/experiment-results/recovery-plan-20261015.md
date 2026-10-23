@@ -1,5 +1,7 @@
 # VGB实验补跑计划
 
+> 历史审计与计划记录。当前执行只采用[标准 CLI](../cli-reference.md)；失效的脚本调用示例已移除，历史统计保持原值。
+
 **实验**: Claude Code + DeepSeek v4-pro (跨提供商)  
 **日期**: 2026-10-15  
 **原始运行**: claude-code-vgb-deepseek-cross-provider
@@ -108,14 +110,7 @@ python3 scripts/create_recovery_config.py \
 ```
 
 **选项B: 批准并重试所有可替代失败**
-```bash
-# 批准SCORING失败
-python3 scripts/approve_substitutable.py \
-  run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
-  ENGINEERING SCORING
-
-# 这将批准21个任务（16 ENGINEERING + 5 SCORING）
-```
+> 该历史批量批准操作已退役。当前按恢复清单逐项审查，使用统一的批准与预算契约。
 
 ### 第三步: 执行补跑
 ```bash
