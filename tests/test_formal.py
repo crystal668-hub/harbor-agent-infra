@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -93,6 +94,69 @@ def test_formal_summary_separates_tracks_runs_and_unscored_records(tmp_path):
     for path, expected in zip(paths, (0.0, 1.0), strict=True):
         row = summary["run_track"][path.name]["property_calculation_basic"]
         assert row["mean_vgb_score"] == expected
+
+
+def test_formal_timing_sums_71_representatives_per_run_without_changing_snapshots(tmp_path):
+    paths, before = [], []
+    start = datetime(2026, 10, 23, tzinfo=UTC)
+    for repeat in (1, 2):
+        path = tmp_path / f"merged-{repeat}"
+        path.mkdir()
+        records = []
+        for index in range(1, 72):
+            track = "basic" if index <= 35 else "advanced"
+            records.append({
+                "group_id": "skills_off", "task_name": f"{track}__task-{index}",
+                "repeat_index": repeat - 1, "run_lifecycle_status": "failed",
+                "scored": index % 3 != 0, "vgb_domain_result": {"scores": {"score": 0}},
+                "trial_result": {
+                    "id": str(index), "started_at": start.isoformat(),
+                    "finished_at": (start + timedelta(seconds=index)).isoformat(),
+                },
+                "final_attempt": {"trial_id": str(index)},
+                "elapsed_seconds": 999,
+                "attempts": [{"trial_id": "unselected", "elapsed_seconds": 9000}],
+            })
+        (path / "results.json").write_text(json.dumps({
+            "run_id": path.name, "source_run_id": f"run-{repeat}", "results": records,
+            "summary": {"timing": {"total_seconds": 999}},
+        }))
+        paths.append(path)
+        before.append((path / "results.json").read_bytes())
+    summary = aggregate_formal_snapshots(paths)
+    assert summary["slots"] == 142
+    assert summary["summary"]["timing"]["total_seconds"] == 5112
+    assert summary["summary"]["mean_vgb_score"] == 0
+    assert summary["track"]["basic"]["timing"]["total_seconds"] == 1260
+    assert summary["track"]["advanced"]["timing"]["total_seconds"] == 3852
+    for run in ("run-1", "run-2"):
+        timing = summary["run_timing"][run]
+        assert timing["total_seconds"] == 2556 and timing["selected_slots"] == 71
+        assert timing["complete"] is True
+        assert summary["run_track"][run]["basic"]["timing"]["total_seconds"] == 630
+        assert summary["run_track"][run]["advanced"]["timing"]["total_seconds"] == 1926
+    assert [(path / "results.json").read_bytes() for path in paths] == before
+
+
+def test_summary_cli_includes_partial_timing_by_default(tmp_path, capsys):
+    from harbor_agent_infra.cli import main
+
+    records = [
+        {"group_id": "skills_off", "task_name": f"basic__{index}", **extra}
+        for index, extra in enumerate(({"elapsed_seconds": 12.5}, {}))
+    ]
+    (tmp_path / "results.json").write_text(json.dumps({
+        "run_id": "merged", "source_run_id": "original", "results": records,
+    }))
+    assert main(["summary", str(tmp_path)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    timing = result["run_timing"]["original"]
+    assert timing["total_seconds"] is None and timing["known_seconds"] == 12.5
+    assert timing["missing_slots"] == 1 and timing["complete"] is False
+    assert result["summary"]["timing"] == timing
+    assert result["track"]["basic"]["timing"] == timing
+    assert result["run_track"]["original"]["basic"]["timing"] == timing
+    assert "score_analysis" not in result
 
 
 @pytest.mark.parametrize("harness", HARNESSES)

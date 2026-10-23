@@ -21,6 +21,7 @@ from harbor_agent_infra.recovery.native_plan import (
     fingerprint_inputs,
     read_json,
 )
+from harbor_agent_infra.timing import summarize_slot_timing
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -123,6 +124,7 @@ def score_summary(records: list[dict]) -> dict:
         "mean_vgb_score": sum(numeric) / len(numeric) if numeric else None,
         "errors": sum(r.get("run_lifecycle_status") != "completed" for r in records),
         "cancelled": sum(r.get("run_lifecycle_status") == "cancelled" for r in records),
+        "timing": summarize_slot_timing(records),
     }
 
 
@@ -275,6 +277,7 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
         for summary in summaries.values():
             summary["status"] = "failed" if summary["errors"] else "completed"
         envelope["summary"] = {
+            "timing": summarize_slot_timing(records),
             "group_order": list(grouped),
             "groups": summaries,
             "group_track": {

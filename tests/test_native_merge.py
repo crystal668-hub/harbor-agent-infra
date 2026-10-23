@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
@@ -15,6 +16,25 @@ from harbor_agent_infra.recovery.native_plan import plan_native_merge
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value))
+
+
+def assert_snapshot_timing(output, total):
+    from harbor_agent_infra.formal import aggregate_formal_snapshots
+
+    envelope = json.loads((output / "results.json").read_text())
+    timing = envelope["summary"]["timing"]
+    assert timing["total_seconds"] == total and timing["known_seconds"] == total
+    assert timing["selected_slots"] == timing["timed_slots"] == 3
+    assert timing["complete"] is True
+    assert envelope["summary"]["groups"]["skills_off"]["timing"] == timing
+    assert envelope["summary"]["group_track"]["skills_off"]["track"]["timing"] == timing
+    for name in ("run-manifest.json", "runtime-manifest.json"):
+        manifest = json.loads((output / name).read_text())
+        assert manifest["group_summary"]["skills_off"]["timing"] == timing
+        assert manifest["group_track_summary"]["skills_off"]["track"]["timing"] == timing
+    summary = aggregate_formal_snapshots([output])
+    assert summary["summary"]["timing"] == timing
+    assert summary["run_timing"][envelope["source_run_id"]] == timing
 
 
 def fixture_run(tmp_path, harness="claude-code", provider="deepseek", repeat=1, count=3):
@@ -513,6 +533,7 @@ def test_publish_native_snapshot_preserves_inputs_and_zero_score(native_runs, tm
     assert len(list(output.glob("jobs/*/*/result.json"))) == 3
     assert len(list((output / "jobs").iterdir())) == 1
     assert len(list(output.glob("evidence/attempts/jobs/*/*/result.json"))) == 4
+    assert_snapshot_timing(output, 180)
     with pytest.raises(FileExistsError):
         ResultMerger(original, [recovery], output).merge()
 
@@ -559,6 +580,8 @@ def test_failed_recovery_counts_budget_and_next_batch_resolves_same_slot(native_
     successful = json.loads(path.read_text())
     failed = copy.deepcopy(successful)
     failed.update(
+        started_at="2026-10-16T00:00:00Z",
+        finished_at="2026-10-16T00:00:30Z",
         exception_info={
             "exception_type": "NetworkConnectionError",
             "exception_message": "download failed",
@@ -569,11 +592,13 @@ def test_failed_recovery_counts_budget_and_next_batch_resolves_same_slot(native_
         verifier_result=None,
     )
     write(path, failed)
+    write(path.parent.parent / "result.json", {"finished_at": failed["finished_at"]})
     (path.parent / "verifier" / "vgb-evaluation.json").unlink()
     first = tmp_path / "merged1"
     ResultMerger(original, [recovery], first).merge()
     rows = json.loads((first / "results.json").read_text())["results"]
     assert rows[0]["substitution_count"] == 1 and not rows[0]["recovery_resolved"]
+    assert_snapshot_timing(first, 150)
     audited = audit_run(first)
     task = next(s for s in audited.slots if s.task_id == rows[0]["task_name"])
     assert task.substitution_count == 1 and task.can_substitute
@@ -585,7 +610,9 @@ def test_failed_recovery_counts_budget_and_next_batch_resolves_same_slot(native_
     old_job.rename(job)
     fresh_path = next(job.glob("*/result.json"))
     successful["id"] = str(uuid5(NAMESPACE_URL, "second-recovery-trial"))
+    successful.update(started_at="2026-10-17T00:00:00Z", finished_at="2026-10-17T00:02:00Z")
     write(fresh_path, successful)
+    write(job / "result.json", {"finished_at": successful["finished_at"]})
     write(
         fresh_path.parent / "verifier" / "vgb-evaluation.json",
         {
@@ -608,6 +635,51 @@ def test_failed_recovery_counts_budget_and_next_batch_resolves_same_slot(native_
     assert row["substitution_count"] == 2
     assert len(row["attempts"]) == 3 and row["recovery_resolved"]
     assert row["task_name"] not in [s.task_id for s in audit_run(output).slots]
+    assert_snapshot_timing(output, 240)
+
+
+@pytest.mark.parametrize("review_days", [1, 30])
+def test_merge_timing_counts_selected_recovery_not_waits_or_later_attempts(
+    native_runs, tmp_path, review_days,
+):
+    import shutil
+
+    from harbor_agent_infra.recovery.merger import ResultMerger
+    from harbor_agent_infra.recovery.native_plan import fingerprint_inputs
+
+    original, first = native_runs
+    second = first.with_name(first.name.replace("batch1", "batch2"))
+    shutil.copytree(first, second)
+    selected_id = None
+    for ordinal, root, duration in ((1, first, 120), (2, second, 900)):
+        path = next(root.glob("jobs/*/*/result.json"))
+        trial = json.loads(path.read_text())
+        start = datetime(2026, 10, 15, tzinfo=UTC) + timedelta(days=review_days + ordinal - 1)
+        trial.update(
+            id=str(uuid5(NAMESPACE_URL, f"timed-recovery-{ordinal}")),
+            started_at=start.isoformat(),
+            finished_at=(start + timedelta(seconds=duration)).isoformat(),
+        )
+        write(path, trial)
+        write(path.parent.parent / "result.json", {"finished_at": trial["finished_at"]})
+        if ordinal == 1:
+            selected_id = trial["id"]
+        metadata_path = path.parent.parent / "recovery-metadata.json"
+        metadata = json.loads(metadata_path.read_text())
+        metadata["substitution_attempt"] = ordinal
+        write(metadata_path, metadata)
+        manifest_path = root / "recovery-manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["slots"][0]["substitution_count"] = ordinal - 1
+        write(manifest_path, manifest)
+    before = fingerprint_inputs([original, first, second])
+    output = tmp_path / "timed-merged"
+    ResultMerger(original, [second, first], output).merge()
+    record = json.loads((output / "results.json").read_text())["results"][0]
+    assert record["final_attempt"]["trial_id"] == selected_id
+    assert len(record["attempts"]) == 3
+    assert_snapshot_timing(output, 240)
+    assert fingerprint_inputs([original, first, second]) == before
 
 
 def test_review_blocks_later_candidate_and_zero_score_does_not_affect_order(native_runs, tmp_path):

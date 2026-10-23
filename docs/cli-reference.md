@@ -65,7 +65,8 @@ uv run --locked --python 3.12 hai merge --help
   如需保存 JSON 使用 shell 重定向。每个原始 run 只传一个选定视图，
   不能同时传入其原始目录和 merged 目录，或两个 merged 版本。
   `--top-n N` 启用 Top/Bottom N 和默认分箱；`--score-bins` 接受逗号分隔的边界，
-  单独使用时默认 Top/Bottom 10。省略两项参数时原有 JSON 输出结构保持不变。
+  单独使用时默认 Top/Bottom 10。省略两项参数时不输出 `score_analysis`；
+  累计运行时长统计始终输出，无需额外参数。
 - `analyze` 是恢复诊断，不替代正式成绩汇总。`view` 的根目录默认 `run-artifacts`。
   `image` 的默认平台是 `linux/arm64`，镜像引用须绑定 digest；`pull` 不是强制刷新。
 
@@ -85,6 +86,45 @@ uv run --locked --python 3.12 hai summary \
 排名携带来源 run、快照、任务、repeat、可用 Trial 与计分来源。已计分的零分和人工
 计分保留；未评分不补零，非数值／非有限值／超出 [0,1] 的分数计入 `invalid_scores`，
 不参与排名或分箱。旧汇总统计不被重写；分轨结果是主视图，混合 summary 仅作辅助。
+
+### 最终 slot 累计运行时长
+
+正式报告使用 `selected_slot_sum`：逐条累加选定快照中最终代表 Trial 的
+`finished_at - started_at`，覆盖完整 Trial 生命周期（包括环境准备、Agent 执行和验证）。
+完整首轮子实验为 71 个 slot；实现按实际选定记录数统计，不硬编码 71。
+恢复替换后只计 merge 选中的那次 Trial，不累计被替换或未选中的尝试，也不计
+尝试之间的人工审核、暂停及补跑等待。零分、超时和未评分的代表记录仍参与计时。
+并发 Trial 分别累加，不除以并发数；该指标不同于墙钟跨度或全部尝试的资源消耗。
+
+- `summary.timing`：全部选定代表的累计统计。
+- `run_timing[原始 run_id]`：每个子实验的累计统计；merged 快照沿用原始 run 身份。
+- `track[track].timing`、`run_track[run_id][track].timing`：对应分轨统计。
+- 新的 run/merge 快照在 `results.json` 的 `summary.timing`、
+  `summary.groups[group].timing`、`summary.group_track[group][track].timing` 中保存同口径值；
+  manifest 中已有的 group 汇总同步携带。Summary 会重新计算，读取旧快照无需改写或重新 merge。
+
+每个 `timing` 对象包含以下字段，秒数不提前舍入：
+
+| 字段 | 含义 |
+|---|---|
+| `method` | 固定为 `selected_slot_sum` |
+| `total_seconds` | 非空且全部选定 slot 可计时时的累计秒数，否则为 `null` |
+| `known_seconds` | 有效计时的小计；无有效记录时为 0 |
+| `selected_slots` / `timed_slots` | 选定记录数 / 有效计时记录数 |
+| `missing_slots` / `invalid_slots` | 缺失 / 无效计时记录数 |
+| `complete` | 非空集合中所有选定 slot 均有有效计时 |
+
+优先使用代表记录的 `trial_result`，不存在时使用 `raw.harbor_trial_result`，
+从原生时间戳重算，以避免缓存耗时的舍入偏差。仅旧记录没有原生时间戳时，
+回退到有限、非负的数值型 `elapsed_seconds`；不从 attempts 或其他 Trial 补时间。
+缺一端时间戳记为缺失；格式错误、混合有／无时区、负时长或与 `final_attempt`
+身份冲突记为无效，不回退到缓存值。两端均无时区时直接相减，均有时区时按实际时间差计算。
+
+`complete` 只表示计时覆盖完整，不代表实验已完成：中断快照若仅有 20 条记录，
+会显示 `selected_slots=20`，不会补成 71。空集合返回 `total_seconds=null`、
+`known_seconds=0`、`complete=false`；真实零时长与缺失时间保持区分。
+
+### 恢复与汇总流程
 
 ```text
 run → audit → 人工审查 → recover --dry-run → recover

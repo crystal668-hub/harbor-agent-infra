@@ -26,6 +26,7 @@ from harbor_agent_infra.harbor.job_config import (
 from harbor_agent_infra.harbor.observability import artifact_observability
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.harness_runner import HarnessRunner, harness_runner_for
+from harbor_agent_infra.timing import summarize_slot_timing
 from integrations.vgb.chemistry import preflight_chemistry
 from integrations.vgb.evaluator import project_agent_output
 from integrations.vgb.result_projection import project_schema_v5
@@ -132,6 +133,7 @@ def _score_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
         "records": len(records),
         "scored": len(scores),
         "mean_vgb_score": sum(scores) / len(scores) if scores else None,
+        "timing": summarize_slot_timing(records),
     }
 
 
@@ -662,6 +664,7 @@ async def run_paired_jobs(
                 for current_group_id in ordered_group_ids
             ],
             "summary": {
+                "timing": summarize_slot_timing(records),
                 "group_order": ordered_group_ids,
                 "groups": summary,
                 "group_track": group_track,

@@ -182,7 +182,10 @@ def test_score_summary_counts_zero_and_keeps_missing_distinct() -> None:
         {"scored": True, "vgb_domain_result": {"scores": {"score": 0.8}}},
         {"scored": False},
     ]
-    assert _score_summary(records) == {"records": 3, "scored": 2, "mean_vgb_score": 0.4}
+    summary = _score_summary(records)
+    timing = summary.pop("timing")
+    assert summary == {"records": 3, "scored": 2, "mean_vgb_score": 0.4}
+    assert timing["missing_slots"] == 3 and timing["total_seconds"] is None
     assert _score_summary([{"scored": False}])["mean_vgb_score"] is None
 
 
@@ -471,6 +474,86 @@ def test_single_group_run_writes_only_selected_group(monkeypatch, tmp_path: Path
         {"id": "skills_off", "skills_enabled": False, "status": "completed"}
     ]
     assert not (root / "per-record" / "skills_on").exists()
+    timing = results["summary"]["timing"]
+    assert timing["selected_slots"] == 0 and timing["complete"] is False
+    assert timing["total_seconds"] is None
+    assert results["summary"]["groups"]["skills_off"]["timing"] == timing
+    assert manifest["group_summary"]["skills_off"]["timing"] == timing
+
+
+def test_single_group_run_saves_representative_timing_in_results_and_manifest(
+    monkeypatch, tmp_path,
+):
+    from harbor_agent_infra.formal import aggregate_formal_snapshots
+
+    runtime = FakeVgbRuntime()
+    runtime.python_executable = Path(sys.executable)
+    track = "open_generation_rdkit"
+
+    class FakeJob:
+        def __init__(self, config):
+            self.id = config.job_name
+            self.job_dir = config.jobs_dir / config.job_name
+
+        @classmethod
+        async def create(cls, config):
+            return cls(config)
+
+        def on_trial_ended(self, callback):
+            self.callback = callback
+
+        def on_trial_cancelled(self, callback):
+            pass
+
+        async def run(self):
+            for index, duration in enumerate((10, 20)):
+                trial_id = f"attempt-{index}"
+                start = datetime(2026, 10, 23, tzinfo=UTC) + timedelta(days=index)
+                end = start + timedelta(seconds=duration)
+                trial_dir = self.job_dir / trial_id
+                trial_dir.mkdir(parents=True)
+                native = {"id": trial_id, "started_at": start.isoformat(),
+                          "finished_at": end.isoformat()}
+                exception = SimpleNamespace(
+                    exception_type="RuntimeError", exception_message="failed",
+                    model_dump=lambda **_: {"exception_type": "RuntimeError"},
+                )
+                event = SimpleNamespace(
+                    result=SimpleNamespace(
+                        exception_info=exception, trial_uri=trial_dir.as_uri(),
+                        started_at=start, finished_at=end,
+                        model_dump=lambda native=native, **_: native,
+                    ),
+                    event=SimpleNamespace(value="end"), trial_id=trial_id,
+                    trial_name="one-slot", task_name=f"{track}__rdkit_001_qed_max",
+                    timestamp=end,
+                )
+                await self.callback(event)
+            return SimpleNamespace(
+                id=self.id, n_total_trials=1,
+                stats=SimpleNamespace(n_cancelled_trials=0, n_errored_trials=1),
+            )
+
+    monkeypatch.setattr(run_module, "Job", FakeJob)
+    root = tmp_path / "timed-run"
+    manifest = asyncio.run(run_group_jobs(
+        _spec(tmp_path), _resources(), runtime, group_id="skills_off", output_root=root,
+    ))
+    results = json.loads((root / "results.json").read_text())
+    timing = results["summary"]["timing"]
+    assert timing["total_seconds"] == 20 and timing["selected_slots"] == 1
+    assert timing["complete"] is True
+    assert len(results["results"][0]["attempts"]) == 2
+    assert results["results"][0]["final_attempt"]["trial_id"] == "attempt-1"
+    assert results["summary"]["groups"]["skills_off"]["timing"] == timing
+    assert results["summary"]["group_track"]["skills_off"][track]["timing"] == timing
+    persisted = json.loads((root / "runtime-manifest.json").read_text())
+    assert persisted["group_summary"]["skills_off"]["timing"] == timing
+    assert persisted["group_track_summary"]["skills_off"][track]["timing"] == timing
+    assert manifest["group_summary"]["skills_off"]["timing"] == timing
+    summary = aggregate_formal_snapshots([root])
+    assert summary["summary"]["timing"] == timing
+    assert summary["run_timing"][results["run_id"]] == timing
 
 def test_paired_run_rejects_wrong_vgb_runtime_before_materialization(tmp_path: Path) -> None:
     runtime = FakeVgbRuntime()

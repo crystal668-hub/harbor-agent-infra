@@ -8,6 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from harbor_agent_infra.timing import summarize_slot_timing
 
 HARNESSES = ("openclaw", "hermes", "codex", "claude-code")
 PROVIDERS = ("openai", "anthropic", "qwen", "deepseek")
@@ -113,6 +114,7 @@ def aggregate_formal_snapshots(
     results = []
     tracks = defaultdict(list)
     run_tracks = {}
+    run_timing = {}
     analysis_entries = []
     include_analysis = top_n is not None or score_bins is not None
     for path in paths:
@@ -138,6 +140,7 @@ def aggregate_formal_snapshots(
         run_tracks[run_id] = {
             track: score_summary(rows) for track, rows in sorted(current_tracks.items())
         }
+        run_timing[run_id] = summarize_slot_timing(payload["results"])
 
     summary = {
         "schema_version": "formal-summary.v1",
@@ -146,6 +149,7 @@ def aggregate_formal_snapshots(
         "summary": score_summary(results),
         "track": {track: score_summary(rows) for track, rows in sorted(tracks.items())},
         "run_track": run_tracks,
+        "run_timing": run_timing,
         "selected_snapshots": [str(p.resolve()) for p in paths],
     }
     if include_analysis:

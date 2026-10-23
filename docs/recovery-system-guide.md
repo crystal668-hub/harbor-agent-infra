@@ -3,7 +3,8 @@
 Command names and arguments were reconciled on 2026-10-23. Use the
 [current CLI reference](cli-reference.md) as the canonical command index, with
 `uv run --locked --python 3.12 hai` as the invocation prefix. `merge` publishes
-representative snapshots, `summary` reports formal scores, and `analyze`
+representative snapshots, `summary` reports formal scores and selected-slot cumulative duration,
+and `analyze`
 reports recovery diagnostics. Planned names in historical documents are not CLI aliases.
 
 ## Overview
@@ -97,6 +98,38 @@ uv run --locked --python 3.12 hai summary \
 Passing the original and a merged snapshot of that same original run together is
 rejected, as is passing multiple merged versions of one original. This prevents
 recovery or merge directories from inflating the 3,408 planned first-stage slots.
+
+### Selected-slot cumulative duration
+
+Formal reports use `selected_slot_sum`: sum each selected representative Trial's native
+`finished_at - started_at`, including its full setup, Agent execution, and verification
+lifecycle. Only the representative chosen by merge contributes for each slot. Replaced
+failures, unselected recovery attempts, and human review or other waiting between attempts
+do not contribute. Selected zero-score, timeout, and unscored observations still count.
+Overlapping Trials are added separately without dividing by concurrency; this metric is
+distinct from wall-clock span and the resource consumption of all physical attempts.
+
+`hai summary` always includes `summary.timing`, `track[track].timing`,
+`run_track[run_id][track].timing`, and `run_timing[original_run_id]`. No flag is needed.
+New original/merged snapshots also save `summary.timing` and timing in their group and
+group-track summaries; existing manifest group summaries carry the same values. Historical
+snapshots can be summarized directly without rewriting files or repeating a run or merge.
+
+Timing prefers the representative's embedded `trial_result`, then (when absent)
+`raw.harbor_trial_result`. Native timestamps take precedence over cached elapsed values;
+only records without native timestamps fall back to a finite, nonnegative numeric
+`elapsed_seconds`. A missing endpoint is missing timing. Invalid timestamps, mixed
+timezone-aware/naive endpoints, negative durations, or a conflicting `final_attempt`
+identity are invalid timing, not a reason to use a cached value. Two naive endpoints
+are subtracted directly; two aware endpoints use the actual elapsed time.
+
+Every timing object exposes `total_seconds`, `known_seconds`, `selected_slots`,
+`timed_slots`, `missing_slots`, `invalid_slots`, and `complete`, plus
+`method=selected_slot_sum`. An incomplete set has a null total and retains its known
+subtotal. Empty input has a null total, zero known seconds, and `complete=false`.
+Completeness refers only to timing coverage, not experiment completion: an interrupted
+snapshot with 20 representatives reports 20 selected slots, never an assumed 71.
+See the [CLI reference](cli-reference.md#最终-slot-累计运行时长) for the output fields.
 
 The sections below also show the older `trials/` layout for compatibility. Native
 runs use `jobs/<job>/<trial>/` and preserve all attempts without renaming a recovered
