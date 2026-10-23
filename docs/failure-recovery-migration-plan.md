@@ -1,7 +1,7 @@
 # 实验失败分类与重试／补跑策略迁移计划
 
 > 命令口径说明（2026-10-23）：本文保留历史方案，拟议的 `reassess`、`aggregate`
-> 不代表现有 CLI。当前合并用 `hai merge`，正式统计用 `hai formal-summary`；
+> 不代表现有 CLI。当前合并用 `hai merge`，正式统计用 `hai summary`；
 > 实际命令和参数统一参见[当前 CLI 参考](cli-reference.md)。
 
 初稿日期：2026-10-12；复审日期：2026-10-13（Asia/Shanghai）。

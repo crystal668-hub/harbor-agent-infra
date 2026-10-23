@@ -76,15 +76,15 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--formal-repeat", type=int, help="formal repeat number, starting at 1")
     run.add_argument("--formal-provider", choices=("openai", "anthropic", "qwen", "deepseek"))
     run.add_argument("--formal-root", type=Path, default=Path("run-artifacts/formal"))
-    formal_summary = subparsers.add_parser(
-        "formal-summary", help="summarize chosen formal snapshots"
+    summary_parser = subparsers.add_parser(
+        "summary", help="summarize chosen formal snapshots"
     )
-    formal_summary.add_argument("runs", type=Path, nargs="+")
-    formal_summary.add_argument(
+    summary_parser.add_argument("runs", type=Path, nargs="+")
+    summary_parser.add_argument(
         "--top-n", type=_positive_int,
         help="include Top/Bottom N and score bins for selected representatives",
     )
-    formal_summary.add_argument(
+    summary_parser.add_argument(
         "--score-bins", type=_score_bins, metavar="0,0.2,0.4,0.6,0.8,1",
         help="include score analysis with increasing bin edges from 0 to 1 (default N=10)",
     )
@@ -307,7 +307,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(output)
         return 0
-    if args.command == "formal-summary":
+    if args.command == "summary":
         from harbor_agent_infra.formal import aggregate_formal_snapshots
 
         print(json.dumps(aggregate_formal_snapshots(

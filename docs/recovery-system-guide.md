@@ -3,7 +3,7 @@
 Command names and arguments were reconciled on 2026-10-23. Use the
 [current CLI reference](cli-reference.md) as the canonical command index, with
 `uv run --locked --python 3.12 hai` as the invocation prefix. `merge` publishes
-representative snapshots, `formal-summary` reports formal scores, and `analyze`
+representative snapshots, `summary` reports formal scores, and `analyze`
 reports recovery diagnostics. Planned names in historical documents are not CLI aliases.
 
 ## Overview
@@ -13,7 +13,7 @@ The recovery system enables you to identify, classify, and recover from failures
 1. **Audit**: Scan a completed run for failures and generate a recovery manifest
 2. **Recover**: Execute approved recovery attempts
 3. **Merge**: Select valid representatives and publish a new snapshot, preserving source runs
-4. **Formal summary**: Report the chosen snapshot with `hai formal-summary`
+4. **Formal summary**: Report the chosen snapshot with `hai summary`
 
 ## Native formal runs: current contract
 
@@ -89,7 +89,7 @@ new approvals are not inherited automatically.
 For complete-experiment reporting, explicitly select one view per original run:
 
 ```bash
-uv run --locked --python 3.12 hai formal-summary \
+uv run --locked --python 3.12 hai summary \
   run-artifacts/formal/claude-code-deepseek-repeat1-merged \
   run-artifacts/formal/claude-code-deepseek-repeat2
 ```
@@ -430,7 +430,7 @@ or automatically reuse an earlier approval. See the
 
 ```text
 run → audit → review → recover --dry-run → recover
-    → merge --dry-run → review → merge → formal-summary
+    → merge --dry-run → review → merge → summary
 ```
 
 Use the [current CLI reference](cli-reference.md#正式实验的标准流程) for the executable

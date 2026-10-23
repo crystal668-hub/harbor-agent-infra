@@ -29,7 +29,7 @@ uv run --locked --python 3.12 hai merge --help
 | `hai audit RUN_NAME [--artifacts-dir ROOT] [--output FILE]` | 审计运行并生成恢复清单 | 读取原始证据，写入清单；不执行恢复 |
 | `hai recover MANIFEST --config CONFIG --output-dir NEW_RUN [--dry-run]` | 执行清单中获批且符合替代预算的 slots | 正常模式启动恢复 Jobs；预览模式不执行 |
 | `hai merge ORIGINAL RECOVERY [RECOVERY ...] --output-dir NEW_SNAPSHOT [--dry-run]` | 按原 slot 选择代表结果，发布新的合并快照 | 正常模式写新快照；不重跑 Agent、不自动重评 |
-| `hai formal-summary RUN [RUN ...] [--top-n N] [--score-bins EDGES]` | 汇总选定快照，按需输出排名及分箱 JSON | 按 track 和 run_track 报告；不执行合并或重评 |
+| `hai summary RUN [RUN ...] [--top-n N] [--score-bins EDGES]` | 汇总选定快照，按需输出排名及分箱 JSON | 按 track 和 run_track 报告；不执行合并或重评 |
 | `hai analyze RUN_DIR [--output FILE]` | 分析恢复次数、失败分类及恢复统计 | 输出报告；指定 `--output` 时另写统计 JSON |
 | `hai view [--artifacts-dir ROOT] [--host HOST] [--port PORT]` | 启动原生 Harbor 结果浏览服务 | 启动本地服务；默认 `127.0.0.1:8080` |
 | `hai image {inspect,pull} --reference REF [--digest DIGEST] [--platform PLATFORM]` | `inspect` 检查本地不可变镜像；`pull` 在缺失时拉取并检查 | 调用 Docker；`pull` 可能访问 Registry |
@@ -61,7 +61,7 @@ uv run --locked --python 3.12 hai merge --help
   `--dry-run` 用于原生结果的只读选择预览；发布时输出必须是新的独立目录。
   `--allow-runtime-condition-change` 仅用于已有明确授权且通过实现校验的条件变更，
   不能代替批准证据或绕过 slot 身份、任务和替代预算检查。
-- `formal-summary` 接受一个或多个 run 路径，不接受 `--output`／`--output-dir`；
+- `summary` 接受一个或多个 run 路径，不接受 `--output`／`--output-dir`；
   如需保存 JSON 使用 shell 重定向。每个原始 run 只传一个选定视图，
   不能同时传入其原始目录和 merged 目录，或两个 merged 版本。
   `--top-n N` 启用 Top/Bottom N 和默认分箱；`--score-bins` 接受逗号分隔的边界，
@@ -74,7 +74,7 @@ uv run --locked --python 3.12 hai merge --help
 正式成绩细分示例（替换快照占位路径）：
 
 ```bash
-uv run --locked --python 3.12 hai formal-summary \
+uv run --locked --python 3.12 hai summary \
   'run-artifacts/formal/<merged-run-id>' --top-n 10 --score-bins 0,0.2,0.4,0.6,0.8,1
 ```
 
@@ -88,10 +88,10 @@ uv run --locked --python 3.12 hai formal-summary \
 
 ```text
 run → audit → 人工审查 → recover --dry-run → recover
-    → merge --dry-run → 审查选择结果 → merge → formal-summary
+    → merge --dry-run → 审查选择结果 → merge → summary
 ```
 
-无需恢复时直接对原始 run 使用 `formal-summary`。若仍有恢复缺口，
+无需恢复时直接对原始 run 使用 `summary`。若仍有恢复缺口，
 在派生快照上重新 audit，核对累计预算并重新审查后再执行下一批；
 不自动循环补跑，不把 recovery run 当成新的正式 repeat。
 `analyze` 是辅助诊断，`view` 是浏览入口，都不改变正式选样结果。
@@ -121,7 +121,7 @@ uv run --locked --python 3.12 hai merge \
   --output-dir 'run-artifacts/formal/<run-id>-merged' --dry-run
 
 # 发布后统计；没有恢复时改传原始 run 路径
-uv run --locked --python 3.12 hai formal-summary \
+uv run --locked --python 3.12 hai summary \
   'run-artifacts/formal/<run-id>-merged'
 ```
 
@@ -133,7 +133,7 @@ uv run --locked --python 3.12 hai formal-summary \
 
 | 旧写法／混淆 | 当前唯一写法或处理方式 |
 | --- | --- |
-| `hai aggregate` | 不存在；合并用 `hai merge`，正式统计用 `hai formal-summary` |
+| `hai aggregate` | 不存在；合并用 `hai merge`，正式统计用 `hai summary` |
 | `hai reassess`、`hai regrade` | 未注册为本项目 CLI；不能当作现成重评命令，也不能以 `recover` 代替只重评 |
 | `hai resume`、`hai run --resume` | 不存在；先核对中断现场和已执行 slots，再走获批恢复流程 |
 | `hai audit --run-dir ...` | `hai audit RUN_NAME --artifacts-dir ROOT` |
@@ -141,7 +141,7 @@ uv run --locked --python 3.12 hai formal-summary \
 | `hai recover --plan ...` | `hai recover MANIFEST --config CONFIG --output-dir NEW_RUN` |
 | `hai run --output ...` | 当前注册参数是 `--output-dir`；不要依赖 argparse 的参数前缀缩写 |
 | 将 `n_attempts` 设为 3 以重试失败 | 正式入口要求 1；正式 repeat 与工程替代预算分别管理 |
-| 将 `analyze` 当作最终正式成绩命令 | 最终成绩使用 `formal-summary`；`analyze` 只做恢复统计 |
+| 将 `analyze` 当作最终正式成绩命令 | 最终成绩使用 `summary`；`analyze` 只做恢复统计 |
 
 `scripts/run_formal_experiments.sh`、`scripts/run_formal_experiments_interactive.sh`
 和矩阵启动脚本属于辅助入口，其脚本参数不等于 `hai` 子命令参数。

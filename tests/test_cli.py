@@ -48,6 +48,17 @@ def test_run_options_are_limited_to_standard_experiment_inputs():
     }
 
 
+def test_cli_exposes_only_canonical_command_names():
+    parser = build_parser()
+    subcommands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    assert set(subcommands.choices) == {
+        "doctor", "materialize", "run", "summary", "view", "image",
+        "audit", "recover", "merge", "analyze",
+    }
+    args = parser.parse_args(["summary", "selected-snapshot", "--top-n", "10"])
+    assert args.command == "summary" and args.top_n == 10
+
+
 def test_unknown_run_operation_is_rejected_before_config_or_artifact_access(monkeypatch, tmp_path):
     config = Mock(side_effect=AssertionError("configuration must not be loaded"))
     monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", config)

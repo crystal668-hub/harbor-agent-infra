@@ -5,7 +5,7 @@
 ## 唯一正式流程
 
 ```text
-run → audit → 人工审查 → recover → merge → formal-summary
+run → audit → 人工审查 → recover → merge → summary
 ```
 
 命令和参数以[当前 CLI 参考](../cli-reference.md)、CLI 注册代码及 `--help` 为准。
@@ -22,10 +22,10 @@ run → audit → 人工审查 → recover → merge → formal-summary
 
 ## 正式成绩分析
 
-`hai formal-summary` 通过显式参数启用 Top/Bottom 排名和分数分箱：
+`hai summary` 通过显式参数启用 Top/Bottom 排名和分数分箱：
 
 ```bash
-uv run --locked --python 3.12 hai formal-summary   'run-artifacts/formal/<selected-snapshot>' --top-n 10 --score-bins 0,0.2,0.4,0.6,0.8,1
+uv run --locked --python 3.12 hai summary   'run-artifacts/formal/<selected-snapshot>' --top-n 10 --score-bins 0,0.2,0.4,0.6,0.8,1
 ```
 
 - 排名条数可配置；只指定分箱时默认 Top/Bottom 10。

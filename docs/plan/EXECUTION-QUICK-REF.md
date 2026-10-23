@@ -41,12 +41,12 @@ GPT 模板对应 provider `openai`；Claude 模板对应 `anthropic`。
 
 ## 统计与切换
 
-正式恢复链为 `audit → 人工审查 → recover → merge → formal-summary`；
+正式恢复链为 `audit → 人工审查 → recover → merge → summary`；
 `recover` 和 `merge` 均先用 `--dry-run` 预览。`merge` 发布新快照，
-`formal-summary` 报告正式分数，`analyze` 只做恢复诊断；没有 `hai aggregate`。
+`summary` 报告正式分数，`analyze` 只做恢复诊断；没有 `hai aggregate`。
 
 basic 与 advanced 分别统计和报告，混合均分仅作辅助。
-`hai formal-summary` 输出 `track` 与 `run_track`；每个原始 run 只选一个代表快照。
+`hai summary` 输出 `track` 与 `run_track`；每个原始 run 只选一个代表快照。
 后续正式 run 必须使用主工作区 `runtime-lock.preinstalled.json` 和对应的预装执行镜像；
 启动器预检不通过即不派发。历史旧锁仅用于已有产物的核对。
 

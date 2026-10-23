@@ -14,7 +14,7 @@ See the [failure recovery migration plan](docs/failure-recovery-migration-plan.m
 for failure classification, retry and recovery policy, and migration design.
 See the [current CLI reference](docs/cli-reference.md) for the canonical command names,
 arguments, and formal workflow. Merge with `hai merge`; report selected formal snapshots
-with `hai formal-summary`. Historical plans do not define additional CLI commands.
+with `hai summary`. Historical plans do not define additional CLI commands.
 
 The control plane uses Harbor v0.23.0's native installed-agent lifecycle. Formal Trials
 use one immutable preinstalled execution image per harness, derived from `hai-base-env`.

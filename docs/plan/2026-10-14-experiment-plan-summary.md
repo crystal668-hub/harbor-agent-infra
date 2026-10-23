@@ -129,7 +129,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 ### 恢复流程
 ```
-初始执行 → audit → 人工审查 → recover（先 dry-run）→ merge（先 dry-run 再发布）→ formal-summary
+初始执行 → audit → 人工审查 → recover（先 dry-run）→ merge（先 dry-run 再发布）→ summary
 ```
 
 ### 替代预算
@@ -229,7 +229,7 @@ uv run --locked hai view
 现行命令统一参见[当前 CLI 参考](../cli-reference.md)及
 [正式方案的恢复示例](../formal-experiment-plan.md#94-恢复阶段)。
 `audit` 接受 run 名称；`recover` 接受清单位置参数并要求配置；
-`merge` 发布新的代表快照；`formal-summary` 汇总正式分 track 成绩。
+`merge` 发布新的代表快照；`summary` 汇总正式分 track 成绩。
 旧方案中的 `aggregate`、`audit --run-dir`、`recover --plan` 不是现行接口。
 仍有缺口时在派生快照上重新 audit，核对累计预算并重新审查后再执行下一批。
 

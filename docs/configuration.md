@@ -132,7 +132,7 @@ group materialized and executed; the other group is absent from `jobs/`,
 Formal failure handling uses one workflow:
 
 ```text
-run → audit → human review → recover → merge → formal-summary
+run → audit → human review → recover → merge → summary
 ```
 
 Run recovery and merge previews before execution/publication. Recovery uses the frozen

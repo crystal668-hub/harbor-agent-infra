@@ -106,13 +106,13 @@ def test_analysis_still_rejects_duplicate_views_and_slots(tmp_path):
 ])
 def test_cli_rejects_invalid_analysis_options_before_reading_files(args):
     with pytest.raises(SystemExit) as exc:
-        main(["formal-summary", "nonexistent", *args])
+        main(["summary", "nonexistent", *args])
     assert exc.value.code == 2
 
 
-def test_formal_summary_cli_outputs_analysis_json(tmp_path, capsys):
+def test_summary_cli_outputs_analysis_json(tmp_path, capsys):
     root = snapshot(tmp_path / "run", "run", [record("basic__a", 0.75)])
-    assert main(["formal-summary", str(root), "--top-n", "1",
+    assert main(["summary", str(root), "--top-n", "1",
                  "--score-bins", "0,0.5,1"]) == 0
     result = json.loads(capsys.readouterr().out)
     analysis = result["score_analysis"]

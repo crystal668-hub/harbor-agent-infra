@@ -97,7 +97,7 @@ basic（51 题）和 advanced（20 题）分别报告，按 harness、model、re
 每个原始 run 仅选择一个原始或 merged 代表快照参加正式汇总：
 
 ```bash
-uv run --locked --python 3.12 hai formal-summary \
+uv run --locked --python 3.12 hai summary \
   <selected-run-or-merged-path-1> <selected-run-or-merged-path-2>
 ```
 
