@@ -131,6 +131,11 @@ uv run --locked --python 3.12 hai formal-summary \
 例如脚本支持 `--dry-run`，不表示 `hai run` 支持 `--dry-run`。
 历史实验报告中的尝试性命令保留为历史记录；实际执行只采用本文列明的现行接口。
 
+仍存旧参数、脚本与兼容分支的后续处置见
+[旧接口盘点与清理计划](plan/2026-10-23-legacy-interface-cleanup-plan.md)。
+该计划区分拟退役写入入口与必须保留的历史读取兼容；清理尚未实施，
+不能把计划中的删除目标当作当前 CLI 已删除的接口。
+
 ## 核对依据
 
 - [安装入口](../pyproject.toml)：`[project.scripts]`。
