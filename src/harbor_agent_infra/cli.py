@@ -27,6 +27,22 @@ def _run_harbor_viewer(artifacts_dir: Path, *, port: int, host: str) -> None:
     run_multi_run_viewer(artifacts_dir, port=port, host=host)
 
 
+def _positive_int(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return number
+
+
+def _score_bins(value: str) -> tuple[float, ...]:
+    from harbor_agent_infra.score_analysis import validate_score_bins
+
+    try:
+        return validate_score_bins(tuple(float(part) for part in value.split(",")))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hai")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -81,6 +97,14 @@ def build_parser() -> argparse.ArgumentParser:
         "formal-summary", help="summarize chosen formal snapshots"
     )
     formal_summary.add_argument("runs", type=Path, nargs="+")
+    formal_summary.add_argument(
+        "--top-n", type=_positive_int,
+        help="include Top/Bottom N and score bins for selected representatives",
+    )
+    formal_summary.add_argument(
+        "--score-bins", type=_score_bins, metavar="0,0.2,0.4,0.6,0.8,1",
+        help="include score analysis with increasing bin edges from 0 to 1 (default N=10)",
+    )
 
     viewer = subparsers.add_parser("view", help="browse all Harbor runs on one port")
     viewer.add_argument("--artifacts-dir", type=Path, default=Path("run-artifacts"))
@@ -303,7 +327,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "formal-summary":
         from harbor_agent_infra.formal import aggregate_formal_snapshots
 
-        print(json.dumps(aggregate_formal_snapshots(args.runs), indent=2))
+        print(json.dumps(aggregate_formal_snapshots(
+            args.runs, top_n=args.top_n, score_bins=args.score_bins,
+        ), indent=2))
         return 0
     if args.command == "run":
         if args.config:
@@ -512,7 +538,9 @@ def main(argv: list[str] | None = None) -> int:
                     output_dir=args.output_dir or args.manifest.parent / "recovery-dry-run",
                 )
             if executor is not None:
-                print(f"Effective recovery concurrency: {asyncio.run(executor.concurrency_limit())}")
+                print(
+                    f"Effective recovery concurrency: {asyncio.run(executor.concurrency_limit())}"
+                )
             print(f"Dry run: would recover {len(approved)} approved slots:")
             for slot in approved:
                 print(f"  - {slot.job_name} :: {slot.task_id}")

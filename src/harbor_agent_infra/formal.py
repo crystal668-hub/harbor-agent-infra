@@ -102,7 +102,9 @@ def freeze_formal_slots(output: Path, context: dict, materialized, experiment: d
     return bindings
 
 
-def aggregate_formal_snapshots(paths: list[Path]) -> dict:
+def aggregate_formal_snapshots(
+    paths: list[Path], *, top_n: int | None = None, score_bins: tuple[float, ...] | None = None,
+) -> dict:
     """Aggregate one explicitly chosen original/merged view per original formal run."""
     from harbor_agent_infra.recovery.native_snapshot import score_summary
 
@@ -111,6 +113,8 @@ def aggregate_formal_snapshots(paths: list[Path]) -> dict:
     results = []
     tracks = defaultdict(list)
     run_tracks = {}
+    analysis_entries = []
+    include_analysis = top_n is not None or score_bins is not None
     for path in paths:
         payload = json.loads((path / "results.json").read_text())
         run_id = payload.get("source_run_id") or payload["run_id"]
@@ -124,6 +128,10 @@ def aggregate_formal_snapshots(paths: list[Path]) -> dict:
                 raise ValueError(f"Duplicate formal slot: {identity}")
             slots.add(identity)
             results.append(record)
+            if include_analysis:
+                analysis_entries.append({
+                    "run_id": run_id, "snapshot": str(path.resolve()), "record": record,
+                })
             track = record["task_name"].split("__", 1)[0]
             tracks[track].append(record)
             current_tracks[track].append(record)
@@ -131,7 +139,7 @@ def aggregate_formal_snapshots(paths: list[Path]) -> dict:
             track: score_summary(rows) for track, rows in sorted(current_tracks.items())
         }
 
-    return {
+    summary = {
         "schema_version": "formal-summary.v1",
         "runs": len(seen_runs),
         "slots": len(slots),
@@ -140,3 +148,11 @@ def aggregate_formal_snapshots(paths: list[Path]) -> dict:
         "run_track": run_tracks,
         "selected_snapshots": [str(p.resolve()) for p in paths],
     }
+    if include_analysis:
+        from harbor_agent_infra.score_analysis import DEFAULT_SCORE_BINS, analyze_selected_scores
+
+        summary["score_analysis"] = analyze_selected_scores(
+            analysis_entries, top_n=10 if top_n is None else top_n,
+            bin_edges=DEFAULT_SCORE_BINS if score_bins is None else score_bins,
+        )
+    return summary

@@ -29,7 +29,7 @@ uv run --locked --python 3.12 hai merge --help
 | `hai audit RUN_NAME [--artifacts-dir ROOT] [--output FILE]` | 审计运行并生成恢复清单 | 读取原始证据，写入清单；不执行恢复 |
 | `hai recover MANIFEST --config CONFIG --output-dir NEW_RUN [--dry-run]` | 执行清单中获批且符合替代预算的 slots | 正常模式启动恢复 Jobs；预览模式不执行 |
 | `hai merge ORIGINAL RECOVERY [RECOVERY ...] --output-dir NEW_SNAPSHOT [--dry-run]` | 按原 slot 选择代表结果，发布新的合并快照 | 正常模式写新快照；不重跑 Agent、不自动重评 |
-| `hai formal-summary RUN [RUN ...]` | 汇总选定的正式原始／合并快照，输出 JSON | 读取产物，按 track 和 run_track 报告；不执行合并 |
+| `hai formal-summary RUN [RUN ...] [--top-n N] [--score-bins EDGES]` | 汇总选定快照，按需输出排名及分箱 JSON | 按 track 和 run_track 报告；不执行合并或重评 |
 | `hai analyze RUN_DIR [--output FILE]` | 分析恢复次数、失败分类及恢复统计 | 输出报告；指定 `--output` 时另写统计 JSON |
 | `hai view [--artifacts-dir ROOT] [--host HOST] [--port PORT]` | 启动原生 Harbor 结果浏览服务 | 启动本地服务；默认 `127.0.0.1:8080` |
 | `hai image {inspect,pull} --reference REF [--digest DIGEST] [--platform PLATFORM]` | `inspect` 检查本地不可变镜像；`pull` 在缺失时拉取并检查 | 调用 Docker；`pull` 可能访问 Registry |
@@ -64,10 +64,27 @@ uv run --locked --python 3.12 hai merge --help
 - `formal-summary` 接受一个或多个 run 路径，不接受 `--output`／`--output-dir`；
   如需保存 JSON 使用 shell 重定向。每个原始 run 只传一个选定视图，
   不能同时传入其原始目录和 merged 目录，或两个 merged 版本。
+  `--top-n N` 启用 Top/Bottom N 和默认分箱；`--score-bins` 接受逗号分隔的边界，
+  单独使用时默认 Top/Bottom 10。省略两项参数时原有 JSON 输出结构保持不变。
 - `analyze` 是恢复诊断，不替代正式成绩汇总。`view` 的根目录默认 `run-artifacts`。
   `image` 的默认平台是 `linux/arm64`，镜像引用须绑定 digest；`pull` 不是强制刷新。
 
 ## 正式实验的标准流程
+
+正式成绩细分示例（替换快照占位路径）：
+
+```bash
+uv run --locked --python 3.12 hai formal-summary \
+  'run-artifacts/formal/<merged-run-id>' --top-n 10 --score-bins 0,0.2,0.4,0.6,0.8,1
+```
+
+启用后新增 `score_analysis`，包含 `summary`、`track`、`run_track` 的 `top`、`bottom`、
+`bins`、`perfect` 和计数。分箱为左闭右开，恰好 1 分单列 `perfect`；边界必须从 0
+严格递增至 1。Top 从高到低、Bottom 从低到高，同分按来源 run/group/task/repeat
+确定排序；少于 N 条时返回实际数量，两份排名可能重叠。
+排名携带来源 run、快照、任务、repeat、可用 Trial 与计分来源。已计分的零分和人工
+计分保留；未评分不补零，非数值／非有限值／超出 [0,1] 的分数计入 `invalid_scores`，
+不参与排名或分箱。旧汇总统计不被重写；分轨结果是主视图，混合 summary 仅作辅助。
 
 ```text
 run → audit → 人工审查 → recover --dry-run → recover
