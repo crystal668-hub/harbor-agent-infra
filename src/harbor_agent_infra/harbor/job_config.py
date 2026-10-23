@@ -190,7 +190,6 @@ def materialize_group_job_config(
     skills_root: Path | None = None,
     vgb_python: Path | None = None,
     delete_containers: bool = True,
-    job_name_suffix: str = "",
 ) -> MaterializedJob:
     """Project one paired experiment group into a native Harbor JobConfig."""
     if not tasks:
@@ -231,7 +230,7 @@ def materialize_group_job_config(
         skills = [item["directory"] for item in injected_skills]
 
     job_config = JobConfig(
-        job_name=f"{spec.experiment_id}-{group.id}{job_name_suffix}",
+        job_name=f"{spec.experiment_id}-{group.id}",
         jobs_dir=output_root / "jobs",
         n_attempts=spec.retry.n_attempts,
         n_concurrent_trials=resource_config.capacity.max_concurrent_trials,
@@ -351,7 +350,6 @@ def materialize_paired_job_configs(
     task_settings: TaskRuntimeSettings | None = None,
     delete_containers: bool = True,
     group_id: str | None = None,
-    job_name_suffix: str = "",
 ) -> MaterializedPairedJobs:
     """Materialize one task set and the requested native JobConfig(s)."""
     if group_id is not None and group_id not in {group.id for group in spec.groups}:
@@ -376,7 +374,6 @@ def materialize_paired_job_configs(
             skills_root=skills_root,
             vgb_python=vgb_python,
             delete_containers=delete_containers,
-            job_name_suffix=job_name_suffix,
         )
         for group in spec.groups
         if group_id is None or group.id == group_id

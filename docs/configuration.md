@@ -129,34 +129,15 @@ group materialized and executed; the other group is absent from `jobs/`,
 `run_mode: single_group` and `selected_group`, and its canonical manifest uses schema
 `harbor-single-group-runtime-manifest.v1`.
 
-The following rerun options are legacy/general-run interfaces, not the formal recovery
-workflow. Formal repeat execution rejects `--rerun-failed`, `--task-name` and
-`--job-name-suffix`; use reviewed `audit → recover → merge → formal-summary` instead.
-See the [current CLI reference](cli-reference.md) for canonical commands and arguments.
+Formal failure handling uses one workflow:
 
-To replace failed records in an existing non-formal output directory, pass that directory's
-`results.json` to `--rerun-failed` together with the group. The command schedules
-only non-completed records from that group, deletes only their old trial artifacts,
-and preserves records from the other group in the rebuilt aggregate:
-
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-gpt-5.6-sol-pcb \
-  --rerun-failed run-artifacts/openclaw-gpt-5.6-sol-pcb/results.json
+```text
+run → audit → human review → recover → merge → formal-summary
 ```
 
-To rerun named tasks that Harbor previously marked completed, keep the existing output
-directory and append a distinct job name. Repeat `--task-name` for each task; this mode
-retains prior artifacts and results. The configuration may contain only the selected
-tasks, but its model, image, resource, retry, and network settings must remain unchanged:
-
-```bash
-uv run --locked hai run \
-  --config configs/experiments/openclaw/vgb-qwen.config.yaml \
-  --group skills_off \
-  --output-dir run-artifacts/openclaw-qwen-3.8-flash-pca \
-  --task-name property_calculation_advanced__property_calculation_advanced_001_free_energy \
-  --job-name-suffix rerun-batch-1
-```
+Run recovery and merge previews before execution/publication. Recovery uses the frozen
+JobConfig and approved slot manifest, while merge publishes a new independent snapshot.
+Keep original run evidence unchanged and select one snapshot per original run for reporting.
+For temporary task subsets, use a separate configuration and a new temporary output directory.
+See the [current CLI reference](cli-reference.md) for command syntax and optional
+formal score rankings and bins.

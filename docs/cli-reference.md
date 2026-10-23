@@ -44,8 +44,8 @@ uv run --locked --python 3.12 hai merge --help
 - `run` 还接受 `--output-dir`、`--skills-root`、`--resource-config`；
   `--experiment` 与 `--config` 互斥。使用 `--experiment` 时必须同时提供
   `--resource-config` 和 `--output-dir`；正式 repeat 仍要求使用 `--config`。
-- `run --rerun-failed`、`--task-name`、`--job-name-suffix` 仍被 CLI 接受，
-  但正式 repeat 明确拒绝这些参数。正式失败恢复统一使用 `recover`。
+- `run` 按配置启动实验；失败恢复统一使用 `audit → 人工审查 → recover → merge`，
+  不通过原始运行入口覆盖旧结果或追加任意任务。
   `run` 默认选择 `skills_off`，省略 `--group` 不会启动双组。
 - `materialize` 同样接受互斥的 `--config` 或 `--experiment`；后一形式必须附带
   `--resource-config` 和 `--output`。它接受 `--skills-root`，但没有 `--group`

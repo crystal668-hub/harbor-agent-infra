@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
+from unittest.mock import Mock
 
-from harbor_agent_infra.cli import _with_selected_task_names, build_parser, main
-from harbor_agent_infra.contracts.experiment import ExperimentSpecV2
+import pytest
+
+from harbor_agent_infra.cli import build_parser, main
 
 
 class _FakeVgbRuntime:
@@ -33,79 +36,35 @@ def test_run_parser_accepts_single_group() -> None:
     assert args.group == "skills_off"
 
 
-def test_run_parser_accepts_failed_record_rerun() -> None:
-    args = build_parser().parse_args(
-        [
-            "run",
-            "--experiment",
-            "experiment.yaml",
-            "--resource-config",
-            "resources.yaml",
-            "--output-dir",
-            "run-artifacts/single",
-            "--group",
-            "skills_off",
-            "--rerun-failed",
-            "old/results.json",
-        ]
-    )
-    assert args.rerun_failed.name == "results.json"
+def test_run_options_are_limited_to_standard_experiment_inputs():
+    parser = build_parser()
+    subcommands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    options = {option for action in subcommands.choices["run"]._actions
+               for option in action.option_strings}
+    assert options == {
+        "-h", "--help", "--config", "--experiment", "--resource-config",
+        "--output-dir", "--skills-root", "--group", "--formal-repeat",
+        "--formal-provider", "--formal-root",
+    }
 
 
-def test_run_parser_accepts_explicit_task_rerun() -> None:
-    args = build_parser().parse_args(
-        [
-            "run",
-            "--experiment",
-            "experiment.yaml",
-            "--resource-config",
-            "resources.yaml",
-            "--output-dir",
-            "run-artifacts/single",
-            "--group",
-            "skills_off",
-            "--task-name",
-            "open_generation_rdkit__rdkit_001_qed_max",
-            "--job-name-suffix",
-            "rerun-batch-1",
-        ]
-    )
-    assert args.task_name == ["open_generation_rdkit__rdkit_001_qed_max"]
-    assert args.job_name_suffix == "rerun-batch-1"
+def test_unknown_run_operation_is_rejected_before_config_or_artifact_access(monkeypatch, tmp_path):
+    config = Mock(side_effect=AssertionError("configuration must not be loaded"))
+    monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", config)
+    artifact = tmp_path / "results.json"
+    artifact.write_text("original evidence")
+    with pytest.raises(SystemExit) as error:
+        main(["run", "--config", "fixture.yaml", "--output-dir", str(tmp_path),
+              "--unsupported-operation"])
+    assert error.value.code == 2
+    config.assert_not_called()
+    assert artifact.read_text() == "original evidence"
 
 
-def test_selected_failed_tasks_filter_configured_cases(tmp_path) -> None:
-    spec = ExperimentSpecV2.model_validate(
-        {
-            "schema_version": "experiment.v2",
-            "experiment_id": "test",
-            "domain": "verifier-grounded",
-            "benchmark": {
-                "package_lock": "runtime-lock.json",
-                "cases": [
-                    {"track": "open_generation_rdkit", "task_ids": ["rdkit_001_qed_max"]},
-                    {"track": "open_generation_xtb", "task_ids": ["xtb_001_gap_window"]},
-                ],
-            },
-            "groups": [
-                {"id": "skills_on", "label": "on", "skills_enabled": True,
-                 "skill_allowlist_ref": str(tmp_path / "allowlist.json")},
-                {"id": "skills_off", "label": "off", "skills_enabled": False},
-            ],
-            "agent": {"adapter": "openclaw", "model": "test"},
-            "image": {
-                "reference": "image",
-                "digest": "sha256:" + "a" * 64,
-                "platform": "linux/arm64",
-                "pull_policy": "if_missing",
-            },
-            "resources": {"profile": "test", "config_file": "test.yaml"},
-        }
-    )
-    selected = _with_selected_task_names(
-        spec, frozenset({"open_generation_xtb__xtb_001_gap_window"})
-    )
-    assert [case.task_ids for case in selected.benchmark.cases] == [["xtb_001_gap_window"]]
+
+
+
+
 
 
 def test_materialize_command_writes_job_snapshot(monkeypatch, tmp_path) -> None:

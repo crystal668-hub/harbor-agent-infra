@@ -3,13 +3,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
-from uuid import uuid4
 
 from harbor import Job, JobConfig
 from harbor.trial.hooks import TrialHookEvent
@@ -76,76 +74,10 @@ def _job_execution_settings(job_config: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
-def failed_task_names_from_results(path: Path, *, group_id: str) -> frozenset[str]:
-    """Return non-completed task names for one group in a prior results file."""
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    records = payload.get("results")
-    if not isinstance(records, list):
-        raise ValueError(f"results file does not contain a results list: {path}")
-    task_names = {
-        str(record["task_name"])
-        for record in records
-        if isinstance(record, dict)
-        and record.get("group_id") == group_id
-        and record.get("run_lifecycle_status") != "completed"
-        and isinstance(record.get("task_name"), str)
-    }
-    if not task_names:
-        raise ValueError(f"results file has no failed records for group {group_id}: {path}")
-    return frozenset(task_names)
 
 
-def _replacement_artifacts(
-    output_root: Path,
-    *,
-    group_id: str,
-    task_names: frozenset[str],
-) -> tuple[tuple[Path, ...], tuple[Path, ...], frozenset[str]]:
-    """Find prior artifacts without removing them before a rerun has started."""
-    record_root = output_root / "per-record" / group_id
-    jobs_root = (output_root / "jobs").resolve()
-    record_paths = []
-    trial_dirs: set[Path] = set()
-    if record_root.is_dir():
-        for path in record_root.glob("*.json"):
-            record = json.loads(path.read_text(encoding="utf-8"))
-            if record.get("task_name") not in task_names:
-                continue
-            record_paths.append(path)
-            trial_path = Path(str(record.get("trial_result_path") or "")).parent
-            if trial_path.is_dir() and trial_path.resolve().is_relative_to(jobs_root):
-                trial_dirs.add(trial_path)
-    events_path = output_root / "events" / "trials.jsonl"
-    event_lines = frozenset()
-    if events_path.is_file():
-        event_lines = frozenset(
-            line
-            for line in events_path.read_text(encoding="utf-8").splitlines()
-            if (event := json.loads(line)).get("group_id") == group_id
-            and event.get("task_name") in task_names
-        )
-    return tuple(record_paths), tuple(trial_dirs), event_lines
 
 
-def _remove_replaced_records(
-    output_root: Path,
-    artifacts: tuple[tuple[Path, ...], tuple[Path, ...], frozenset[str]],
-) -> None:
-    """Commit replacement by removing prior records after the new job completed."""
-    record_paths, trial_dirs, event_lines = artifacts
-    for path in record_paths:
-        path.unlink(missing_ok=True)
-    for trial_dir in sorted(trial_dirs, key=lambda item: len(item.parts), reverse=True):
-        shutil.rmtree(trial_dir, ignore_errors=True)
-    events_path = output_root / "events" / "trials.jsonl"
-    if not events_path.is_file() or not event_lines:
-        return
-    retained = [
-        line
-        for line in events_path.read_text(encoding="utf-8").splitlines()
-        if line not in event_lines
-    ]
-    events_path.write_text("\n".join(retained) + ("\n" if retained else ""), encoding="utf-8")
 
 
 def _trial_dir(uri: str) -> Path:
@@ -513,9 +445,6 @@ async def run_paired_jobs(
     task_settings: TaskRuntimeSettings | None = None,
     delete_containers: bool = True,
     group_id: str | None = None,
-    replace_group_task_names: frozenset[str] | None = None,
-    job_name_suffix: str = "",
-    allow_task_selection_change: bool = False,
     source_experiment_sha256: str | None = None,
     formal_context: dict | None = None,
 ) -> dict[str, Any]:
@@ -551,12 +480,6 @@ async def run_paired_jobs(
         if previous_manifest_path.exists()
         else None
     )
-    previous_results_path = output_root / "results.json"
-    previous_results = (
-        json.loads(previous_results_path.read_text(encoding="utf-8"))
-        if (replace_group_task_names or job_name_suffix) and previous_results_path.exists()
-        else None
-    )
     started_at = (
         previous_manifest["started_at"] if previous_manifest else datetime.now(UTC).isoformat()
     )
@@ -571,9 +494,6 @@ async def run_paired_jobs(
         task_settings=task_settings,
         delete_containers=delete_containers,
         group_id=group_id,
-        job_name_suffix=(
-            f"-rerun-{uuid4().hex[:8]}" if replace_group_task_names else job_name_suffix
-        ),
     )
     print(f"Materialization complete. Groups: {list(materialized.groups.keys())}", flush=True)
     if previous_manifest:
@@ -595,7 +515,7 @@ async def run_paired_jobs(
                 current_group_id in previous_group_skills
                 and previous_group_skills[current_group_id] != skills
             )
-            or (current_group_id not in previous_group_skills and replace_group_task_names is None)
+            or current_group_id not in previous_group_skills
             for current_group_id, skills in requested_group_skills.items()
         )
         previous_group_configs = {
@@ -610,22 +530,14 @@ async def run_paired_jobs(
         )
         source_matches = previous_source_hash == expected_source_hash
         if (
-            (not source_matches and not (allow_task_selection_change and execution_settings_match))
+            not source_matches
+            or not execution_settings_match
             or previous_manifest.get("resource_config_sha256") != expected.resource_config_sha256
             or skills_mismatch
             or previous_manifest.get("chemistry_preflight", {}).get("lock_sha256")
             != chemistry["lock_sha256"]
         ):
             raise ValueError("existing runtime manifest does not match run inputs")
-    replacement_artifacts = None
-    if replace_group_task_names is not None:
-        if group_id is None:
-            raise ValueError("replacing failed records requires a selected group")
-        replacement_artifacts = _replacement_artifacts(
-            output_root,
-            group_id=group_id,
-            task_names=replace_group_task_names,
-        )
     slot_bindings = None
     if formal_context is not None:
         from harbor_agent_infra.formal import freeze_formal_slots
@@ -700,12 +612,6 @@ async def run_paired_jobs(
                     json.dumps(final, indent=2, sort_keys=True) + "\n", encoding="utf-8"
                 )
             records.append(final)
-        if previous_results is not None:
-            records.extend(
-                record
-                for record in previous_results.get("results", [])
-                if isinstance(record, dict) and record.get("group_id") not in materialized.groups
-            )
         records.sort(key=lambda item: (item["group_id"], item["trial_name"]))
         if status == "completed" and any(
             record.get("evaluation_error") or record.get("failure_mode") for record in records
@@ -713,24 +619,17 @@ async def run_paired_jobs(
             status = "partial"
         summary = {}
         group_track = {}
-        historical_groups = {
-            str(item.get("id")): item
-            for item in (previous_results or {}).get("groups", [])
-            if isinstance(item, dict) and item.get("id") not in materialized.groups
-        }
-        historical_summary = ((previous_results or {}).get("summary") or {}).get("groups") or {}
         active_groups = {item.group_id: item for item in groups}
-        available_group_ids = {*historical_groups, *materialized.groups}
+        available_group_ids = set(materialized.groups)
         ordered_group_ids = [item.id for item in spec.groups if item.id in available_group_ids]
         for current_group_id in ordered_group_ids:
             group_records = [record for record in records if record["group_id"] == current_group_id]
             active = active_groups.get(current_group_id)
-            historical = historical_summary.get(current_group_id, {})
             summary[current_group_id] = {
                 **_score_summary(group_records),
-                "status": active.status if active else historical.get("status", "completed"),
-                "errors": active.n_errors if active else historical.get("errors", 0),
-                "cancelled": active.n_cancelled if active else historical.get("cancelled", 0),
+                "status": active.status if active else "completed",
+                "errors": active.n_errors if active else 0,
+                "cancelled": active.n_cancelled if active else 0,
             }
             group_track[current_group_id] = {
                 track: _score_summary(
@@ -988,8 +887,6 @@ async def run_paired_jobs(
                     n_cancelled=result.stats.n_cancelled_trials,
                 )
             )
-            if replacement_artifacts is not None:
-                _remove_replaced_records(output_root, replacement_artifacts)
             await _evaluate_group_records(output_root / "per-record" / current_group_id, runtime)
         write_outputs()
     return write_outputs()

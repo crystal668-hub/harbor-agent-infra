@@ -12,7 +12,7 @@ from harbor_agent_infra.harbor.job_config import (
     materialize_job_config,
     materialize_paired_job_configs,
 )
-from harbor_agent_infra.harbor.run import failed_task_names_from_results, run_paired_jobs
+from harbor_agent_infra.harbor.run import run_paired_jobs
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.preparation.experiments import experiment_sha256, load_experiment
 from harbor_agent_infra.preparation.image_manager import inspect_image
@@ -72,23 +72,6 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("skills_on", "skills_off"),
         default="skills_off",
         help="run one group (default: skills_off)",
-    )
-    run.add_argument(
-        "--rerun-failed",
-        type=Path,
-        metavar="RESULTS_JSON",
-        help="rerun failed records for --group and replace their prior artifacts in --output-dir",
-    )
-    run.add_argument(
-        "--task-name",
-        action="append",
-        metavar="TRACK__TASK_ID",
-        help="rerun this configured task; repeat for multiple tasks",
-    )
-    run.add_argument(
-        "--job-name-suffix",
-        metavar="SUFFIX",
-        help="append -SUFFIX to the job name when using --task-name",
     )
     run.add_argument("--formal-repeat", type=int, help="formal repeat number, starting at 1")
     run.add_argument("--formal-provider", choices=("openai", "anthropic", "qwen", "deepseek"))
@@ -373,8 +356,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             if (spec.agent.provider is not None and spec.agent.provider != args.formal_provider):
                 raise ValueError("Formal provider differs from experiment provider")
-            if (args.group != "skills_off" or args.rerun_failed or args.task_name
-                    or args.job_name_suffix or spec.retry.n_attempts != 1
+            if (args.group != "skills_off" or spec.retry.n_attempts != 1
                     or spec.retry.max_retries != 0
                     or resources.capacity.max_concurrent_trials != 2):
                 raise ValueError(
@@ -396,25 +378,6 @@ def main(argv: list[str] | None = None) -> int:
         print("Computing experiment SHA256...", flush=True)
         source_experiment_sha256 = experiment_sha256(spec)
         print(f"Experiment SHA256: {source_experiment_sha256}", flush=True)
-        replace_group_task_names = None
-        job_name_suffix = ""
-        explicit_task_names = frozenset(args.task_name or ())
-        if args.rerun_failed and explicit_task_names:
-            raise ValueError("--rerun-failed cannot be combined with --task-name")
-        if explicit_task_names or args.job_name_suffix:
-            if args.group is None:
-                raise ValueError("--task-name requires --group")
-            if not explicit_task_names or not args.job_name_suffix:
-                raise ValueError("--task-name and --job-name-suffix must be provided together")
-            job_name_suffix = f"-{args.job_name_suffix}"
-            spec = _with_selected_task_names(spec, explicit_task_names)
-        if args.rerun_failed:
-            if args.group is None:
-                raise ValueError("--rerun-failed requires --group")
-            replace_group_task_names = failed_task_names_from_results(
-                args.rerun_failed, group_id=args.group
-            )
-            spec = _with_selected_task_names(spec, replace_group_task_names)
         print("Starting asyncio run...", flush=True)
         asyncio.run(
             run_paired_jobs(
@@ -426,9 +389,6 @@ def main(argv: list[str] | None = None) -> int:
                 task_settings=task_settings,
                 delete_containers=delete_containers,
                 group_id=args.group,
-                replace_group_task_names=replace_group_task_names,
-                job_name_suffix=job_name_suffix,
-                allow_task_selection_change=bool(explicit_task_names),
                 source_experiment_sha256=source_experiment_sha256,
                 formal_context=formal_context,
             )
@@ -763,27 +723,6 @@ def _task_settings(config) -> TaskRuntimeSettings:
     )
 
 
-def _with_selected_task_names(
-    spec: ExperimentSpecV2, task_names: frozenset[str]
-) -> ExperimentSpecV2:
-    cases = []
-    configured = set()
-    for case in spec.benchmark.cases:
-        selected = []
-        for task_id in case.task_ids:
-            task_name = f"{case.track}__{task_id}"
-            configured.add(task_name)
-            if task_name in task_names:
-                selected.append(task_id)
-        if selected:
-            cases.append(case.model_copy(update={"task_ids": selected}))
-    unknown = sorted(task_names - configured)
-    if unknown:
-        raise ValueError(f"failed records are not configured for this run: {unknown}")
-    if not cases:
-        raise ValueError("no configured tasks matched the failed records")
-    benchmark = spec.benchmark.model_copy(update={"cases": cases})
-    return spec.model_copy(update={"benchmark": benchmark})
 
 
 if __name__ == "__main__":
