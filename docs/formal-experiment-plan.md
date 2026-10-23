@@ -286,8 +286,8 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 3. **自动分类**: 运行 `audit` 命令，生成判定与恢复计划
 4. **人工审查**: 检查恢复计划的准确性和合理性
 5. **执行恢复**: 运行 `recover` 命令，提交获准的补跑
-6. **重复**: 补跑完成后，重新 audit 和审查，直到无需进一步恢复
-7. **最终聚合**: 运行 `aggregate`，生成正式分析报告
+6. **合并与复审**: 用 `hai merge --dry-run` 审查代表选择，再用 `hai merge` 发布新快照；如有缺口，在派生快照上重新 audit，核对累计预算后再审查下一批
+7. **正式统计**: 运行 `hai formal-summary` 汇总选定快照；命令名称与参数统一以[当前 CLI 参考](cli-reference.md)为准
 
 ### 6.3 替代预算
 
@@ -511,30 +511,42 @@ uv run --locked --python 3.12 hai run \
 
 ### 9.4 恢复阶段
 
+以下为命令模板，替换引号中的占位值后使用。`audit` 接受 run 名称，
+`recover` 接受清单文件位置参数；实际执行必须提供 `--config`。
+
 ```bash
-# 1. 生成恢复计划
-uv run --locked hai audit \
-  --run-dir run-artifacts/formal/<run-id> \
-  --output recovery-plan.json
+# 1. 生成恢复清单；已有批准清单先保全
+uv run --locked --python 3.12 hai audit '<run-id>' \
+  --artifacts-dir run-artifacts/formal
 
 # 2. 人工审查
-# 检查 recovery-plan.json 和 decisions.jsonl
+# 检查 recovery-manifest.json、原生证据和累计替代预算
 
-# 3. 执行获准的补跑
-uv run --locked hai recover \
-  --plan recovery-plan.json \
-  --output-dir run-artifacts/formal/<repair-run-id>
+# 3. 校验获准补跑；审查通过后移除 --dry-run 执行
+uv run --locked --python 3.12 hai recover \
+  'run-artifacts/formal/<run-id>/recovery-manifest.json' \
+  --config 'configs/experiments/<harness>/vgb-<model>.config.yaml' \
+  --output-dir 'run-artifacts/formal/<repair-run-id>' --dry-run
 
-# 4. 重复 audit 和 recover 直到无需进一步恢复
+# 4. 补跑终态可核对后，进入下面的合并与正式统计
 ```
 
-### 9.5 最终聚合
+### 9.5 合并与正式统计
 
 ```bash
-uv run --locked hai aggregate \
-  --run-dir run-artifacts/formal/<run-id> \
-  --output-dir run-artifacts/formal/<run-id>/analysis/<snapshot-id>
+# 先预览选择；审查通过后移除 --dry-run，发布新的独立快照
+uv run --locked --python 3.12 hai merge \
+  'run-artifacts/formal/<run-id>' \
+  'run-artifacts/formal/<repair-run-id>' \
+  --output-dir 'run-artifacts/formal/<merged-run-id>' --dry-run
+
+# 发布后统计；无需恢复时直接传原始 run
+uv run --locked --python 3.12 hai formal-summary \
+  'run-artifacts/formal/<merged-run-id>'
 ```
+
+当前没有 `hai aggregate` 子命令。若仍有恢复缺口，在派生快照上重新 audit，
+核对累计预算并重新审查；不自动循环，也不同时统计同一 run 的原始和 merged 视图。
 
 ---
 

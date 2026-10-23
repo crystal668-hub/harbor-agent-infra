@@ -1,12 +1,19 @@
 # Recovery System User Guide
 
+Command names and arguments were reconciled on 2026-10-23. Use the
+[current CLI reference](cli-reference.md) as the canonical command index, with
+`uv run --locked --python 3.12 hai` as the invocation prefix. `merge` publishes
+representative snapshots, `formal-summary` reports formal scores, and `analyze`
+reports recovery diagnostics. Planned names in historical documents are not CLI aliases.
+
 ## Overview
 
-The recovery system enables you to identify, classify, and recover from failures in experimental runs. It follows a three-phase workflow:
+The recovery system enables you to identify, classify, and recover from failures in experimental runs. It follows a four-stage workflow:
 
 1. **Audit**: Scan a completed run for failures and generate a recovery manifest
 2. **Recover**: Execute approved recovery attempts
-3. **Merge**: Integrate successful recoveries back into the original results
+3. **Merge**: Select valid representatives and publish a new snapshot, preserving source runs
+4. **Formal summary**: Report the chosen snapshot with `hai formal-summary`
 
 ## Native formal runs: current contract
 
@@ -303,7 +310,7 @@ Verifier or scoring system issues:
 - Runtime errors in scoring
 - Invalid expected outputs
 
-**Action**: Review evidence and approve if verifier issue
+**Action**: Review evidence and repair scoring separately; never approve a new Agent execution merely to repair scoring.
 
 ### Recovery Limits
 
@@ -376,23 +383,14 @@ Don't delete recovery run directories - they're needed for traceability and futu
 Run `hai analyze` after recovery to verify success rates and identify persistent issues.
 
 ### 7. Multiple Recovery Passes
-You can run multiple recovery passes if initial attempts fail:
 
-```bash
-# First pass
-hai recover manifest-1.json --output-dir recovery-pass-1
-
-# Audit the recovery run itself
-hai audit recovery-pass-1 --output-dir recovery-pass-1
-
-# Second pass
-hai recover recovery-pass-1/recovery-manifest.json \
-  --output-dir recovery-pass-2
-
-# Merge all passes
-hai merge original-run recovery-pass-1 recovery-pass-2 \
-  --output-dir merged
-```
+After each completed recovery batch, preview and review its merge before publishing
+a new snapshot. Re-audit that derived snapshot so prior substitutions remain in
+the budget, then review any further recovery manifest. Use a fresh output directory
+and `--config` for every executed recovery. Include the required attempt chain when
+merging later batches. Never treat a recovery-only directory as a new original repeat
+or automatically reuse an earlier approval. See the
+[canonical workflow](cli-reference.md#正式实验的标准流程) for exact command syntax.
 
 ## Troubleshooting
 
@@ -430,33 +428,14 @@ hai merge original-run recovery-pass-1 recovery-pass-2 \
 
 ### Standard Experiment Workflow
 
-```bash
-# 1. Run experiment
-hai run --config configs/experiment.yaml \
-  --output run-artifacts/formal/exp-2026-10-14
-
-# 2. Wait for completion, then audit
-hai audit exp-2026-10-14 --artifacts-dir run-artifacts/formal
-
-# 3. Review and approve failures (edit manifest)
-
-# 4. Execute recovery
-hai recover run-artifacts/formal/exp-2026-10-14/recovery-manifest.json \
-  --config configs/experiment.yaml \
-  --output-dir run-artifacts/recovery-2026-10-14
-
-# 5. Merge results
-hai merge \
-  run-artifacts/formal/exp-2026-10-14 \
-  run-artifacts/recovery-2026-10-14 \
-  --output-dir run-artifacts/formal/exp-2026-10-14-final
-
-# 6. Analyze final results
-hai analyze run-artifacts/formal/exp-2026-10-14-final
-
-# 7. Generate final report with merged results
-# (use your normal reporting tools on the merged directory)
+```text
+run → audit → review → recover --dry-run → recover
+    → merge --dry-run → review → merge → formal-summary
 ```
+
+Use the [current CLI reference](cli-reference.md#正式实验的标准流程) for the executable
+templates and required formal-run flags. `analyze` is optional recovery diagnosis,
+not the formal score report. If no recovery is needed, summarize the original run directly.
 
 ## Advanced Topics
 
@@ -489,22 +468,16 @@ hai audit run-name
 
 # Edit manifest: set approved=true only for specific slots
 # Then recover only approved slots
-hai recover manifest.json --config ...
+hai recover manifest.json --config configs/experiment.yaml --output-dir NEW_RECOVERY --dry-run
 ```
 
 ### Batch Operations
 
-Recover multiple runs:
-
-```bash
-for run in run-artifacts/formal/*; do
-  hai audit "$run"
-  # Review and approve...
-  hai recover "$run/recovery-manifest.json" \
-    --config configs/experiment.yaml \
-    --output-dir "run-artifacts/recovery-$(basename $run)"
-done
-```
+Select original runs explicitly. For each one, use its own frozen configuration,
+audit manifest, reviewed approval and fresh recovery directory. Do not use a glob
+that also selects recovery or merged directories, and do not share one generic
+configuration across unrelated harness/provider runs. Apply the canonical workflow
+to each reviewed run; batch enumeration does not authorize automatic recovery.
 
 ## Exit Codes
 
@@ -514,12 +487,15 @@ All recovery commands return standard exit codes:
 - `1`: Error (failure reported in output)
 - `2`: Invalid arguments
 
-Use these for scripting and automation:
+Example of inspecting recovery exit status; merge remains a separately reviewed operation:
 
 ```bash
-if hai recover manifest.json --config experiment.toml; then
+if uv run --locked --python 3.12 hai recover manifest.json \
+  --config configs/experiment.yaml --output-dir NEW_RECOVERY; then
   echo "Recovery succeeded"
-  hai merge original recovery --output-dir merged
+  uv run --locked --python 3.12 hai merge ORIGINAL NEW_RECOVERY \
+    --output-dir NEW_MERGED --dry-run
+  # Review the selection before separately publishing with merge.
 else
   echo "Recovery failed, check logs"
   exit 1

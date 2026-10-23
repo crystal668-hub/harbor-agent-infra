@@ -129,7 +129,12 @@ group materialized and executed; the other group is absent from `jobs/`,
 `run_mode: single_group` and `selected_group`, and its canonical manifest uses schema
 `harbor-single-group-runtime-manifest.v1`.
 
-To replace failed records in an existing output directory, pass that directory's
+The following rerun options are legacy/general-run interfaces, not the formal recovery
+workflow. Formal repeat execution rejects `--rerun-failed`, `--task-name` and
+`--job-name-suffix`; use reviewed `audit → recover → merge → formal-summary` instead.
+See the [current CLI reference](cli-reference.md) for canonical commands and arguments.
+
+To replace failed records in an existing non-formal output directory, pass that directory's
 `results.json` to `--rerun-failed` together with the group. The command schedules
 only non-completed records from that group, deletes only their old trial artifacts,
 and preserves records from the other group in the rebuilt aggregate:

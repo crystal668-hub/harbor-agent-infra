@@ -1,6 +1,9 @@
 # 正式实验执行快速参考
 
-更新：2026-10-15。
+更新：2026-10-23（命令口径核对；实验协议保持原值）。
+
+命令名称及参数统一以[当前 CLI 参考](../cli-reference.md)为准。
+下列 shell 脚本是矩阵调度辅助入口，不定义额外的 `hai` 子命令。
 
 ## 规模与顺序
 
@@ -37,6 +40,10 @@ GPT 模板对应 provider `openai`；Claude 模板对应 `anthropic`。
 已有目录会被保留并跳过，不表示已完成；进入下一轮前核对本轮全部 run 的终态。
 
 ## 统计与切换
+
+正式恢复链为 `audit → 人工审查 → recover → merge → formal-summary`；
+`recover` 和 `merge` 均先用 `--dry-run` 预览。`merge` 发布新快照，
+`formal-summary` 报告正式分数，`analyze` 只做恢复诊断；没有 `hai aggregate`。
 
 basic 与 advanced 分别统计和报告，混合均分仅作辅助。
 `hai formal-summary` 输出 `track` 与 `run_track`；每个原始 run 只选一个代表快照。

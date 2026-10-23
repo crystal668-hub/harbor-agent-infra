@@ -12,6 +12,9 @@ See the [formal experiment plan](docs/formal-experiment-plan.md) for the current
 experiment matrix, execution protocol, and reporting requirements.
 See the [failure recovery migration plan](docs/failure-recovery-migration-plan.md)
 for failure classification, retry and recovery policy, and migration design.
+See the [current CLI reference](docs/cli-reference.md) for the canonical command names,
+arguments, and formal workflow. Merge with `hai merge`; report selected formal snapshots
+with `hai formal-summary`. Historical plans do not define additional CLI commands.
 
 The control plane uses Harbor v0.23.0's native installed-agent lifecycle. Formal Trials
 use one immutable preinstalled execution image per harness, derived from `hai-base-env`.
@@ -125,11 +128,10 @@ uv run python scripts/verify_acceptance.py
 The acceptance report distinguishes completed provider-free/Docker gates from missing
 provider and optional Registry prerequisites.
 
-## Paired run results and Viewer
+## Run results and Viewer
 
-`experiment.v2` runs create two native Harbor jobs, `skills_on` and `skills_off`, below
-the same `run-artifacts/<run-id>/jobs/` directory. Browse every run from one local
-Viewer instance:
+The `hai run` CLI selects one group, defaulting to `skills_off`, and creates its native
+Harbor Job below `run-artifacts/<run-id>/jobs/`. Browse runs from one local Viewer instance:
 
 ```bash
 uv run --locked hai view
@@ -175,5 +177,5 @@ uv run --locked hai run \
 A single-group run creates one Harbor Job and writes only that group's `per-record/`
 files, `results.json` entries and manifest entry. `results.json` records
 `run_mode: single_group` and `selected_group`; `runtime-manifest.json` uses
-`harbor-single-group-runtime-manifest.v1`. A paired run without `--group` remains
-available only for an explicitly requested comparison.
+`harbor-single-group-runtime-manifest.v1`. The CLI defaults to `skills_off` when
+`--group` is omitted; it does not start a paired run.
