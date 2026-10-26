@@ -90,13 +90,16 @@ def inventory(context: ResumeContext, *, all_groups=False) -> list[ResumeTrial]:
             if not interrupted:
                 action, answer = ("keep_failed" if kind else "keep"), None
             else:
+                from harbor_agent_infra.resume.scoring import saved_score
+
                 answer = final_answer(directory / "agent", context.harness(group))
-                if answer and result is None:
+                scored = saved_score(directory, name)
+                if (answer or scored) and result is None:
                     raise ValueError(
                         "Final answer preserved, but original Trial identity is missing: "
                         f"{directory}"
                     )
-                action = "score" if answer else "rerun"
+                action = "score" if answer or scored else "rerun"
             plan.append(ResumeTrial(group, name, action, directory, result, answer))
         plan.extend(ResumeTrial(group, name, "start") for name in expected if name not in seen)
     return plan

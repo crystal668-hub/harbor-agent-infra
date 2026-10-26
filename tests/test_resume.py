@@ -192,3 +192,53 @@ def test_native_final_answer_and_tool_preamble(tmp_path, harness):
         rows[-1]["is_error"] = True
     path.write_text("\n".join(json.dumps(r) for r in rows))
     assert final_answer(tmp_path, harness) is None
+
+
+def test_score_interrupted_reuses_artifact_after_commit_window(original, monkeypatch):
+    import asyncio
+
+    from harbor_agent_infra.resume import scoring
+    from harbor_agent_infra.resume.plan import inventory
+    directory, old = add_trial(original, kind="CancelledError")
+    codex_answer(directory)
+    calls = []
+
+    async def evaluate(*args, **kwargs):
+        calls.append(kwargs["response"])
+        return {"status": "scored", "task_id": "one", "scores": {"score": 0}}
+
+    monkeypatch.setattr(scoring, "evaluate_final_response", evaluate)
+    item = inventory(resolve_context(str(original[0])))[0]
+    asyncio.run(scoring.score_interrupted(item, object()))
+    result = json.loads((directory / "result.json").read_text())
+    assert result["id"] == str(old.id) and result["exception_info"] is None
+    assert result["verifier_result"]["rewards"]["vgb_score"] == 0
+    # Simulate interruption after artifact publication but before native result commit.
+    save(directory / "result.json", old.model_dump(mode="json"))
+    (directory / "agent/codex.txt").unlink()
+    item = inventory(resolve_context(str(original[0])))[0]
+    assert item.action == "score"
+    asyncio.run(scoring.score_interrupted(item, None))
+    assert calls == ["42"]
+    assert inventory(resolve_context(str(original[0])))[0].action == "keep"
+
+
+def test_scoring_error_never_discards_answer(original, monkeypatch):
+    import asyncio
+
+    from harbor_agent_infra.resume import scoring
+    from harbor_agent_infra.resume.plan import inventory
+    directory, _ = add_trial(original, kind="CancelledError")
+    codex_answer(directory)
+    before = (directory / "result.json").read_bytes()
+
+    async def fail(*args, **kwargs):
+        raise RuntimeError("unavailable")
+
+    monkeypatch.setattr(scoring, "evaluate_final_response", fail)
+    with pytest.raises(RuntimeError):
+        asyncio.run(scoring.score_interrupted(
+            inventory(resolve_context(str(original[0])))[0], object()))
+    assert before == (directory / "result.json").read_bytes()
+    assert (directory / "agent/codex.txt").exists()
+    assert inventory(resolve_context(str(original[0])))[0].action == "score"

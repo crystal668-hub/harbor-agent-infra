@@ -18,6 +18,22 @@ class VgbVerifierError(RuntimeError):
     pass
 
 
+async def evaluate_final_response(runtime: VgbRuntime, *, track: str, task_id: str,
+                                  response: str) -> dict:
+    """Shared scoring kernel; callers must establish final-answer provenance first."""
+    domain = await asyncio.to_thread(
+        project_agent_output, runtime, track=track, task_id=task_id,
+        agent_output={"schema_version": "agent-output.v1",
+                      "answer": {"full_text": response}},
+    )
+    score: Any = domain.get("scores", {}).get("score")
+    if domain.get("status") != "scored" or isinstance(score, bool) or not isinstance(
+        score, int | float
+    ) or not math.isfinite(score):
+        raise VgbVerifierError("VGB evaluation did not return a finite scored result")
+    return domain
+
+
 class VgbVerifier(BaseVerifier):
     """Score downloaded agent output with the isolated host-side VGB runtime."""
 
@@ -42,21 +58,10 @@ class VgbVerifier(BaseVerifier):
                 if configured_python
                 else VgbRuntime.from_environment()
             )
-            domain = await asyncio.to_thread(
-                project_agent_output,
-                runtime,
-                track=track,
-                task_id=task_id,
-                agent_output={
-                    "schema_version": "agent-output.v1",
-                    "answer": {"full_text": response},
-                },
+            domain = await evaluate_final_response(
+                runtime, track=track, task_id=task_id, response=response,
             )
-            score: Any = domain.get("scores", {}).get("score")
-            if domain.get("status") != "scored" or isinstance(score, bool) or not isinstance(
-                score, int | float
-            ) or not math.isfinite(score):
-                raise VgbVerifierError("VGB evaluation did not return a finite scored result")
+            score = domain["scores"]["score"]
         except Exception as exc:
             artifact.write_text(
                 json.dumps(
