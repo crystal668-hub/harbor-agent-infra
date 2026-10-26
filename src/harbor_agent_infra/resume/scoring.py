@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import math
 from datetime import datetime
 from pathlib import Path
 
+from harbor.models.task.config import TaskConfig
 from harbor.models.trial.result import TimingInfo
 from harbor.models.verifier.result import VerifierResult
 
@@ -56,9 +58,18 @@ async def score_interrupted(item: ResumeTrial, runtime: VgbRuntime | None) -> No
         if item.answer is None or runtime is None:
             raise ValueError("Scoring needs a verified final answer and VGB runtime")
         track, task_id = item.task_name.split("__", 1)
+        task = TaskConfig.model_validate_toml(
+            (result.config.task.path / "task.toml").read_text())
+        multiplier = result.config.verifier_timeout_multiplier
+        multiplier = result.config.timeout_multiplier if multiplier is None else multiplier
+        timeout = (result.config.verifier.override_timeout_sec or task.verifier.timeout_sec)
+        timeout *= multiplier
+        if result.config.verifier.max_timeout_sec is not None:
+            timeout = min(timeout, result.config.verifier.max_timeout_sec)
         try:
-            domain = await evaluate_final_response(
-                runtime, track=track, task_id=task_id, response=item.answer.text,
+            domain = await asyncio.wait_for(
+                evaluate_final_response(runtime, track=track, task_id=task_id,
+                                        response=item.answer.text), timeout=timeout,
             )
         except BaseException as exc:
             provenance.update(status="interrupted" if not isinstance(exc, Exception) else "failed",

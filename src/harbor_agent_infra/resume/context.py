@@ -27,9 +27,14 @@ class ResumeContext:
     selected: tuple[str, ...]
     config_path: Path | None
 
+    @property
+    def working_directory(self) -> Path:
+        source = self.manifest.get("launch_source") or {}
+        return Path(source.get("working_directory", self.workspace)).resolve()
+
     def absolute(self, path: str | Path) -> Path:
         path = Path(path)
-        return path.resolve() if path.is_absolute() else (self.workspace / path).resolve()
+        return path.resolve() if path.is_absolute() else (self.working_directory / path).resolve()
 
     def job_dir(self, group: str) -> Path:
         config = self.jobs[group]
@@ -69,6 +74,7 @@ def resolve_context(target: str, *, config: Path | None = None,
         raise ValueError("Formal run identity mismatch")
     source = manifest.get("launch_source") or {}
     workspace = Path(source.get("workspace", PROJECT_ROOT)).resolve()
+    working_directory = Path(source.get("working_directory", workspace)).resolve()
     jobs = {}
     for group in manifest["groups"]:
         group_id = group["group_id"]
@@ -81,12 +87,14 @@ def resolve_context(target: str, *, config: Path | None = None,
         if frozen != JobConfig.model_validate(group["job_config"]):
             raise ValueError("Frozen Job differs from runtime manifest")
         job_dir = Path(frozen.jobs_dir) / frozen.job_name
-        job_dir = (job_dir if job_dir.is_absolute() else workspace / job_dir).resolve()
+        job_dir = (job_dir if job_dir.is_absolute() else working_directory / job_dir).resolve()
         if job_dir != path / "jobs" / frozen.job_name:
             raise ValueError("Job path differs from original run; relocation is unsupported")
         saved = job_dir / "config.json"
-        if saved.is_file() and frozen != JobConfig.model_validate(read_object(saved)):
-            raise ValueError("Saved Job differs from frozen config")
+        if saved.is_file():
+            native = JobConfig.model_validate(read_object(saved))
+            if frozen != native or frozen.job_name != native.job_name:
+                raise ValueError("Saved Job differs from frozen config")
         if (len(frozen.agents) != 1 or frozen.datasets or frozen.source_jobs
                 or frozen.n_attempts != 1 or frozen.install_only):
             raise ValueError("Resume requires explicit single-attempt, single-agent hai tasks")
@@ -147,8 +155,12 @@ def load_environment(context: ResumeContext, env_file: Path | None = None) -> di
         if requested != original:
             raise ValueError("Current YAML differs from frozen experiment")
     local = payload.get("run") or {}
-    if not os.environ.get("VGB_PYTHON") and local.get("vgb_python"):
-        os.environ["VGB_PYTHON"] = str(expand_required(local["vgb_python"]))
+    if not os.environ.get("VGB_PYTHON"):
+        saved_python = context.manifest.get("vgb_runtime", {}).get("python_executable")
+        if saved_python:
+            os.environ["VGB_PYTHON"] = str(context.absolute(saved_python))
+        elif local.get("vgb_python"):
+            os.environ["VGB_PYTHON"] = str(expand_required(local["vgb_python"]))
     return payload
 
 

@@ -426,3 +426,167 @@ def test_resume_lock_and_dry_run_are_non_destructive(original):
     with run_lock(root), pytest.raises(ValueError, match="active"):
         asyncio.run(resume_run(str(root)))
     assert directory.is_dir()
+
+
+def test_projection_replays_deletion_and_incomplete_event_append(original):
+    from harbor_agent_infra.resume.projection import synchronize
+
+    root, config = original
+    directory, result = add_trial(original)
+    ctx = resolve_context(str(root))
+    synchronize(ctx)
+    log = root / "events/trials.jsonl"
+    log.write_bytes(b'{"event":')
+    stale = config.jobs_dir / config.job_name / "old-interrupted"
+    save(root / "per-record/skills_off/stale.json", {"trial_name": stale.name})
+    (root / "events/resume.jsonl").write_text(json.dumps({
+        "event": "discard_invalid_interruption", "group": "skills_off",
+        "trial_dir": str(stale)}) + "\n")
+    synchronize(ctx)
+    assert not (root / "per-record/skills_off/stale.json").exists()
+    assert json.loads(log.read_text())["trial_id"] == str(result.id)
+    assert directory.is_dir()
+    before = snapshot(root)
+    synchronize(ctx)
+    assert before == snapshot(root)
+
+
+def test_preflight_failure_precedes_deletion(original, local_only, monkeypatch):
+    import asyncio
+
+    root, _ = original
+    directory, _ = add_trial(original, kind="CancelledError")
+    before = snapshot(directory)
+
+    async def fail(*args):
+        raise ValueError("changed lock")
+
+    monkeypatch.setattr(local_only, "preflight", fail)
+    with pytest.raises(ValueError, match="changed lock"):
+        asyncio.run(local_only.resume_run(str(root)))
+    assert snapshot(directory) == before
+
+
+def test_score_failure_never_starts_pending_tasks(original, local_only, monkeypatch):
+    import asyncio
+
+    from harbor_agent_infra.resume import scoring
+
+    root, _ = original
+    directory, _ = add_trial(original, kind="CancelledError")
+    codex_answer(directory)
+
+    async def fail(*args, **kwargs):
+        raise RuntimeError("score unavailable")
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("cannot execute while scoring failed")
+
+    monkeypatch.setattr(scoring, "evaluate_final_response", fail)
+    monkeypatch.setattr(local_only.Job, "create", forbidden)
+    with pytest.raises(RuntimeError, match="score unavailable"):
+        asyncio.run(local_only.resume_run(str(root)))
+    assert json.loads((root / "resume-state.json").read_text())["status"] == "failed"
+    assert directory.is_dir()
+
+
+@pytest.mark.parametrize("harness", ["openclaw", "hermes", "codex", "claude-code"])
+@pytest.mark.parametrize("provider,template", [
+    ("openai", "gpt"), ("anthropic", "claude"), ("qwen", "qwen"), ("deepseek", "deepseek"),
+])
+def test_formal_configuration_matrix(original, harness, provider, template):
+    root, _ = original
+    protocol_path = root / "protocol.json"
+    protocol = json.loads(protocol_path.read_text())
+    protocol.update(harness=harness, provider=provider)
+    save(protocol_path, protocol)
+    config = root.parents[2] / "configs/experiments" / harness / f"vgb-{template}.config.yaml"
+    config.parent.mkdir(parents=True)
+    config.write_text("run: {}\n")
+    assert resolve_context(str(root)).config_path == config
+
+
+def test_cli_resume_dry_run_is_registered_and_read_only(original):
+    from harbor_agent_infra.cli import main
+
+    root, _ = original
+    before = snapshot(root)
+    assert main(["resume", str(root), "--dry-run"]) == 0
+    assert snapshot(root) == before
+
+
+def test_native_harbor_skips_completed_failures(original):
+    import asyncio
+
+    from harbor import Job
+
+    directory, _ = add_trial(original, kind="ConnectionError")
+    job = asyncio.run(Job.create(original[1]))
+    try:
+        assert not job._remaining_trial_configs
+        assert len(job._existing_trial_results) == 1
+        assert directory.is_dir()
+    finally:
+        job._close_logger_handlers()
+
+
+def test_cancelled_only_scoring_does_not_require_docker(original, monkeypatch):
+    from types import SimpleNamespace
+
+    from harbor_agent_infra.resume import lifecycle
+    from harbor_agent_infra.resume.plan import inventory
+
+    directory, _ = add_trial(original, kind="CancelledError")
+    codex_answer(directory)
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        assert command[0] == "ps"
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(lifecycle.subprocess, "run", run)
+    monkeypatch.setattr(lifecycle.shutil, "which", lambda _: None)
+    ctx = resolve_context(str(original[0]))
+    lifecycle.ensure_inactive(ctx, inventory(ctx))
+    assert len(calls) == 1
+
+
+def test_openclaw_stale_status_does_not_discard_completed_parent(tmp_path):
+    from harbor_agent_infra.resume.answers import final_answer
+
+    save(tmp_path / "openclaw-status.json", {"state": "interrupted"})
+    save(tmp_path / "openclaw-run.json", {"sessionId": "parent"})
+    rows = [{"type": "session", "id": "parent"},
+            {"message": {"role": "assistant", "stopReason": "end_turn",
+                         "content": [{"type": "text", "text": "42"}]}}]
+    path = tmp_path / "openclaw.session.jsonl"
+    path.write_text("\n".join(json.dumps(r) for r in rows))
+    assert final_answer(tmp_path, "openclaw").text == "42"
+    rows[0]["id"] = "child"
+    path.write_text("\n".join(json.dumps(r) for r in rows))
+    with pytest.raises(ValueError, match="identity mismatch"):
+        final_answer(tmp_path, "openclaw")
+
+
+def test_scoring_respects_frozen_verifier_deadline(original, monkeypatch):
+    import asyncio
+
+    from harbor_agent_infra.resume import scoring
+    from harbor_agent_infra.resume.plan import inventory
+
+    directory, result = add_trial(original, kind="CancelledError")
+    codex_answer(directory)
+    result.config.verifier.override_timeout_sec = 0.01
+    item = inventory(resolve_context(str(original[0])))[0]
+    item.result = result
+
+    async def wait(*args, **kwargs):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(scoring, "evaluate_final_response", wait)
+    with pytest.raises(TimeoutError):
+        asyncio.run(scoring.score_interrupted(item, object()))
+    assert directory.is_dir()
+    assert json.loads((directory / "result.json").read_text())["exception_info"][
+        "exception_type"] == "CancelledError"

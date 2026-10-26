@@ -57,7 +57,10 @@ def _saved_result(directory: Path, root: Path) -> TrialResult | None:
         raise ValueError("Ambiguous missing Trial result")
     if candidates:
         value = read_object(candidates[0]).get("trial_result")
-        if value and value.get("id"):
+        # END records from an earlier native retry may share this directory name.
+        # Only an unfinished/cancellation snapshot can reconstruct a missing current result.
+        if value and value.get("id") and (not value.get("finished_at") or
+                (value.get("exception_info") or {}).get("exception_type") == "CancelledError"):
             return TrialResult.model_validate(value)
     return None
 
@@ -92,8 +95,9 @@ def inventory(context: ResumeContext, *, all_groups=False) -> list[ResumeTrial]:
             else:
                 from harbor_agent_infra.resume.scoring import saved_score
 
-                answer = final_answer(directory / "agent", context.harness(group))
                 scored = saved_score(directory, name)
+                answer = (None if scored else
+                          final_answer(directory / "agent", context.harness(group)))
                 if (answer or scored) and result is None:
                     raise ValueError(
                         "Final answer preserved, but original Trial identity is missing: "

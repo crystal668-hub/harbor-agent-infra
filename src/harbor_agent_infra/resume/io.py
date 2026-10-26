@@ -20,3 +20,33 @@ def write_object(path: Path, value: dict) -> bool:
     temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
     temporary.replace(path)
     return True
+
+
+def read_journal(path: Path, *, repair=False) -> list[dict]:
+    """A hard kill can leave only the last append incomplete; never hide middle corruption."""
+    if not path.exists():
+        return []
+    data = path.read_bytes()
+    rows, valid_bytes = [], 0
+    lines = data.splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if not line.strip():
+            valid_bytes += len(line)
+            continue
+        try:
+            row = json.loads(line)
+        except (ValueError, UnicodeDecodeError):
+            if index != len(lines) - 1 or line.endswith(b"\n"):
+                raise ValueError(f"Corrupt event journal: {path}") from None
+            if repair:
+                with path.open("r+b") as stream:
+                    stream.truncate(valid_bytes)
+            break
+        if not isinstance(row, dict):
+            raise ValueError(f"Invalid event journal entry: {path}")
+        rows.append(row)
+        valid_bytes += len(line)
+    if repair and valid_bytes and not data[:valid_bytes].endswith(b"\n"):
+        with path.open("ab") as stream:
+            stream.write(b"\n")
+    return rows

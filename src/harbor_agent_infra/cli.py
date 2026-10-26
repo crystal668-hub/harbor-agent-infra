@@ -412,7 +412,9 @@ def main(argv: list[str] | None = None) -> int:
                 formal_context=formal_context,
                 launch_source={
                     "workspace": str(Path(__file__).resolve().parents[2]),
+                    "working_directory": str(Path.cwd()),
                     "config": str(args.config.resolve()) if args.config else None,
+                    "experiment_sha256": source_experiment_sha256,
                 },
             )
         )

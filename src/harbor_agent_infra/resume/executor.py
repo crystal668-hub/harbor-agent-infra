@@ -21,7 +21,7 @@ from harbor_agent_infra.resume.context import (
     resolve_context,
     validate_runtime_lock,
 )
-from harbor_agent_infra.resume.io import read_object, write_object
+from harbor_agent_infra.resume.io import read_journal, read_object, write_object
 from harbor_agent_infra.resume.lifecycle import attach_checkpoints, ensure_inactive, run_lock
 from harbor_agent_infra.resume.plan import expected_trials, inventory
 from harbor_agent_infra.resume.projection import event_sink, slot_bindings, synchronize
@@ -102,6 +102,7 @@ def _discard(context, item):
     # Persist invalidation before deletion. On restart only remaining native Trials count.
     log = context.root / "events/resume.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
+    read_journal(log, repair=True)
     with log.open("a") as stream:
         stream.write(json.dumps({**item.summary(), "event": "discard_invalid_interruption",
                                  "at": datetime.now(UTC).isoformat()}) + "\n")
@@ -114,13 +115,17 @@ def _discard(context, item):
 
 async def resume_run(target: str, *, config: Path | None = None, env_file: Path | None = None,
                      artifacts_dir: Path | None = None, dry_run=False) -> dict:
+    env_file = env_file.expanduser().resolve() if env_file else None
     context = resolve_context(target, config=config, artifacts_dir=artifacts_dir)
     if dry_run:
-        plan = inventory(context)
+        with run_lock(context.root, create=False):
+            plan = inventory(context)
+            ensure_inactive(context, plan)
         return {"run_id": context.manifest["run_id"], "dry_run": True,
                 "config": str(context.config_path) if context.config_path else None,
+                "execution_preflight": "required_before_execution",
                 "trials": [i.summary() for i in plan]}
-    with run_lock(context.root), chdir(context.workspace):
+    with run_lock(context.root), chdir(context.working_directory):
         # Re-read under the lock; planning must not authorize deletion of newer evidence.
         context = resolve_context(str(context.root) if len(context.selected) == len(context.jobs)
                                   else str(context.job_dir(context.selected[0])),
@@ -129,13 +134,16 @@ async def resume_run(target: str, *, config: Path | None = None, env_file: Path 
         ensure_inactive(context, plan)
         work = [i for i in plan if i.action in {"start", "rerun", "score"}]
         if not work:
-            complete = synchronize(context)
+            run_complete = synchronize(context)
             return {"run_id": context.manifest["run_id"], "status": "no_work",
-                    "complete": complete, "trials": [i.summary() for i in plan]}
+                    "complete": True, "run_complete": run_complete,
+                    "trials": [i.summary() for i in plan]}
         load_environment(context, env_file)
         runtimes = await preflight(context, plan)
         state_path = context.root / "resume-state.json"
         state = {"status": "running", "pid": os.getpid(),
+                 "started_at": datetime.now(UTC).isoformat(),
+                 "previous_status": context.manifest.get("status"),
                  "run_id": context.manifest["run_id"], "trials": [i.summary() for i in plan]}
         write_object(state_path, state)
         try:

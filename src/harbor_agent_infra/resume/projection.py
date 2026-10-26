@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 from harbor.metrics.mean import Mean
@@ -14,7 +15,7 @@ from harbor_agent_infra.harbor.run import RunEventSink, _score_summary
 from harbor_agent_infra.harness_runner import harness_runner_for
 from harbor_agent_infra.resume.answers import final_answer
 from harbor_agent_infra.resume.context import ResumeContext
-from harbor_agent_infra.resume.io import read_object, write_object
+from harbor_agent_infra.resume.io import read_journal, read_object, write_object
 from harbor_agent_infra.resume.plan import inventory
 from harbor_agent_infra.resume.scoring import saved_score
 from harbor_agent_infra.timing import summarize_slot_timing
@@ -62,14 +63,28 @@ def _record(sink, context, item):
         if (old.get("trial_result") == result.model_dump(mode="json")
                 and bool(old.get("scored")) == bool(domain)
                 and (not domain or old.get("vgb_domain_result") == domain)):
-            return old, None
+            status = "failed" if result.exception_info else "completed"
+            emitted = {"schema_version": "harbor-trial-event.v1",
+                "run_id": context.manifest["run_id"], "group_id": item.group,
+                "event": "end", "trial_id": str(result.id), "trial_name": result.trial_name,
+                "task_name": result.task_name, "timestamp": result.finished_at.isoformat(),
+                "status": status, "trial_result_path": str(item.directory / "result.json"),
+                "source": "reconstructed_from_native_terminal_result",
+                "exception": result.exception_info.model_dump(mode="json")
+                if result.exception_info else None}
+            return old, emitted
     _, record, emitted = sink.project(event, group_id=item.group)
     harness = context.harness(item.group)
     try:
         answer = harness_runner_for(harness).response_from_artifacts(item.directory / "agent")
     except (ValueError, FileNotFoundError):
-        native = final_answer(item.directory / "agent", harness)
+        try:
+            native = final_answer(item.directory / "agent", harness)
+        except (ValueError, OSError):
+            native = None  # Terminal failure evidence need not contain a readable answer.
         answer = native.text if native else ""
+    if domain and isinstance((domain.get("raw_answer") or {}).get("response"), str):
+        answer = domain["raw_answer"]["response"]
     if domain:
         projected = project_schema_v5(
             domain, group_id=item.group, record_id=result.trial_name, runner=record["runner"],
@@ -98,6 +113,17 @@ def _record(sink, context, item):
 def synchronize(context: ResumeContext) -> bool:
     """Only terminal native results contribute; keep pending slots explicit."""
     plan = inventory(context, all_groups=True)
+    for discarded in read_journal(context.root / "events/resume.jsonl", repair=True):
+        if discarded.get("event") != "discard_invalid_interruption":
+            continue
+        directory = Path(discarded["trial_dir"])
+        group = discarded["group"]
+        if group not in context.jobs or directory.parent != context.job_dir(group):
+            raise ValueError("Invalid deletion journal target")
+        if not directory.exists():
+            for record_path in (context.root / "per-record" / group).glob("*.json"):
+                if read_object(record_path).get("trial_name") == directory.name:
+                    record_path.unlink()
     sink = event_sink(context)
     records, events = [], []
     groups = defaultdict(list)
@@ -111,11 +137,8 @@ def synchronize(context: ResumeContext) -> bool:
             events.append(event)
     # Native completion hooks may already have published the same terminal event.
     seen = set()
-    if sink.path.is_file():
-        for line in sink.path.read_text().splitlines():
-            if line.strip():
-                e = json.loads(line)
-                seen.add((e.get("trial_id"), e.get("event"), e.get("status")))
+    for e in read_journal(sink.path, repair=True):
+        seen.add((e.get("trial_id"), e.get("event"), e.get("status")))
     for e in events:
         key = (e["trial_id"], e["event"], e["status"])
         if key not in seen:
@@ -167,6 +190,10 @@ def synchronize(context: ResumeContext) -> bool:
     status = "partial" if remaining or any(
         r.get("failure_mode") or not r.get("scored") for r in records
     ) else "completed"
+    state_path = context.root / "resume-state.json"
+    state = read_object(state_path) if state_path.is_file() else {}
+    if remaining and state.get("status") == "running":
+        status = "running"
     results_path = context.root / "results.json"
     envelope = read_object(results_path) if results_path.exists() else {}
     envelope.update(schema_version=5, run_id=context.manifest["run_id"],
@@ -187,6 +214,11 @@ def synchronize(context: ResumeContext) -> bool:
         manifest = read_object(path)
         manifest.update(status=status, partial_run=status != "completed",
                         group_summary=summaries, group_track_summary=tracks)
+        if state.get("run_id") == context.manifest["run_id"]:
+            manifest["resume"] = {**(manifest.get("resume") or {}),
+                "supported": True, "resumed": True,
+                "previous_status": state.get("previous_status"),
+                "last_status": state["status"], "last_started_at": state.get("started_at")}
         for g in manifest.get("groups", []):
             g.update({k: v for k, v in native_groups.get(g["group_id"], {}).items()
                       if k in g or k in {"job_id", "job_dir", "status"}})

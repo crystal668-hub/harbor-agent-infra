@@ -15,12 +15,16 @@ from harbor_agent_infra.resume.io import write_object
 
 
 @contextmanager
-def run_lock(root: Path):
+def run_lock(root: Path, *, create=True):
     """Stable sibling inode also protects a formal run before its directory exists."""
     root = root.resolve()
-    root.parent.mkdir(parents=True, exist_ok=True)
     path = root.parent / f".{root.name}.hai.lock"
-    with path.open("a+") as stream:
+    if not create and not path.exists():
+        yield
+        return
+    if create:
+        root.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+" if create else "r") as stream:
         try:
             fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
