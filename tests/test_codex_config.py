@@ -44,11 +44,7 @@ def test_native_config_binds_runtime_bridge_without_changing_other_settings(
     monkeypatch.setenv(f"CODEX_{provider.upper()}_BASE_URL", "http://bridge.example/route/v1")
     spec = AgentSpec(**custom_spec(provider, installation_mode=installation_mode))
     original = deepcopy(spec.codex_config)
-    lock_path = (
-        Path("runtime-lock.preinstalled.json")
-        if installation_mode == "preinstalled"
-        else Path("runtime-lock.json")
-    )
+    lock_path = Path("runtime-lock.json")
     config = harness_runner_for("codex").build_agent_config(
         spec, load_runtime_lock(lock_path)
     )
@@ -150,7 +146,7 @@ def test_deepseek_prompt_survives_native_config_upload(installation_mode, tmp_pa
     spec = AgentSpec(**payload)
     original = spec.model_dump(mode='json')
     config = harness_runner_for('codex').build_agent_config(
-        spec, load_runtime_lock(Path('runtime-lock.preinstalled.json'))
+        spec, load_runtime_lock(Path('runtime-lock.json'))
     )
     assert config.kwargs['config']['compact_prompt'] == prompt
     assert config.kwargs['reasoning_effort'] == 'high'

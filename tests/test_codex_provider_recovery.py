@@ -21,7 +21,7 @@ from harbor_agent_infra.recovery.native_plan import _is_authorized_condition_cha
 @pytest.fixture(params=['deepseek', 'qwen'])
 def configured_recovery(request, tmp_path):
     spec = AgentSpec(**custom_spec(request.param, installation_mode='preinstalled'))
-    lockpath = Path('runtime-lock.preinstalled.json').resolve()
+    lockpath = Path('runtime-lock.json').resolve()
     lock = load_runtime_lock(lockpath)
     target = harness_runner_for('codex').build_agent_config(spec, lock)
     old = target.model_copy(deep=True)

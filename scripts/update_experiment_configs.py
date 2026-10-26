@@ -8,7 +8,7 @@ Ensures all 16 harness×model configs use the formal experiment contract:
 - Concurrent trials: 2
 - max_retries: 0
 - Groups: skills_off only
-- The main workspace runtime-lock.preinstalled.json and matching harness image
+- The main workspace runtime-lock.json and matching harness image
 - Output dir: run-artifacts/formal/<experiment-id>
 """
 
@@ -44,7 +44,7 @@ def update_config(config_path: Path, lock_path: Path, lock) -> bool:
         image = lock.execution_image(harness, 'preinstalled')
         if experiment['benchmark'].get('package_lock') != str(lock_path):
             experiment['benchmark']['package_lock'] = str(lock_path)
-            changes.append('package_lock: main workspace runtime-lock.preinstalled.json')
+            changes.append('package_lock: main workspace runtime-lock.json')
         if experiment['agent'].get('installation_mode') != 'preinstalled':
             experiment['agent']['installation_mode'] = 'preinstalled'
             changes.append('installation_mode: preinstalled')
@@ -123,7 +123,7 @@ def main():
     """Update all experiment configs."""
     repo_root = Path(__file__).parent.parent
     configs_dir = repo_root / 'configs' / 'experiments'
-    lock_path = (repo_root / 'runtime-lock.preinstalled.json').resolve()
+    lock_path = (repo_root / 'runtime-lock.json').resolve()
     lock = load_runtime_lock(lock_path)
 
     harnesses = ['openclaw', 'hermes', 'codex', 'claude-code']

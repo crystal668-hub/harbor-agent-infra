@@ -1,7 +1,7 @@
 # Harbor Agent Infra
 
 Formal experiments require strict preinstalled harness images from the main workspace's
-`runtime-lock.preinstalled.json`. Their isolated build/acceptance workflow and local use
+`runtime-lock.json`. Their isolated build/acceptance workflow and local use
 are documented in [docs/preinstalled-harness.md](docs/preinstalled-harness.md).
 
 This repository is the experiment control plane for Harbor Agent trials. It materializes
@@ -92,7 +92,7 @@ Provision the locked wheel into a host-side runtime and run the four-track accep
 
 ```bash
 uv run python scripts/provision_vgb_runtime.py \
-  --lock runtime-lock.preinstalled.json \
+  --lock runtime-lock.json \
   --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
   --runtime-dir .vgb-runtime
 VGB_PYTHON=.vgb-runtime/bin/python uv run pytest tests/test_vgb_integration.py

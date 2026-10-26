@@ -47,7 +47,7 @@ GPT 模板对应 provider `openai`；Claude 模板对应 `anthropic`。
 
 basic 与 advanced 分别统计和报告，混合均分仅作辅助。
 `hai summary` 输出 `track` 与 `run_track`；每个原始 run 只选一个代表快照。
-后续正式 run 必须使用主工作区 `runtime-lock.preinstalled.json` 和对应的预装执行镜像；
+后续正式 run 必须使用主工作区 `runtime-lock.json` 和对应的预装执行镜像；
 启动器预检不通过即不派发。历史旧锁仅用于已有产物的核对。
 
 ## 关键文档

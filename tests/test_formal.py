@@ -161,7 +161,7 @@ def test_summary_cli_includes_partial_timing_by_default(tmp_path, capsys):
 
 @pytest.mark.parametrize("harness", HARNESSES)
 def test_formal_experiment_requires_workspace_preinstalled_lock_and_image(harness):
-    lock_path = Path("runtime-lock.preinstalled.json").resolve()
+    lock_path = Path("runtime-lock.json").resolve()
     lock = load_runtime_lock(lock_path)
     image = lock.execution_image(harness, "preinstalled")
     experiment = {
@@ -194,9 +194,9 @@ def test_matrix_requires_all_16_configs_to_match_workspace_preinstalled_lock(tmp
     import shutil
 
     workspace = tmp_path / "workspace"
-    lock_path = workspace / "runtime-lock.preinstalled.json"
+    lock_path = workspace / "runtime-lock.json"
     workspace.mkdir()
-    shutil.copyfile("runtime-lock.preinstalled.json", lock_path)
+    shutil.copyfile("runtime-lock.json", lock_path)
     lock = load_runtime_lock(lock_path)
     for harness in HARNESSES:
         for template, _ in (
@@ -290,7 +290,7 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
         update={"resources": config.resources.model_copy(update={"capacity": capacity})}
     )
     old_config = config
-    lock_path = Path("runtime-lock.preinstalled.json").resolve()
+    lock_path = Path("runtime-lock.json").resolve()
     image = load_runtime_lock(lock_path).execution_image("claude-code", "preinstalled")
     spec = config.experiment
     spec = spec.model_copy(update={

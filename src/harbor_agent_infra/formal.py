@@ -17,7 +17,7 @@ PROVIDERS = ("openai", "anthropic", "qwen", "deepseek")
 def validate_formal_preinstalled_experiment(experiment: dict, workspace_root: Path) -> None:
     """Bind a new formal run to this checkout's locked preinstalled harness image."""
     workspace_root = workspace_root.resolve()
-    lock_path = workspace_root / "runtime-lock.preinstalled.json"
+    lock_path = workspace_root / "runtime-lock.json"
     if not lock_path.is_file():
         raise ValueError(f"required formal runtime lock is missing: {lock_path}")
     declared_lock = Path(experiment["benchmark"]["package_lock"])

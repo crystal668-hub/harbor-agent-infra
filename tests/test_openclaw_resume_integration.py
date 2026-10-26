@@ -20,7 +20,7 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     if os.environ.get("RUN_OPENCLAW_RESUME") != "1":
         pytest.skip("set RUN_OPENCLAW_RESUME=1 for the local Docker Gateway gate")
     lock = load_runtime_lock(Path(os.environ.get(
-        "PREINSTALLED_RUNTIME_LOCK", "runtime-lock.preinstalled.json"
+        "PREINSTALLED_RUNTIME_LOCK", "runtime-lock.json"
     )))
     pause = outcome != "normal"
     image = lock.execution_image("openclaw", "preinstalled")

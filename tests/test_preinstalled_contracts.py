@@ -14,14 +14,12 @@ from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 NAMES = ("openclaw", "hermes", "codex", "claude-code")
 
 
-def test_saved_candidate_lock_preserves_original_release_and_chemistry_identities():
-    original = json.loads(Path("runtime-lock.json").read_text())
-    candidate = json.loads(Path("runtime-lock.preinstalled.json").read_text())
+def test_canonical_lock_contains_all_preinstalled_images():
+    candidate = json.loads(Path("runtime-lock.json").read_text())
     images = candidate.pop("harness_images")
-    assert candidate == original
     assert set(images) == set(NAMES)
     assert all(images[name]["reference"] == f"hai-{name}-latest" for name in NAMES)
-    lock = load_runtime_lock(Path("runtime-lock.preinstalled.json"))
+    lock = load_runtime_lock(Path("runtime-lock.json"))
     assert len({lock.execution_image(name, "preinstalled").digest for name in NAMES}) == 4
 
 
@@ -98,6 +96,7 @@ def test_legacy_serialization_and_missing_image_are_explicit():
     assert "installation_mode" not in agent.model_dump()
     assert lock.execution_image("codex") == lock.agent_base_image
     assert "preinstalled" not in harness_runner_for("codex").build_agent_config(agent, lock).kwargs
+    lock.harness_images.clear()
     with pytest.raises(ValueError, match="missing preinstalled"):
         harness_runner_for("codex").build_agent_config(
             agent.model_copy(update={"installation_mode": "preinstalled"}), lock

@@ -2,12 +2,12 @@
 
 预装模式将下载放到构建阶段。Harbor 仍执行 `agent.setup()`，但仅校验实际安装与
 必要的本地初始化；缺失、错版、错路径或产物变化均失败，不自动联网补装。
-主工作区后续正式实验配置已切换到 `runtime-lock.preinstalled.json` 和
-`installation_mode: preinstalled`；旧 `runtime-lock.json` 继续用于历史运行条件的核对。
+主工作区后续正式实验配置已切换到 `runtime-lock.json` 和
+`installation_mode: preinstalled`；原预装锁于 2026-10-26 原样统一命名为 `runtime-lock.json`，旧锁移除；历史运行冻结记录保留。
 
 本次本地验收结果与已知边界见[验收报告](plan/2026-10-16-preinstalled-harness-acceptance.md)。
 
-本次本地验收的四个实际镜像身份保存在 `runtime-lock.preinstalled.json`。
+本次本地验收的四个实际镜像身份保存在 `runtime-lock.json`。
 它保持默认锁中的发布版本、父镜像和化学身份完全相同，仅增加 `harness_images`。
 这些是本地可用镜像引用，尚未发布到 Registry；在其他 Docker 主机使用前须先发布并
 核对对应 RepoDigest，不能仅复制配置后假定远端可拉取。

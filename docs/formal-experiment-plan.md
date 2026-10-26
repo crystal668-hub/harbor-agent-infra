@@ -200,7 +200,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 | 组件 | 版本/配置 | 说明 |
 |------|----------|------|
-| 正式运行锁 | `runtime-lock.preinstalled.json` | 主工作区根目录；正式配置使用绝对路径 |
+| 正式运行锁 | `runtime-lock.json` | 主工作区根目录；正式配置使用绝对路径 |
 | 安装模式 | `preinstalled` | 缺失或错版直接失败，不回退安装 |
 | 执行镜像平台 | `linux/arm64` | 四个 harness 各使用独立派生镜像 |
 | 共同基础镜像 | `hai-base-env` | 仅为父镜像，不作为正式 Trial 的执行镜像 |
@@ -228,10 +228,10 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 四个镜像仍以 `hai-base-env@sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936`
 为共同父层。正式配置的 `experiment.benchmark.package_lock` 必须指向主工作区
-`runtime-lock.preinstalled.json` 的绝对路径，`experiment.agent.installation_mode` 必须为
+`runtime-lock.json` 的绝对路径，`experiment.agent.installation_mode` 必须为
 `preinstalled`，`experiment.image` 必须与锁定的 harness 执行镜像完全一致。
 正式矩阵启动器和带 `--formal-repeat` 的直接运行在派发前校验这些条件；
-不符合则拒绝启动，不回退到 `runtime-lock.json`。镜像目前仅在本机，跨主机运行前需发布并核对
+不符合则拒绝启动，不回退到历史运行时安装条件。镜像目前仅在本机，跨主机运行前需发布并核对
 Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨环境自动替代。
 验收依据见[预装镜像验收报告](plan/2026-10-16-preinstalled-harness-acceptance.md)。
 
@@ -448,7 +448,7 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
    
    # VGB Runtime
    uv run --locked --python 3.12 python scripts/provision_vgb_runtime.py \
-     --lock runtime-lock.preinstalled.json \
+     --lock runtime-lock.json \
      --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
      --runtime-dir .vgb-runtime \
      --chemistry-prefix /path/to/vgb-crest
@@ -828,7 +828,7 @@ uv run --locked --python 3.12 hai summary \
 - 2026-10-22: 正式合并 Codex × Claude repeat1 recovery batch1，44 项恢复结果入选；Advanced 014 按人工能力失败裁决计零，Advanced 004 保留超时零分及错误。同步 Advanced 0.678834、Basic 0.886834、来源 O 和总进度 12/48。
 - 2026-10-23: 正式合并 Codex × DeepSeek repeat1 recovery batch1/2，24 项恢复结果入选；Advanced 020 保留已验证答案与评分，Advanced 002 按恢复预算耗尽裁定计零，Basic 029/030 按协议超时规则计零。71/71 计分，Advanced 0.274817、Basic 0.697675，保留 3 项执行错误；新增来源 P，总进度 13/48。
 - 2026-10-23: 正式合并 OpenClaw × DeepSeek repeat1 recovery batch1，5 个 API 429 恢复结果入选；Advanced 004 按协议超时规则计零并保留原始错误。71/71 计分，Advanced 0.347104、Basic 0.611643，保留 1 项执行错误；新增来源 Q，总进度 14/48。
-- 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json`
+- 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.json`
 
 ### 15.3 审批
 - [x] 本轮实验设计调整确认（2026-10-15，见变更历史）

@@ -549,7 +549,7 @@ def changed_condition(native_recovery, tmp_path):
     from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 
     executor, original, _ = native_recovery
-    lock_path = Path("runtime-lock.preinstalled.json").resolve()
+    lock_path = Path("runtime-lock.json").resolve()
     lock = load_runtime_lock(lock_path)
     raw = yaml.safe_load(Path("examples/experiments/claude-code/vgb-qwen.config.yaml").read_text())
     exp = raw["experiment"]

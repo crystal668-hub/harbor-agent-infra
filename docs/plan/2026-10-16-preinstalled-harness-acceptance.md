@@ -15,7 +15,7 @@
 - Python 3.12.13，独立 `.venv`，全部命令使用 locked uv 环境。
 - 没有修改主目录的源码、锁、配置、虚拟环境、正式结果或补跑进程。
 - Harbor 仍拥有原生 Job/Trial、retry、取消、容器生命周期和清理；VGB 保持宿主隔离。
-- 原 `runtime-lock.json` 不变；另交付 [`runtime-lock.preinstalled.json`](../../runtime-lock.preinstalled.json)。
+- 原 `runtime-lock.json` 不变；另交付 [`runtime-lock.preinstalled.json`](../../runtime-lock.json)。
 - 新配置明确使用 `installation_mode: preinstalled`，仅声明 `skills_off`；旧锁和旧双组配置兼容。
 - 独立 4142 端口的验收桥接服务已停止；开发验收没有遗留运行容器。
 

@@ -1,3 +1,5 @@
+> 2026-10-26 更新：原预装锁已原样迁移为唯一的 runtime-lock.json；下文旧锁名称为历史记录，当前执行请使用新名称。
+
 # OpenClaw GPT 两项局部修复与验收
 
 日期：2026-10-21。实施范围按 [已审核计划](plan/2026-10-20-openclaw-gpt-batch1-followup-fixes.md)。
