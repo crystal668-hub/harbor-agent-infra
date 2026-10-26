@@ -53,7 +53,7 @@ def test_cli_exposes_only_canonical_command_names():
     subcommands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
     assert set(subcommands.choices) == {
         "doctor", "materialize", "run", "summary", "view", "image",
-        "audit", "recover", "merge", "analyze",
+        "audit", "recover", "merge", "analyze", "resume",
     }
     args = parser.parse_args(["summary", "selected-snapshot", "--top-n", "10"])
     assert args.command == "summary" and args.top_n == 10

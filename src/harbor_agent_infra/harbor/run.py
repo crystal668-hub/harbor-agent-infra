@@ -26,6 +26,7 @@ from harbor_agent_infra.harbor.job_config import (
 from harbor_agent_infra.harbor.observability import artifact_observability
 from harbor_agent_infra.harbor.task_materializer import TaskRuntimeSettings
 from harbor_agent_infra.harness_runner import HarnessRunner, harness_runner_for
+from harbor_agent_infra.resume.lifecycle import attach_checkpoints, guarded_run
 from harbor_agent_infra.timing import summarize_slot_timing
 from integrations.vgb.chemistry import preflight_chemistry
 from integrations.vgb.evaluator import project_agent_output
@@ -437,6 +438,7 @@ def _hook(sink: RunEventSink, group_id: str):
     return callback
 
 
+@guarded_run
 async def run_paired_jobs(
     spec: ExperimentSpecV2,
     resource_config: ResourceConfig,
@@ -449,6 +451,7 @@ async def run_paired_jobs(
     group_id: str | None = None,
     source_experiment_sha256: str | None = None,
     formal_context: dict | None = None,
+    launch_source: dict | None = None,
 ) -> dict[str, Any]:
     """Run both groups, or only ``group_id``, as sequential native Harbor jobs."""
     if group_id is None and len(spec.groups) == 1:
@@ -721,6 +724,7 @@ async def run_paired_jobs(
                 else "harbor-paired-runtime-manifest.v1"
             ),
             "run_id": run_id,
+            "launch_source": launch_source or (previous_manifest or {}).get("launch_source"),
             "run_mode": "single_group" if group_id else "paired",
             "selected_group": group_id,
             "started_at": started_at,
@@ -835,6 +839,8 @@ async def run_paired_jobs(
         status = "completed"
         try:
             job = await Job.create(config)
+            if hasattr(job, "add_hook"):
+                attach_checkpoints(job)
             print(f"Job created: {job.id}. Setting up event hooks...", flush=True)
             job.on_trial_ended(_hook(events, current_group_id))
             job.on_trial_cancelled(_hook(events, current_group_id))

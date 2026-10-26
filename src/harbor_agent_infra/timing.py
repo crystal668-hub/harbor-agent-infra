@@ -17,6 +17,13 @@ class SlotTiming:
 
 def slot_timing(record: Mapping[str, Any]) -> SlotTiming:
     """Read only this representative's native timing, with a legacy fallback."""
+    resumed = record.get("resume_timing")
+    if isinstance(resumed, Mapping):
+        native_id = (record.get("trial_result") or {}).get("id")
+        if resumed.get("trial_id") != native_id:
+            return SlotTiming(None, "invalid")
+        # Scoring after an offline interruption cannot reconstruct total active Trial time.
+        return SlotTiming(None, "missing")
     native = record.get("trial_result")
     if native is None:
         raw = record.get("raw") or {}

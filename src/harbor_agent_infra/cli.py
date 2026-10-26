@@ -76,6 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--formal-repeat", type=int, help="formal repeat number, starting at 1")
     run.add_argument("--formal-provider", choices=("openai", "anthropic", "qwen", "deepseek"))
     run.add_argument("--formal-root", type=Path, default=Path("run-artifacts/formal"))
+    resume = subparsers.add_parser("resume", help="continue an interrupted hai run in place")
+    resume.add_argument("run", help="original run name, run directory, or Job directory")
+    resume.add_argument("--config", type=Path)
+    resume.add_argument("--env-file", type=Path)
+    resume.add_argument("--artifacts-dir", type=Path)
+    resume.add_argument("--dry-run", action="store_true")
     summary_parser = subparsers.add_parser(
         "summary", help="summarize chosen formal snapshots"
     )
@@ -204,6 +210,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "resume":
+        from harbor_agent_infra.resume.executor import resume_run
+
+        try:
+            result = asyncio.run(resume_run(
+                args.run, config=args.config, env_file=args.env_file,
+                artifacts_dir=args.artifacts_dir, dry_run=args.dry_run,
+            ))
+        except (ValueError, OSError) as exc:
+            print(f"Resume blocked: {exc}")
+            return 1
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if args.dry_run or result.get("complete") else 1
     if args.command == "doctor":
         return run_doctor()
     if args.command == "materialize":
@@ -391,6 +410,10 @@ def main(argv: list[str] | None = None) -> int:
                 group_id=args.group,
                 source_experiment_sha256=source_experiment_sha256,
                 formal_context=formal_context,
+                launch_source={
+                    "workspace": str(Path(__file__).resolve().parents[2]),
+                    "config": str(args.config.resolve()) if args.config else None,
+                },
             )
         )
         print(output_dir)

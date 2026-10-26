@@ -28,12 +28,16 @@ def original(tmp_path, monkeypatch):
     (task / "instruction.md").write_text("Give the final answer.")
     (task / "task.toml").write_text('schema_version = "1.4"\n')
     (task / "environment/Dockerfile").write_text("FROM scratch\n")
+    (task / "tests").mkdir()
+    (task / "tests/test.sh").write_text("#!/bin/sh\nexit 0\n")
     config = JobConfig(job_name="original-skills_off", jobs_dir=root / "jobs",
                        agents=[{"name": "oracle"}], tasks=[{"path": str(task)}],
                        n_attempts=1, retry={"max_retries": 0},
                        verifier={"import_path": "adapters.vgb_verifier:VgbVerifier"})
     job_dir = config.jobs_dir / config.job_name
     save(job_dir / "config.json", config.model_dump(mode="json"))
+    save(job_dir / "result.json", {"id": str(uuid4()),
+         "started_at": datetime.now(UTC).isoformat(), "n_total_trials": 1, "stats": {}})
     save(root / "frozen-jobs/skills_off.json", config.model_dump(mode="json"))
     save(root / "protocol.json", {"run_id": root.name, "harness": "codex",
                                   "provider": "deepseek", "repeat_index": 0})
@@ -242,3 +246,183 @@ def test_scoring_error_never_discards_answer(original, monkeypatch):
     assert before == (directory / "result.json").read_bytes()
     assert (directory / "agent/codex.txt").exists()
     assert inventory(resolve_context(str(original[0])))[0].action == "score"
+
+
+@pytest.fixture
+def local_only(monkeypatch):
+    from harbor_agent_infra.resume import executor
+
+    monkeypatch.setattr(executor, "ensure_inactive", lambda *args: None)
+
+    async def checked(context, plan):
+        return {group: object() for group in context.jobs}
+
+    monkeypatch.setattr(executor, "preflight", checked)
+    return executor
+
+
+def snapshot(root):
+    return {str(p.relative_to(root)): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in root.rglob("*") if p.is_file()}
+
+
+def test_resume_noop_preserves_complete_trial_and_metadata(original, local_only):
+    import asyncio
+
+    from harbor_agent_infra.resume.projection import synchronize
+
+    directory, _ = add_trial(original)
+    native = snapshot(directory)
+    root = original[0]
+    synchronize(resolve_context(str(root)))
+    before = snapshot(root)
+    result = asyncio.run(local_only.resume_run(str(root)))
+    assert result["status"] == "no_work"
+    assert native == snapshot(directory)
+    assert before == snapshot(root)
+
+
+def test_resume_score_only_never_creates_job(original, local_only, monkeypatch):
+    import asyncio
+
+    from harbor_agent_infra.resume import scoring
+
+    root, config = original
+    directory, result = add_trial(original, kind="CancelledError")
+    codex_answer(directory)
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("must not create a Job for scoring")
+
+    async def score(*args, **kwargs):
+        return {"status": "scored", "task_id": "one", "scores": {"score": 0}}
+
+    monkeypatch.setattr(local_only.Job, "create", forbidden)
+    monkeypatch.setattr(scoring, "evaluate_final_response", score)
+    outcome = asyncio.run(local_only.resume_run(str(root)))
+    assert outcome["complete"]
+    data = json.loads((root / "results.json").read_text())
+    assert data["records"] == 1 and data["results"][0]["scored"]
+    assert data["results"][0]["trial_result"]["id"] == str(result.id)
+    assert data["summary"]["timing"]["total_seconds"] is None
+    assert json.loads((config.jobs_dir / config.job_name / "result.json").read_text())["stats"][
+        "n_errored_trials"] == 0
+    assert not (root / "resume").exists()
+    before = snapshot(root)
+    asyncio.run(local_only.resume_run(str(root)))
+    assert before == snapshot(root)
+
+
+def install_synthetic_trial(monkeypatch, calls):
+    from collections import defaultdict
+    from types import SimpleNamespace
+
+    from harbor.models.verifier.result import VerifierResult
+    from harbor.trial.hooks import TrialEvent
+    from harbor.trial.trial import Trial
+
+    class SyntheticTrial:
+        def __init__(self, config):
+            self.config = config
+            self.hooks = defaultdict(list)
+            self.directory = config.trials_dir / config.trial_name
+
+        def add_hook(self, kind, callback):
+            self.hooks[kind].append(callback)
+
+        async def run(self):
+            calls.append(self.config)
+            cfg = self.config
+            result = TrialResult(id=uuid4(), task_name=cfg.task.path.name,
+                trial_name=cfg.trial_name, trial_uri=self.directory.as_uri(),
+                task_id=cfg.task.get_task_id(), task_checksum="fixture", config=cfg,
+                agent_info=AgentInfo(name="codex", version="fixture"),
+                started_at=datetime.now(UTC))
+            save(self.directory / "config.json", cfg.model_dump(mode="json"))
+
+            async def emit(kind):
+                event = SimpleNamespace(event=kind, config=cfg, result=result,
+                    trial_id=result.id, trial_name=cfg.trial_name, task_name=result.task_name,
+                    timestamp=datetime.now(UTC))
+                for hook in self.hooks[kind]:
+                    await hook(event)
+
+            await emit(TrialEvent.START)
+            codex_answer(self.directory)
+            result.verifier_result = VerifierResult(rewards={"vgb_score": 1, "reward": 1})
+            save(self.directory / "verifier/vgb-evaluation.json", {"vgb_status": "scored",
+                "domain_result": {"status": "scored", "task_id": "one",
+                                  "scores": {"score": 1}}})
+            result.finished_at = datetime.now(UTC)
+            save(self.directory / "result.json", result.model_dump(mode="json"))
+            await emit(TrialEvent.END)
+            return result
+
+    async def create(config):
+        return SyntheticTrial(config)
+
+    monkeypatch.setattr(Trial, "create", create)
+
+
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_original_harbor_job_runs_only_remaining_tasks(
+    original, local_only, monkeypatch, interrupted,
+):
+    import asyncio
+
+    root, config = original
+    before_id = json.loads((config.jobs_dir / config.job_name / "result.json").read_text())["id"]
+    directory = None
+    if interrupted:
+        directory, _ = add_trial(original, kind="CancelledError")
+        save(root / "per-record/skills_off/stale.json", {"trial_name": directory.name})
+    calls = []
+    install_synthetic_trial(monkeypatch, calls)
+    result = asyncio.run(local_only.resume_run(str(root)))
+    assert result["complete"] and len(calls) == 1
+    assert calls[0].trials_dir == config.jobs_dir / config.job_name
+    assert str(calls[0].job_id) == before_id
+    if directory:
+        assert not directory.exists()
+        assert not (root / "per-record/skills_off/stale.json").exists()
+    rows = json.loads((root / "results.json").read_text())["results"]
+    assert len(rows) == 1 and rows[0]["scored"]
+    assert len(list((root / "jobs").iterdir())) == 1
+    before = snapshot(root)
+    asyncio.run(local_only.resume_run(str(root)))
+    assert len(calls) == 1 and before == snapshot(root)
+
+
+def test_approved_engineering_failure_is_not_recovered(original, local_only, monkeypatch):
+    import asyncio
+
+    root, _ = original
+    directory, _ = add_trial(original, kind="ConnectionError")
+    save(root / "recovery-manifest.json", {"approved": True, "substitution_count": 0})
+    before = snapshot(directory)
+    marker = (root / "recovery-manifest.json").read_bytes()
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("completed failures belong to audit")
+
+    monkeypatch.setattr(local_only.Job, "create", forbidden)
+    result = asyncio.run(local_only.resume_run(str(root)))
+    assert result["trials"][0]["action"] == "keep_failed"
+    assert snapshot(directory) == before
+    assert (root / "recovery-manifest.json").read_bytes() == marker
+
+
+def test_resume_lock_and_dry_run_are_non_destructive(original):
+    import asyncio
+
+    from harbor_agent_infra.resume.executor import resume_run
+    from harbor_agent_infra.resume.lifecycle import run_lock
+
+    root, _ = original
+    directory, _ = add_trial(original, kind="CancelledError")
+    before = snapshot(root)
+    assert asyncio.run(resume_run(str(root), dry_run=True))["trials"][0]["action"] == "rerun"
+    assert before == snapshot(root)
+    with run_lock(root), pytest.raises(ValueError, match="active"):
+        asyncio.run(resume_run(str(root)))
+    assert directory.is_dir()
