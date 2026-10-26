@@ -26,6 +26,7 @@ uv run --locked --python 3.12 hai merge --help
 | `hai doctor` | 检查本机 Python、Harbor、Docker 等基础运行条件 | 环境探测；不是完整正式实验验收 |
 | `hai materialize --config CONFIG [--output FILE]` | 校验配置并生成任务和原生 JobConfig 快照 | 写入材料化产物，可能调用 runtime／环境预检；不是只读 dry-run |
 | `hai run --config CONFIG --formal-provider PROVIDER --formal-repeat N --group skills_off` | 启动一个正式原始 run；由 Harbor 执行 Trials | 启动实际实验，可能调用付费 provider |
+| `hai resume RUN [--dry-run]` | 在原目录续跑意外中断的 hai run，自动发现本机配置和环境 | 保留已结束 Trial；中断且有最终答案时仅评分，无答案时删除后重跑 |
 | `hai audit RUN_NAME [--artifacts-dir ROOT] [--output FILE]` | 审计运行并生成恢复清单 | 读取原始证据，写入清单；不执行恢复 |
 | `hai recover MANIFEST --config CONFIG --output-dir NEW_RUN [--dry-run]` | 执行清单中获批且符合替代预算的 slots | 正常模式启动恢复 Jobs；预览模式不执行 |
 | `hai merge ORIGINAL RECOVERY [RECOVERY ...] --output-dir NEW_SNAPSHOT [--dry-run]` | 按原 slot 选择代表结果，发布新的合并快照 | 正常模式写新快照；不重跑 Agent、不自动重评 |
@@ -47,6 +48,13 @@ uv run --locked --python 3.12 hai merge --help
 - `run` 按配置启动实验；失败恢复统一使用 `audit → 人工审查 → recover → merge`，
   不通过原始运行入口覆盖旧结果或追加任意任务。
   `run` 默认选择 `skills_off`，省略 `--group` 不会启动双组。
+- `resume` 独立于上述失败恢复流程，只恢复意外中断的原 run。RUN 接受规范正式
+  运行名称、原 run 目录或其中的 Job 目录；名称默认在项目的 run-artifacts/formal 查找。
+  可选 --config、--env-file、--artifacts-dir 用于定位覆盖；--artifacts-dir 是包含
+  所选运行的目录。既有进程环境优先于自动加载的项目 .env。
+  已结束的工程失败即使获批也不补跑，不读取/消费恢复清单或替代预算。
+  --dry-run 只读盘点并检查活跃冲突，不加载执行环境或运行评分/容器；正式执行
+  会进一步校验环境、冻结 lock 和任务内容。详见 [续跑指南](resume-guide.md)。
 - `materialize` 同样接受互斥的 `--config` 或 `--experiment`；后一形式必须附带
   `--resource-config` 和 `--output`。它接受 `--skills-root`，但没有 `--group`
   或 `--dry-run` 参数；按配置中的 groups 材料化，正式配置应只声明 `skills_off`。
@@ -175,7 +183,7 @@ uv run --locked --python 3.12 hai summary \
 | --- | --- |
 | `hai aggregate` | 不存在；合并用 `hai merge`，正式统计用 `hai summary` |
 | `hai reassess`、`hai regrade` | 未注册为本项目 CLI；不能当作现成重评命令，也不能以 `recover` 代替只重评 |
-| `hai resume`、`hai run --resume` | 不存在；先核对中断现场和已执行 slots，再走获批恢复流程 |
+| `hai run --resume`、顶层 `harbor resume` | 使用本项目 `hai resume RUN`；原生 Harbor 入口为 `harbor job resume`，不维护 Infra 元数据 |
 | `hai audit --run-dir ...` | `hai audit RUN_NAME --artifacts-dir ROOT` |
 | `hai audit ... --output-dir ...` | `--output FILE` 指定清单文件 |
 | `hai recover --plan ...` | `hai recover MANIFEST --config CONFIG --output-dir NEW_RUN` |

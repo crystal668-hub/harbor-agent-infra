@@ -10,6 +10,10 @@ lifecycle and Docker cleanup to Harbor Framework.
 
 See the [formal experiment plan](docs/formal-experiment-plan.md) for the current
 experiment matrix, execution protocol, and reporting requirements.
+For an unexpectedly interrupted original run, use [hai resume](docs/resume-guide.md)
+to continue in place with automatic local configuration and metadata reconciliation.
+Completed failures remain the responsibility of the separate audit/recover/merge workflow.
+
 See the [failure recovery migration plan](docs/failure-recovery-migration-plan.md)
 for failure classification, retry and recovery policy, and migration design.
 See the [current CLI reference](docs/cli-reference.md) for the canonical command names,
