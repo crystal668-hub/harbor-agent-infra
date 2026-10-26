@@ -683,8 +683,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-10-23。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-截至本次更新，**台账已收录 14/48 个子实验的最终验收结果**，包括 Claude Code 和 Hermes repeat1 的全部四个模型组合、Codex × GPT/Claude/DeepSeek repeat1，以及 OpenClaw × Claude/GPT/DeepSeek repeat1。Qwen 的 advanced 原始轮与预装补跑轮按已批准的临时条件变更合并为最终快照，basic 使用独立的预装结果。
+**最后核对日期**：2026-10-26。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+截至本次更新，**台账已收录 16/48 个子实验的最终验收结果**，包括 Claude Code 和 Hermes repeat1 的全部四个模型组合、Codex × GPT/Claude/DeepSeek/Qwen repeat1，以及 OpenClaw × Claude/GPT/DeepSeek/Qwen repeat1。Qwen 的两个 merged 快照均为 71/71 可评分；所有补跑和人工评分裁定均保留在对应快照证据中。
 
 ### 14.1 更新与统计口径
 
@@ -704,7 +704,7 @@ uv run --locked --python 3.12 hai summary \
 | Claude Code | GPT | 已验收 | 20 / 20；0.691408 | 51 / 51；0.885740 |
 | Claude Code | Claude | 已验收 | 20 / 20；0.606868 | 51 / 51；0.859013 |
 | Codex | DeepSeek | 已验收 | 20 / 20；0.274817 | 51 / 51；0.697675 |
-| Codex | Qwen | 未启动 | — | — |
+| Codex | Qwen | 已验收（71/71 计分；7 项执行错误保留） | 20 / 20；0.554299 | 51 / 51；0.886497 |
 | Codex | GPT | 已验收 | 20 / 20；0.615901 | 51 / 51；0.908060 |
 | Codex | Claude | 已验收 | 20 / 20；0.678834 | 51 / 51；0.886834 |
 | Hermes | DeepSeek | 已验收 | 20 / 20；0.490698 | 51 / 51；0.753118 |
@@ -712,7 +712,7 @@ uv run --locked --python 3.12 hai summary \
 | Hermes | GPT | 已验收 | 20 / 20；0.610831 | 51 / 51；0.905121 |
 | Hermes | Claude | 已验收 | 20 / 20；0.646396 | 51 / 51；0.869606 |
 | OpenClaw | DeepSeek | 已验收 | 20 / 20；0.347104 | 51 / 51；0.611643 |
-| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | Qwen | 已验收（71/71 计分；6 项执行错误保留） | 20 / 20；0.380477 | 51 / 51；0.900612 |
 | OpenClaw | GPT | 已验收 | 20 / 20；0.634276 | 51 / 51；0.887851 |
 | OpenClaw | Claude | 已验收 | 20 / 20；0.629090 | 51 / 51；0.914052 |
 
@@ -779,6 +779,8 @@ uv run --locked --python 3.12 hai summary \
 | O | `codex-anthropic-repeat1` + recovery batch1 | `codex-anthropic-repeat1-merged` | 2026-10-22 | 已按用户裁决正式合并；27 个原始结果 + 44 个恢复结果构成 71 个独立 slots。Advanced 20/20、均分 0.678834；Basic 51/51、均分 0.886834。Advanced 004 达到 7200 秒，保留官方零分；Advanced 014 空输出按用户裁决视为能力失败、可评分零分，标记 operator_capability_zero，不冒充官方 verifier 评分。两项原始执行错误保留，合并后 audit 无待处理 slot，summary 为 71/71 计分、2 项执行错误。替换裁决绑定原始 Trial ID/结果哈希，见 merge-metadata.json；计零证据见对应 Trial 的 operator-scoring-disposition.json。 |
 | P | `codex-deepseek-repeat1` + recovery batch1/2 | `codex-deepseek-repeat1-merged` | 2026-10-23 | 正式合并，14 个 batch1 与 10 个 batch2 替换结果入选；恢复使用已批准的自定义 Responses provider 条件，并按 `new_condition_observation` 保留。Advanced 020 使用已评分答案 0.148854，429 不阻止选样；Advanced 002 两次恢复耗尽后按用户裁定计 0。Basic 029、030 为原始 7200 秒超时，按本台账规则计 0。71/71 计分；Advanced 均分 0.274817，Basic 均分 0.697675。`hai summary` 保留 3 项执行错误；merged audit 仍列出 Basic 029/030 两个不可补跑超时槽位，错误证据保留。评分裁定见 merged `operator-scoring-override.json` 与 Trial disposition 记录。 |
 | Q | `openclaw-deepseek-repeat1` + recovery batch1 | `openclaw-deepseek-repeat1-merged` | 2026-10-23 | 正式合并，5 个经日志确认的 API 429 恢复结果入选。Advanced 004 原始 7200 秒超时按正式协议计 0，原始 Trial 错误保留。71/71 计分；Advanced 均分 0.347104，Basic 均分 0.611643。`hai summary` 保留 1 项执行错误，merged audit 仍列出 Advanced 004 待复核；评分覆盖见 merged `operator-scoring-override.json`，原始结果与覆盖前快照均保留。 |
+| R | `codex-qwen-repeat1` + recovery batch1 | `codex-qwen-repeat1-merged` | 2026-10-26 | 通过 native Trial 结果重建完整 71-slot viewer 投影后合并。Advanced 013 网络中断补跑成功，VGB 得分 1.0；Advanced 014 从完整 Codex turn 重建 trajectory 并用正式 VGB artifact 恢复 0.65 分。最终 Advanced 20/20、均分 0.554299；Basic 51/51、均分 0.886497。71/71 可评分，保留 7 项执行错误；其中 7 项能力超时均有有效 VGB 零分。 |
+| S | `openclaw-qwen-repeat1` + recovery batch1/2 | `openclaw-qwen-repeat1-merged` | 2026-10-26 | Advanced 004 两次获批补跑均因工程故障失败，恢复预算耗尽后按用户裁定计可评分 0；另 5 个 7200 秒能力超时按用户裁定各计 0。执行错误与三次尝试证据均保留。71/71 可评分；Advanced 20/20、均分 0.380477，Basic 51/51、均分 0.900612；`hai audit` 无待处理 recovery slot。 |
 
 来源 A 的 `summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
 与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
@@ -786,7 +788,7 @@ Qwen 的首轮 71 个 slot 跨两个冻结环境；本轮按用户明确授权�
 
 条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `reports/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
 
-本台账已收录 14/48 个 repeat1 子实验的最终验收结果。来源 H 按人工批准的临时补充与终态错误计零口径验收；来源 I、J、K、M 均经 audit 确认无失败 slot，71/71 计分结果完整；来源 K 按人工审核保留 Advanced 004、014 的零分及其未输出答案的事实。来源 L 按用户验收口径计分 71/71，其中两个保留的执行错误各计 0；Basic 025 的执行错误状态在正式评分视图中关闭，原始 Trial 失败证据仍保留。来源 M 按用户裁决保留 Advanced 004 零分，Advanced 019 提取真实回答重评为零分；两批补跑不新增 repeat，正式统计仅选取合并快照。来源 N 经用户人工验收，62 项官方评分与 9 项协议超时零分合计 71/71 计分；13 条原始执行异常继续保留，不将人工验收等同于无错误执行。来源 O 已合并并按用户裁决保留 Advanced 004、014 零分及两项执行错误；来源 P 按自定义 provider 条件变更与人工评分裁定合并，71/71 计分且保留 3 项执行错误；来源 Q 合并 5 个恢复结果并按协议将 Advanced 004 超时计零，仍保留 1 项执行错误。正式统计仅使用各来源的 merged 快照，不重复计入原始 run。
+本台账已收录 16/48 个 repeat1 子实验的最终验收结果。来源 H 按人工批准的临时补充与终态错误计零口径验收；来源 I、J、K、M 均经 audit 确认无失败 slot，71/71 计分结果完整；来源 K 按人工审核保留 Advanced 004、014 的零分及其未输出答案的事实。来源 L 按用户验收口径计分 71/71，其中两个保留的执行错误各计 0；Basic 025 的执行错误状态在正式评分视图中关闭，原始 Trial 失败证据仍保留。来源 M 按用户裁决保留 Advanced 004 零分，Advanced 019 提取真实回答重评为零分；两批补跑不新增 repeat，正式统计仅选取合并快照。来源 N 经用户人工验收，62 项官方评分与 9 项协议超时零分合计 71/71 计分；13 条原始执行异常继续保留，不将人工验收等同于无错误执行。来源 O 已合并并按用户裁决保留 Advanced 004、014 零分及两项执行错误；来源 P 按自定义 provider 条件变更与人工评分裁定合并，71/71 计分且保留 3 项执行错误；来源 Q 合并 5 个恢复结果并按协议将 Advanced 004 超时计零，仍保留 1 项执行错误。来源 R、S 为 Codex × Qwen 与 OpenClaw × Qwen repeat1；两组均 71/71 计分并保留各自 execution error。来源 S 的 Advanced 004 在两次补跑均失败、额度耗尽后按用户裁定计零；来源 R 的 Advanced 014 轨迹与评分文件从已验证证据恢复后纳入合并。正式统计仅使用各来源的 merged 快照，不重复计入原始 run。
 
 核对现有结果的只读命令：
 
@@ -828,6 +830,7 @@ uv run --locked --python 3.12 hai summary \
 - 2026-10-22: 正式合并 Codex × Claude repeat1 recovery batch1，44 项恢复结果入选；Advanced 014 按人工能力失败裁决计零，Advanced 004 保留超时零分及错误。同步 Advanced 0.678834、Basic 0.886834、来源 O 和总进度 12/48。
 - 2026-10-23: 正式合并 Codex × DeepSeek repeat1 recovery batch1/2，24 项恢复结果入选；Advanced 020 保留已验证答案与评分，Advanced 002 按恢复预算耗尽裁定计零，Basic 029/030 按协议超时规则计零。71/71 计分，Advanced 0.274817、Basic 0.697675，保留 3 项执行错误；新增来源 P，总进度 13/48。
 - 2026-10-23: 正式合并 OpenClaw × DeepSeek repeat1 recovery batch1，5 个 API 429 恢复结果入选；Advanced 004 按协议超时规则计零并保留原始错误。71/71 计分，Advanced 0.347104、Basic 0.611643，保留 1 项执行错误；新增来源 Q，总进度 14/48。
+- 2026-10-26: 汇总并同步 Codex × Qwen 与 OpenClaw × Qwen repeat1 merged 快照。两组均 71/71 可评分；Codex Advanced/Basic 均分 0.554299/0.886497，OpenClaw Advanced/Basic 均分 0.380477/0.900612。OpenClaw Advanced 004 在两次补跑额度耗尽后按用户指示计 0；更新新增来源 R、S，最终验收进度 16/48。
 - 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.json`
 
 ### 15.3 审批
