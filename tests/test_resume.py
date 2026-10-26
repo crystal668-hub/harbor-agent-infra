@@ -111,3 +111,84 @@ def test_atomic_write_is_noop_for_same_metadata(tmp_path):
     previous = path.stat().st_mtime_ns
     assert not write_object(path, {"status": "done"})
     assert previous == path.stat().st_mtime_ns
+
+
+def codex_answer(directory, *, complete=True):
+    path = directory / "agent/codex.txt"
+    path.parent.mkdir(exist_ok=True)
+    rows = [{"type": "turn.started"},
+            {"type": "item.completed", "item": {"type": "agent_message", "text": "42"}}]
+    if complete:
+        rows.append({"type": "turn.completed"})
+    path.write_text("\n".join(json.dumps(r) for r in rows))
+
+
+@pytest.mark.parametrize(("kind", "finished", "answer", "action"), [
+    (None, True, False, "keep"),
+    ("AgentTimeoutError", True, True, "keep_failed"),
+    ("ConnectionError", True, True, "keep_failed"),
+    ("CancelledError", True, True, "score"),
+    ("CancelledError", True, False, "rerun"),
+    (None, False, True, "score"),
+    (None, False, False, "rerun"),
+])
+def test_inventory_actions(original, kind, finished, answer, action):
+    from harbor_agent_infra.resume.plan import inventory
+    directory, _ = add_trial(original, kind=kind, finished=finished)
+    if answer:
+        codex_answer(directory)
+    before = {p: p.read_bytes() for p in original[0].rglob("*") if p.is_file()}
+    plan = inventory(resolve_context(str(original[0])))
+    assert [p.action for p in plan] == [action]
+    assert before == {p: p.read_bytes() for p in original[0].rglob("*") if p.is_file()}
+
+
+def test_missing_result_is_checked_before_cleanup(original):
+    from harbor_agent_infra.resume.plan import inventory
+    directory, result = add_trial(original, finished=False)
+    (directory / "result.json").unlink()
+    codex_answer(directory)
+    with pytest.raises(ValueError, match="identity is missing"):
+        inventory(resolve_context(str(original[0])))
+    save(directory / "resume-checkpoint.json", result.model_dump(mode="json"))
+    assert inventory(resolve_context(str(original[0])))[0].action == "score"
+
+
+def test_no_final_answer_vs_unreadable_evidence(original):
+    from harbor_agent_infra.resume.plan import inventory
+    directory, _ = add_trial(original, kind="CancelledError")
+    codex_answer(directory, complete=False)
+    assert inventory(resolve_context(str(original[0])))[0].action == "rerun"
+    (directory / "agent/codex.txt").write_text('{"type":')
+    with pytest.raises(ValueError, match="Unreadable"):
+        inventory(resolve_context(str(original[0])))
+    assert directory.is_dir()
+
+
+def test_unstarted_task(original):
+    from harbor_agent_infra.resume.plan import inventory
+    assert inventory(resolve_context(str(original[0])))[0].action == "start"
+
+
+@pytest.mark.parametrize("harness", ["openclaw", "hermes", "claude-code"])
+def test_native_final_answer_and_tool_preamble(tmp_path, harness):
+    from harbor_agent_infra.resume.answers import final_answer
+    if harness == "openclaw":
+        path = tmp_path / "openclaw.session.jsonl"
+        rows = [{"message": {"role": "assistant", "content": "42", "stopReason": "stop"}}]
+    elif harness == "hermes":
+        path = tmp_path / "hermes-session.jsonl"
+        rows = [{"role": "assistant", "content": "42"}]
+    else:
+        path = tmp_path / "claude-code.txt"
+        rows = [{"type": "result", "subtype": "success", "result": "42"}]
+    path.write_text("\n".join(json.dumps(r) for r in rows))
+    assert final_answer(tmp_path, harness).text == "42"
+    if harness == "openclaw":
+        rows[-1]["message"]["stopReason"] = "toolUse"
+    elif harness == "hermes":
+        rows[-1]["tool_calls"] = [{"id": "call"}]
+    else:
+        rows[-1]["is_error"] = True
+    path.write_text("\n".join(json.dumps(r) for r in rows))
+    assert final_answer(tmp_path, harness) is None
