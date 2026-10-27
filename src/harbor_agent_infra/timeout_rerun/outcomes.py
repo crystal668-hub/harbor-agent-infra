@@ -140,6 +140,17 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
     histories = {sid: [] for sid in slots}
     decisions = reviews_by_attempt(plan, reviews)
     used_decisions = set()
+    seen_trials = set()
+    for directory in (root / "jobs").glob("*"):
+        if (
+            directory.is_dir()
+            and not (directory / "timeout-dispatch.json").exists()
+            and (
+                list(directory.glob("*/result.json"))
+                or list(directory.glob("*/resume-checkpoint.json"))
+            )
+        ):
+            raise ValueError("Native Trials have no authorized campaign dispatch")
     for metadata in sorted(root.glob("jobs/*/timeout-dispatch.json")):
         dispatch = read_object(metadata)
         if dispatch.get("plan_sha256") != plan["plan_sha256"]:
@@ -161,6 +172,9 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
             if not path.is_file():
                 continue
             trial = read_object(path)
+            if trial["id"] in seen_trials:
+                raise ValueError("Duplicate Trial UUID across campaign attempts")
+            seen_trials.add(trial["id"])
             name = trial["task_name"]
             if name not in by_task or name in native:
                 raise ValueError("Unapproved or repeated native task in dispatched Job")

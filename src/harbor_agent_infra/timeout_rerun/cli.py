@@ -18,6 +18,11 @@ def register(subparsers):
     plan.add_argument("snapshots", type=Path, nargs="+")
     plan.add_argument("--output-dir", type=Path, required=True)
     plan.add_argument("--runtime-lock", type=Path, default=Path("runtime-lock.json"))
+    plan.add_argument(
+        "--baseline-dispositions",
+        type=Path,
+        help="carry previously approved zeros missing from historical projections",
+    )
     run = commands.add_parser("run", help="execute or reconcile a frozen campaign")
     run.add_argument("manifest", type=Path)
     run.add_argument("--dry-run", action="store_true")
@@ -35,7 +40,12 @@ def dispatch(args):
         if args.timeout_command == "plan":
             from harbor_agent_infra.timeout_rerun.plan import create_plan
 
-            plan = create_plan(args.snapshots, args.output_dir, args.runtime_lock)
+            plan = create_plan(
+                args.snapshots,
+                args.output_dir,
+                args.runtime_lock,
+                baseline_dispositions=args.baseline_dispositions,
+            )
             result = {
                 k: plan[k]
                 for k in (

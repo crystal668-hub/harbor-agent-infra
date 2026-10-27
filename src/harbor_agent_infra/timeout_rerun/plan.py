@@ -231,6 +231,24 @@ def set_toml(text: str, section: str, key: str, value) -> str:
     return result
 
 
+def execution_code() -> dict[str, str]:
+    workspace = Path(__file__).resolve().parents[3]
+    paths = [workspace / "uv.lock", workspace / "src/harbor_agent_infra/harness_runner.py"]
+    for directory in (
+        "adapters",
+        "integrations/vgb",
+        "src/harbor_agent_infra/harbor",
+        "src/harbor_agent_infra/timeout_rerun",
+        "src/harbor_agent_infra/resume",
+    ):
+        paths.extend(
+            p
+            for p in (workspace / directory).rglob("*")
+            if p.is_file() and p.suffix in {".py", ".js", ".mjs"}
+        )
+    return {str(p): digest(p) for p in sorted(paths)}
+
+
 def target_job(slot: dict, root: Path, lock) -> dict:
     trial = read_object(Path(slot["source_trial_path"]))
     config = copy.deepcopy(trial["config"])
@@ -285,9 +303,18 @@ def target_job(slot: dict, root: Path, lock) -> dict:
     return JobConfig.model_validate(job).model_dump(mode="json")
 
 
-def create_plan(snapshots: list[Path], output: Path, runtime_lock: Path) -> dict:
+def create_plan(
+    snapshots: list[Path],
+    output: Path,
+    runtime_lock: Path,
+    *,
+    baseline_dispositions: Path | None = None,
+) -> dict:
     output = output.resolve()
     sources, slots = inventory(snapshots)
+    from harbor_agent_infra.timeout_rerun.dispositions import freeze_dispositions
+
+    dispositions = freeze_dispositions(baseline_dispositions, sources, slots)
     if output.exists() or any(
         output.is_relative_to(Path(s["snapshot"])) or Path(s["snapshot"]).is_relative_to(output)
         for s in sources
@@ -299,6 +326,10 @@ def create_plan(snapshots: list[Path], output: Path, runtime_lock: Path) -> dict
     stage = Path(tempfile.mkdtemp(prefix=".timeout-plan-", dir=output.parent))
     try:
         shutil.copy2(runtime_lock, stage / "runtime-lock.json")
+        for d in dispositions:
+            evidence = stage / "baseline-evidence" / d["evidence_sha256"]
+            evidence.parent.mkdir(exist_ok=True)
+            shutil.copy2(d["evidence_file"], evidence)
         for slot in slots:
             base = stage / "inputs" / slot["slot_id"]
             task = base / "task" / slot["task_name"]
@@ -334,9 +365,25 @@ def create_plan(snapshots: list[Path], output: Path, runtime_lock: Path) -> dict
             "total_slots": sum(s["slots"] for s in sources),
             "candidate_slots": len(slots),
             "initial_trial_hours": len(slots) * TIMEOUT / 3600,
+            "baseline_score_dispositions": dispositions,
+            "implementation_files": execution_code(),
         }
         manifest["plan_sha256"] = object_digest(manifest)
         write_object(stage / "manifest.json", manifest)
+        lines = ["run\ttask_name\tsource_trial_id\tevidence\tagent_timeout_sec"]
+        for slot in slots:
+            lines.append(
+                "\t".join(
+                    [
+                        slot["run"],
+                        slot["task_name"],
+                        slot["source_trial_id"],
+                        slot["evidence"]["kind"],
+                        str(TIMEOUT),
+                    ]
+                )
+            )
+        (stage / "slots.tsv").write_text("\n".join(lines) + "\n")
         write_object(
             stage / "review-decisions.json",
             {"schema_version": "timeout-rerun-review.v1", "decisions": []},
@@ -358,7 +405,12 @@ def load_plan(path: Path) -> dict:
     ):
         raise ValueError("Frozen timeout plan identity or policy changed")
     plan["plan_sha256"] = checksum
+    if plan.get("implementation_files") != execution_code():
+        raise ValueError("Execution implementation changed after campaign freeze")
     root = Path(plan["root"])
+    for d in plan.get("baseline_score_dispositions", []):
+        if digest(root / "baseline-evidence" / d["evidence_sha256"]) != d["evidence_sha256"]:
+            raise ValueError("Frozen baseline authorization changed")
     if (
         path.resolve() != root / "manifest.json"
         or digest(root / "runtime-lock.json") != plan["runtime_lock_sha256"]

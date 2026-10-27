@@ -119,6 +119,10 @@ def aggregate_formal_snapshots(
     include_analysis = top_n is not None or score_bins is not None
     for path in paths:
         payload = json.loads((path / "results.json").read_text())
+        if payload.get("baseline_score_dispositions"):
+            from harbor_agent_infra.timeout_rerun.dispositions import scoring_records
+
+            payload = {**payload, "results": scoring_records(payload)}
         run_id = payload.get("source_run_id") or payload["run_id"]
         if run_id in seen_runs:
             raise ValueError(f"Select exactly one snapshot per original run: {run_id}")
