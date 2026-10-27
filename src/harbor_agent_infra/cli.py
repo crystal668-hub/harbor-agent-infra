@@ -46,6 +46,9 @@ def _score_bins(value: str) -> tuple[float, ...]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hai")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    from harbor_agent_infra.timeout_rerun.cli import register
+
+    register(subparsers)
     subparsers.add_parser("doctor", help="check the local Phase 0 runtime")
     materialize = subparsers.add_parser(
         "materialize", help="validate an experiment and emit a Harbor JobConfig snapshot"
@@ -210,6 +213,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "timeout-rerun":
+        from harbor_agent_infra.timeout_rerun.cli import dispatch
+
+        return dispatch(args)
     if args.command == "resume":
         from harbor_agent_infra.resume.executor import resume_run
 
