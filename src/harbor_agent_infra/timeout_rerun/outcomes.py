@@ -135,6 +135,9 @@ def validate_trial(trial: dict, expected: dict, slot: dict):
 
 
 def scan(plan: dict, reviews: Path | None = None) -> dict:
+    from harbor_agent_infra.timeout_rerun.scope import deferred
+
+    frozen = deferred(plan)
     root = Path(plan["root"])
     slots = {s["slot_id"]: s for s in plan["slots"]}
     histories = {sid: [] for sid in slots}
@@ -227,6 +230,8 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
         if any(a["status"] != "engineering_approved" for a in attempts[:-1]):
             raise ValueError("Extra attempt after an effective or unreviewed result")
         status = attempts[-1]["status"] if attempts else "pending"
+        if sid in frozen:
+            status = "deferred"
         states[sid] = {
             "status": status,
             "attempts": attempts,
@@ -236,6 +241,7 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
         }
     return {
         "plan_sha256": plan["plan_sha256"],
-        "complete": all(s["status"] in TERMINAL for s in states.values()),
+        "complete": all(s["status"] in TERMINAL | {"deferred"} for s in states.values()),
+        "deferred_slots": len(frozen),
         "slots": states,
     }

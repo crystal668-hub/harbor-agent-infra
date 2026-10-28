@@ -207,6 +207,11 @@ def merge_campaign(
     with run_lock(root, create=not dry_run), run_lock(output, create=not dry_run):
         plan = load_plan(manifest)
         state = scan(plan, reviews)
+        from harbor_agent_infra.timeout_rerun.scope import amendment, deferred
+
+        scope_change = amendment(plan)
+        frozen = deferred(plan)
+        active_count = len(plan["slots"]) - len(frozen)
         if not state["complete"]:
             raise ValueError("All timeout slots must be terminal before formal publication")
         before = {s["run"]: before_rows(plan, s) for s in plan["sources"]}
@@ -233,7 +238,8 @@ def merge_campaign(
                 "complete": True,
                 "dry_run": True,
                 "total_slots": plan["total_slots"],
-                "replaced_slots": len(plan["slots"]),
+                "replaced_slots": active_count,
+                "deferred_slots": len(frozen),
                 "selection_sha256": selection_hash,
             }
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -245,7 +251,11 @@ def merge_campaign(
                 target, final = stage / name, output / name
                 shutil.copytree(source["snapshot"], target)
                 payload = read_object(target / "results.json")
-                candidates = {s["task_name"]: s for s in plan["slots"] if s["run"] == source["run"]}
+                candidates = {
+                    s["task_name"]: s
+                    for s in plan["slots"]
+                    if s["run"] == source["run"] and s["slot_id"] not in frozen
+                }
                 rows = []
                 for row in payload["results"]:
                     slot = candidates.get(row["task_name"])
@@ -274,8 +284,33 @@ def merge_campaign(
                         "plan_sha256": plan["plan_sha256"],
                         "canonical_run": source["run"],
                         "policy": plan["policy"],
+                        "deferred_slots": [
+                            s
+                            for s in plan["slots"]
+                            if s["run"] == source["run"] and s["slot_id"] in frozen
+                        ],
                     },
                 )
+                # Retain deferred source records verbatim. A missing historical
+                # protocol-zero projection is carried only in the scoring view.
+                for slot in payload["timeout_amendment"]["deferred_slots"]:
+                    row = next(r for r in rows if r["task_name"] == slot["task_name"])
+                    if not row.get("scored"):
+                        payload["baseline_score_dispositions"].append(
+                            {
+                                "run": source["run"],
+                                "task_name": row["task_name"],
+                                "score": 0,
+                                "source_trial_id": row["trial_result"]["id"],
+                                "source_record_sha256": object_digest(row),
+                                "authorization": scope_change["authorization"],
+                                "reason": (
+                                    "Carry original 2h protocol zero; rerun deferred, not attempted"
+                                ),
+                                "evidence_file": str(root / "scope-amendment.json"),
+                                "evidence_sha256": digest(root / "scope-amendment.json"),
+                            }
+                        )
                 analysis_rows = scoring_records(payload)
                 if score_summary(analysis_rows)["scored"] != len(rows):
                     raise ValueError("Revised formal denominator is incomplete")
@@ -322,8 +357,9 @@ def merge_campaign(
                 "selection_sha256": selection_hash,
                 "plan_sha256": plan["plan_sha256"],
                 "total_slots": plan["total_slots"],
-                "replaced_slots": len(plan["slots"]),
-                "unchanged_slots": plan["total_slots"] - len(plan["slots"]),
+                "replaced_slots": active_count,
+                "deferred_slots": len(frozen),
+                "unchanged_slots": plan["total_slots"] - active_count,
                 "before": statistics([r for rows in before.values() for r in rows]),
                 "after": statistics(all_after),
                 "runs": comparisons,
@@ -349,6 +385,8 @@ def merge_campaign(
             )
             write_object(stage / "manifest.json", plan)
             write_object(stage / "terminal-state.json", state)
+            if scope_change:
+                write_object(stage / "scope-amendment.json", scope_change)
             lines = [
                 "# Repeat1 12h timeout amendment",
                 "",
@@ -387,7 +425,8 @@ def merge_campaign(
                 "output": str(output),
                 "selected_snapshots": selected,
                 "total_slots": plan["total_slots"],
-                "replaced_slots": len(plan["slots"]),
+                "replaced_slots": active_count,
+                "deferred_slots": len(frozen),
             }
         finally:
             if stage.exists():

@@ -406,7 +406,10 @@ def load_plan(path: Path) -> dict:
         raise ValueError("Frozen timeout plan identity or policy changed")
     plan["plan_sha256"] = checksum
     if plan.get("implementation_files") != execution_code():
-        raise ValueError("Execution implementation changed after campaign freeze")
+        from harbor_agent_infra.timeout_rerun.scope import validate_implementation_transition
+
+        if not validate_implementation_transition(plan, execution_code()):
+            raise ValueError("Execution implementation changed after campaign freeze")
     root = Path(plan["root"])
     for d in plan.get("baseline_score_dispositions", []):
         if digest(root / "baseline-evidence" / d["evidence_sha256"]) != d["evidence_sha256"]:

@@ -1,5 +1,17 @@
 # Repeat1 超时加时补跑
 
+## 2026-10-28 范围修订：冻结尚未启动的 Advanced 004
+
+按用户指示，当前 Claude Code × OpenAI 的 Advanced 004 继续执行至结束；已经结束的
+Claude Code × Claude Advanced 004 保留结果。剩余六个 Advanced 004 暂停补跑，等待题目修订：
+Claude Code × Qwen、Codex × Claude/DeepSeek/Qwen、Hermes × Claude、OpenClaw × DeepSeek。
+
+原 manifest 不重写，scope-amendment.json 绑定原计划哈希、冻结 slot、授权理由以及明确的
+旧／新实现文件哈希。旧调度进程在当前 Job 结束后的下一次派发校验处停止，后继进程等待其退出后
+接续，避免修改当前 Trial 的计时器或容器。未启动冻结项标记 deferred，不消耗尝试预算、不算补跑失败；
+后续正式快照保留其原代表和原协议分数。原候选 44、本轮执行范围 38、冻结 6，正式矩阵仍为 1136。
+所有非冻结 slot 结案后可以统一发布，并明确披露冻结数量。该冻结不会自动解除。
+
 本流程执行 2026-10-27 确认的协议修订：当前正式代表在 7200 秒 Agent 上限未完成的 slot，
 从头获得一次 43200 秒执行机会。当前锁定的预装环境、模型与任务身份都写入冻结清单。
 它独立于普通工程 recovery；普通能力超时的恢复限制继续保留。
