@@ -13,6 +13,64 @@ from harbor_agent_infra.timeout_rerun.plan import execution_code, load_plan, obj
 from harbor_agent_infra.timeout_rerun.scope import validate_implementation_transition
 
 
+def retire_failed(plan, manifest, result, monkeypatch):
+    from harbor_agent_infra.timeout_rerun.plan import digest
+
+    monkeypatch.setattr(
+        "harbor_agent_infra.timeout_rerun.scope.TASK", plan["slots"][0]["task_name"]
+    )
+    value = {
+        "schema_version": "timeout-terminal-deferrals.v1",
+        "plan_sha256": plan["plan_sha256"],
+        "decisions": [
+            {
+                "slot_id": plan["slots"][0]["slot_id"],
+                "authorization": "User retires this slot",
+                "reason": "Failed container retired; task frozen",
+                "attempts": [
+                    {
+                        "trial_id": read_object(result)["id"],
+                        "result_path": str(result.resolve()),
+                        "evidence_sha256": digest(result),
+                    }
+                ],
+            }
+        ],
+    }
+    value["sha256"] = object_digest(value)
+    write_object(manifest.parent / "terminal-deferrals.json", value)
+
+
+def test_retired_failure_keeps_evidence_and_original_score(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    source, plan, manifest = merge_fixture(tmp_path)
+    path = dispatch(plan, kind="NetworkConnectionError", answer=None, score=None)
+    retire_failed(plan, manifest, path, monkeypatch)
+    state = scan(plan)
+    assert state["complete"] and not jobs_to_start(plan, state)
+    assert len(state["slots"][plan["slots"][0]["slot_id"]]["attempts"]) == 1
+    output = tmp_path / "retired-merged"
+    result = merge_campaign(manifest, output)
+    assert result["replaced_slots"] == 0 and result["deferred_slots"] == 1
+    rows = read_object(Path(result["selected_snapshots"][0]) / "results.json")["results"]
+    assert rows == read_object(source / "results.json")["results"]
+    assert list((output / "evidence/deferred-attempts").rglob("result.json"))
+
+
+def test_terminal_deferral_rejects_success_and_changed_evidence(tmp_path, monkeypatch):
+    _, plan, manifest = merge_fixture(tmp_path)
+    path = dispatch(plan)
+    retire_failed(plan, manifest, path, monkeypatch)
+    with pytest.raises(ValueError, match="unresolved failed"):
+        scan(plan)
+    trial = read_object(path)
+    trial["finished_at"] = None
+    write_object(path, trial)
+    with pytest.raises(ValueError, match="unresolved failed"):
+        scan(plan)
+
+
 def freeze(plan, manifest, monkeypatch):
     monkeypatch.setattr(
         "harbor_agent_infra.timeout_rerun.scope.TASK", plan["slots"][0]["task_name"]

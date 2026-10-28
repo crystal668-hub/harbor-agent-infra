@@ -207,10 +207,11 @@ def merge_campaign(
     with run_lock(root, create=not dry_run), run_lock(output, create=not dry_run):
         plan = load_plan(manifest)
         state = scan(plan, reviews)
-        from harbor_agent_infra.timeout_rerun.scope import amendment, deferred
+        from harbor_agent_infra.timeout_rerun.scope import amendment, deferred, terminal_deferrals
 
         scope_change = amendment(plan)
         frozen = deferred(plan)
+        retired = terminal_deferrals(plan)
         active_count = len(plan["slots"]) - len(frozen)
         if not state["complete"]:
             raise ValueError("All timeout slots must be terminal before formal publication")
@@ -296,6 +297,12 @@ def merge_campaign(
                 for slot in payload["timeout_amendment"]["deferred_slots"]:
                     row = next(r for r in rows if r["task_name"] == slot["task_name"])
                     if not row.get("scored"):
+                        disposition = retired.get(slot["slot_id"], scope_change)
+                        evidence_file = root / (
+                            "terminal-deferrals.json"
+                            if slot["slot_id"] in retired
+                            else "scope-amendment.json"
+                        )
                         payload["baseline_score_dispositions"].append(
                             {
                                 "run": source["run"],
@@ -303,12 +310,12 @@ def merge_campaign(
                                 "score": 0,
                                 "source_trial_id": row["trial_result"]["id"],
                                 "source_record_sha256": object_digest(row),
-                                "authorization": scope_change["authorization"],
+                                "authorization": disposition["authorization"],
                                 "reason": (
                                     "Carry original 2h protocol zero; rerun deferred, not attempted"
                                 ),
-                                "evidence_file": str(root / "scope-amendment.json"),
-                                "evidence_sha256": digest(root / "scope-amendment.json"),
+                                "evidence_file": str(evidence_file),
+                                "evidence_sha256": digest(evidence_file),
                             }
                         )
                 analysis_rows = scoring_records(payload)
@@ -385,6 +392,14 @@ def merge_campaign(
             )
             write_object(stage / "manifest.json", plan)
             write_object(stage / "terminal-state.json", state)
+            if (root / "terminal-deferrals.json").exists():
+                shutil.copy2(root / "terminal-deferrals.json", stage / "terminal-deferrals.json")
+                for sid in frozen:
+                    for attempt in state["slots"][sid]["attempts"]:
+                        shutil.copytree(
+                            Path(attempt["path"]).parent,
+                            stage / "evidence/deferred-attempts" / sid / str(attempt["ordinal"]),
+                        )
             if scope_change:
                 write_object(stage / "scope-amendment.json", scope_change)
             lines = [
