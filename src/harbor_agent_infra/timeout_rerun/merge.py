@@ -312,7 +312,7 @@ def merge_campaign(
                                 "source_record_sha256": object_digest(row),
                                 "authorization": disposition["authorization"],
                                 "reason": (
-                                    "Carry original 2h protocol zero; rerun deferred, not attempted"
+                                    "Carry original 2h protocol zero; frozen without replacement"
                                 ),
                                 "evidence_file": str(evidence_file),
                                 "evidence_sha256": digest(evidence_file),
