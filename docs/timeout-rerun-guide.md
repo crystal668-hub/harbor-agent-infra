@@ -1,5 +1,12 @@
 # Repeat1 超时加时补跑
 
+## 2026-10-28 补充修订：全部 Advanced 004 冻结
+
+用户将最先达到 12h 上限的 Claude Code × Anthropic Advanced 004 也加入冻结清单。
+terminal-deferrals.json 通过 retire_timeout_observation=true 显式授权退休该已结案超时观察，
+绑定原 Trial ID 和结果哈希，保留超时原因、日志及消耗；不重跑，不以本轮超时代表替换原正式记录。
+目前八个 Advanced 004 均冻结，本轮有效补跑范围为 36，正式矩阵仍为 1136，最终 1100 个原代表保留。
+
 ## 2026-10-28 补充修订：退休异常容器并冻结其 slot
 
 用户进一步要求清理已退出的 Claude Code × OpenAI Advanced 004 容器，停止接续或重跑该 slot。

@@ -71,6 +71,26 @@ def test_terminal_deferral_rejects_success_and_changed_evidence(tmp_path, monkey
         scan(plan)
 
 
+def test_timeout_retirement_requires_explicit_bound_authorization(tmp_path, monkeypatch):
+    _, plan, manifest = merge_fixture(tmp_path)
+    path = dispatch(plan, kind="AgentTimeoutError", answer=None, score=None)
+    retire_failed(plan, manifest, path, monkeypatch)
+    with pytest.raises(ValueError, match="unresolved failed"):
+        scan(plan)
+    decision_path = manifest.parent / "terminal-deferrals.json"
+    value = read_object(decision_path)
+    value.pop("sha256")
+    value["decisions"][0]["retire_timeout_observation"] = True
+    value["sha256"] = object_digest(value)
+    write_object(decision_path, value)
+    state = scan(plan)
+    entry = state["slots"][plan["slots"][0]["slot_id"]]
+    assert entry["status"] == "deferred" and entry["next_ordinal"] is None
+    assert entry["attempts"][0]["reason"] == "AgentTimeoutError"
+    assert entry["attempts"][0]["score"] == 0.0
+    assert not jobs_to_start(plan, state)
+
+
 def freeze(plan, manifest, monkeypatch):
     monkeypatch.setattr(
         "harbor_agent_infra.timeout_rerun.scope.TASK", plan["slots"][0]["task_name"]

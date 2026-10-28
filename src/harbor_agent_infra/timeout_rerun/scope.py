@@ -84,11 +84,19 @@ def terminal_deferrals(plan: dict) -> dict:
                 trial = read_object(result)
                 if trial.get("task_name") != slots[sid]["task_name"]:
                     continue
+                accepted_timeout_retirement = (
+                    decision.get("retire_timeout_observation") is True
+                    and (trial.get("exception_info") or {}).get("exception_type")
+                    == "AgentTimeoutError"
+                )
                 if (
                     not trial.get("finished_at")
                     or not trial.get("exception_info")
-                    or verdict(result, slots[sid])["status"]
-                    not in {"engineering_review", "review", "interrupted"}
+                    or (
+                        not accepted_timeout_retirement
+                        and verdict(result, slots[sid])["status"]
+                        not in {"engineering_review", "review", "interrupted"}
+                    )
                 ):
                     raise ValueError("Terminal deferral requires an unresolved failed attempt")
                 observed.append(
