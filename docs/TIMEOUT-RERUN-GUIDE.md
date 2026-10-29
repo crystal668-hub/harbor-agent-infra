@@ -5,7 +5,7 @@
 普通能力超时仍按 [常规恢复规则](RECOVERY-SYSTEM-GUIDE.md) 保留。
 
 实验协议见 [正式实验方案](formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)，
-具体批次数字与冻结历史见 [范围修订记录](experiment-results/2026-10-28-timeout-rerun-scope-record.md)。
+具体实验协议和批次范围见[正式实验方案](formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)。
 本手册只定义模块操作，不用历史批次快照代替 campaign 当前状态。
 
 ## 1. 冻结清单

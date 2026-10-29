@@ -28,8 +28,7 @@
 - [模型矩阵](model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](chemistry.md)：实验环境与化学工具一致性要求。
 - [验收标准](acceptance.md)：测试和集成门禁。
-- [加时补跑范围修订记录](experiment-results/2026-10-28-timeout-rerun-scope-record.md)：批次范围和人工裁决快照。
-- [历史补跑探索](experiment-results/recovery-quick-guide.md)：保留历史推演，不作为操作入口。
+- 加时补跑的协议及当前实现状态见[正式实验方案](formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
 
 ## 维护约定
 
