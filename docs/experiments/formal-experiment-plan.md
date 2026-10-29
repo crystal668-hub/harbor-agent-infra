@@ -1,7 +1,12 @@
 # 正式实验方案
-**制定日期**: 2026-10-14  
-**状态**: 2026-10-15 用户已确认本轮设计调整；执行与恢复按冻结协议推进
-**Git 基线**: `74e2b2e` (docs: record 64000 matrix validation and adaptive thinking fix)
+**制定日期**：2026-10-14
+**文档类型**：实验方案与协议（持续维护）
+**配置核对日期**：2026-10-29（Asia/Shanghai）
+**状态**：原始运行配置已与当前锁和本机 16 份正式 YAML 静态核对；加时修订见第 14.6 节。
+**初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
+
+维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
+本轮没有启动实验或重新验证 provider、镜像实际可用性，也未重算成绩；第 14 节保留其明示日期的结果台账。
 
 ---
 
@@ -164,7 +169,10 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 ## 5. 统一配置参数
 
-所有 16 组实验使用统一的配置参数，确保可比性。
+以下为 16 组正式原始运行的统一参数。已获批恢复条件和第 14.6 节的加时 campaign 分别冻结，不回写原始协议。
+
+> 2026-10-29 核对：本机 16 份正式 YAML 均为 71 题、skills_off、preinstalled、high、64000、
+> 4 CPU / 6144 MB、7200/120 秒、并发 2、n_attempts=1、max_retries=0；模型组合未改变。
 
 ### 5.1 推理与输出参数
 
@@ -178,6 +186,9 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 [模型验证记录](model-matrix.md)，不将该参数视为已验证的严格总预算。
 
 ### 5.2 资源与超时配置
+
+> 2026-10-27 协议修订：下表 7200 秒仍适用于原始正式运行；仅获批 Repeat1 超时候选获得
+> 独立 43200 秒机会，见第 14.6 节。repeat2/3 与本机原始配置不因此改为 12 小时。
 
 | 参数 | 值 | 说明 |
 |------|-----|------|
@@ -216,12 +227,18 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 | Codex | 0.162.1 | 通过本地 protocol bridge 配置输出上限 |
 | Claude Code | 2.1.296 | Native CLI |
 
-当前主工作区已采用本地验收的预装镜像。正式 Trial 按 harness 选择下列不可变执行镜像；
+> 2026-10-29 文档纠正：旧表仍列 OpenClaw 的已退役 083e6590… 镜像；现按 runtime-lock.json
+> 和四份 OpenClaw 正式配置改为 d744a347…（完整 digest 见下表）。该镜像对应 2026-10-21
+> 两项修复验收，不是本轮新构建。2026-10-26 运行锁统一命名不改变已完成运行的条件；
+> 旧恢复批次的镜像变化仍按各自 condition-change 记录解释。退役事实见
+> [镜像运维记录](../PREINSTALLED-HARNESS.md#镜像退役与运行锁清理)。
+
+当前锁配置的正式 Trial 按 harness 选择下列不可变执行镜像；
 镜像名中的 `latest` 不参与版本选择，实际身份由 digest 固定，`pull_policy: never`。
 
 | Harness | 执行镜像 | Digest |
 | --- | --- | --- |
-| OpenClaw | `hai-openclaw-latest` | `sha256:083e6590790627b6f35dc4b771d89d635e724b5b28f29037ea55746c9e05f54f` |
+| OpenClaw | `hai-openclaw-latest` | `sha256:d744a3474f60e123a86f4c9dcb314c12810104e290eb982ac556ecff32c4255c` |
 | Hermes | `hai-hermes-latest` | `sha256:6a5985d929602fee0905c2548afab5058192dc812e4538e3b8b57d93042444bb` |
 | Codex | `hai-codex-latest` | `sha256:ae908ae8e55477ef999c5c4f1a18fe017146f057ab813c8646a2d606ac8ac41e` |
 | Claude Code | `hai-claude-code-latest` | `sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16` |
@@ -231,9 +248,17 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 `runtime-lock.json` 的绝对路径，`experiment.agent.installation_mode` 必须为
 `preinstalled`，`experiment.image` 必须与锁定的 harness 执行镜像完全一致。
 正式矩阵启动器和带 `--formal-repeat` 的直接运行在派发前校验这些条件；
-不符合则拒绝启动，不回退到历史运行时安装条件。镜像目前仅在本机，跨主机运行前需发布并核对
+不符合则拒绝启动，不回退到历史运行时安装条件。本文未重新确认 Registry 发布状态；跨主机运行前需核对镜像可用性与
 Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨环境自动替代。
-验收依据见[预装镜像验收报告](acceptance/2026-10-16-acceptance-preinstalled-harness.md)。
+验收依据见[预装镜像验收报告](../acceptance/2026-10-16-acceptance-preinstalled-harness.md)。
+
+### 5.4.1 Codex 压缩与路由条件
+
+> 2026-10-22 配置变化（2026-10-29 静态复核）：Codex Qwen/DeepSeek 本地正式模板分别选择
+> qwen-responses / deepseek-responses，使用自定义 Responses provider 和文本摘要压缩。
+> 两者不启用 compact_prompt，不覆盖上下文窗口或自动压缩阈值；仍使用 high 和 64000 cap bridge。
+> 历史 Job 不随 YAML 自动更新；恢复必须声明获批条件变化。接口及证据要求见
+> [跨 provider 手册](../CROSS-PROVIDER.md#冻结-job-的恢复条件)。
 
 ### 5.5 技能配置
 - **Group**: 仅运行 `skills_off`
@@ -255,7 +280,7 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 
 ### 6.1 失败分类原则
 
-按照 [失败恢复迁移计划](plan/2026-10-12-plan-failure-recovery-migration.md) 的判定矩阵：
+当前操作采用 [恢复手册](../RECOVERY-SYSTEM-GUIDE.md)；[原迁移计划](../plan/2026-10-12-plan-failure-recovery-migration.md) 仅作设计沿革。实验判定矩阵如下：
 
 | 失败类型 | 有效性判定 | 恢复策略 |
 |---------|-----------|---------|
@@ -287,7 +312,7 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 4. **人工审查**: 检查恢复计划的准确性和合理性
 5. **执行恢复**: 运行 `recover` 命令，提交获准的补跑
 6. **合并与复审**: 用 `hai merge --dry-run` 审查代表选择，再用 `hai merge` 发布新快照；如有缺口，在派生快照上重新 audit，核对累计预算后再审查下一批
-7. **正式统计**: 运行 `hai summary` 汇总选定快照；命令名称与参数统一以[当前 CLI 参考](CLI-REFERENCE.md)为准
+7. **正式统计**: 运行 `hai summary` 汇总选定快照；命令名称与参数统一以[当前 CLI 参考](../CLI-REFERENCE.md)为准
 
 ### 6.3 替代预算
 
@@ -311,6 +336,12 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 ## 7. 数据产物与目录组织
 
 ### 7.1 输出目录结构
+
+> 2026-10-29 实现口径核对：下列原始设计中的 attempts.jsonl、decisions.jsonl、assessments/、
+> analysis/ 是实验追溯要求，不能据此宣称 CLI 自动生成这些文件。当前正式审计输入为
+> recovery-manifest.json；恢复结果由 recovery-state.json/recovery-result.json 及原生 Trial 保留，
+> 合并选择和全部尝试由 merge-metadata.json/evidence/attempts/ 记录。应按实际产物建立追溯关系，
+> 不为匹配旧示意目录生成空壳文件。完整实现目录见 [架构手册](../ARCHITECTURE.md#结果与身份)。
 
 **目录命名规则**
 
@@ -362,7 +393,7 @@ run-artifacts/
 | `slots.jsonl` | 完整预定 slot 矩阵 | 每个原始 run 派发前即存在，71 条；48 个 run 共 3,408 条 |
 | `attempts.jsonl` | Slot、ordinal、Harbor ID、证据索引 | 追溯每次执行 |
 | `decisions.jsonl` | 分层状态、reason、证据、规则版本 | 判定依据与修订历史 |
-| `recovery-plan.json` | 精确 slot/attempt 清单、条件、预算 | 审查后执行补跑 |
+| `recovery-manifest.json` | 精确 slot/attempt 清单、条件、预算 | 审查后执行补跑 |
 | `assessments/` | 评分版本、输入哈希、VGB 结果 | 独立评分历史 |
 | `analysis/` | 选样 map、指标、成本、来源 | 可重建的最终报告 |
 | Harbor 原生 | Trial result, trajectory, logs | 官方 Viewer 读取 |
@@ -458,9 +489,9 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
 
 2. **验证环境**:
    ```bash
-   uv run hai doctor
-   uv run pytest -m 'not integration'
-   VGB_PYTHON=.vgb-runtime/bin/python uv run pytest \
+   uv run --locked --python 3.12 hai doctor
+   uv run --locked --python 3.12 pytest -m 'not integration'
+   VGB_PYTHON=.vgb-runtime/bin/python uv run --locked --python 3.12 pytest \
      tests/test_vgb_integration.py \
      tests/test_chemistry_integration.py
    ```
@@ -554,6 +585,9 @@ uv run --locked --python 3.12 hai summary \
 
 ### 10.1 必须交付的产物
 
+> 2026-10-29 口径澄清：以下是实验归档交付要求，不是现行 CLI 自动产物清单。
+> 追溯信息可来自第 7.1 节列明的原生产物和审查记录；没有落盘的计划性文件不计作已交付。
+
 1. **实验协议**:
    - `protocol.json` (48 个原始 run，每个一份)
    - 本文档及其冻结版本
@@ -565,7 +599,7 @@ uv run --locked --python 3.12 hai summary \
 
 3. **判定与恢复**:
    - `decisions.jsonl` (所有判定记录及修订)
-   - `recovery-plan.json` (所有恢复计划)
+   - `recovery-manifest.json` (所有审核后的恢复清单)
    - 审查记录 (人工审查结果)
 
 4. **评分记录**:
@@ -675,7 +709,7 @@ uv run --locked --python 3.12 hai summary \
 **预估考虑因素**:
 - 单个 task 平均执行时间: 待测量
 - 并发度: 2 trials per job
-- 串行/并行策略: 待确定
+- 串行/并行策略: 原始 run 按 repeat 轮次串行，每个 Job 内并发 2（2026-10-29 文档同步）
 - 恢复轮次: 预计 1-2 轮
 - 人工审查时间: 每轮 0.5-1 天
 
@@ -783,7 +817,7 @@ uv run --locked --python 3.12 hai summary \
 | S | `openclaw-qwen-repeat1` + recovery batch1/2 | `openclaw-qwen-repeat1-merged` | 2026-10-26 | Advanced 004 两次获批补跑均因工程故障失败，恢复预算耗尽后按用户裁定计可评分 0；另 5 个 7200 秒能力超时按用户裁定各计 0。执行错误与三次尝试证据均保留。71/71 可评分；Advanced 20/20、均分 0.380477，Basic 51/51、均分 0.900612；`hai audit` 无待处理 recovery slot。 |
 
 来源 A 的 `summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
-与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-plan-native-recovery-concurrency-merge.md)。
+与规范目录的对应关系见[恢复与目录迁移记录](../plan/2026-10-15-plan-native-recovery-concurrency-merge.md)。
 Qwen 的首轮 71 个 slot 跨两个冻结环境；本轮按用户明确授权，将来源 F 作为 advanced 的临时新条件观测纳入来源 G 的最终选择，不新增正式 repeat。来源 F 的条件 ID 为 `claude-code-qwen-repeat1-advanced-preinstalled-20261017`，通过 manifest 的显式 `condition_change` 绑定目标材料化快照与锁文件哈希；每个恢复 Job 记录 `statistical_role: new_condition_observation`。basic 仍使用来源 C 的预装结果，7 个任务的来源关联和实际尝试次数保留。
 
 条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `reports/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
@@ -811,7 +845,7 @@ uv run --locked --python 3.12 hai summary \
 正常完成采用实际 VGB 分数（包括 0），再次超时或预算耗尽仍未完成则计 0，保留具体失败原因。
 修订快照单独发布，保留原始和旧 merged；repeat2/3 不变。
 
-按当前实际最终快照去重核对，总数 1136，命中 44：
+2026-10-27 初始冻结快照去重后共 1136 个 slot、44 个候选；下表保留初始范围，不代表后续冻结后的执行范围：
 
 | Harness | GPT | Claude | Qwen | DeepSeek | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -832,18 +866,30 @@ advanced；当前 G 的实际 merged 已包含 71 个代表（9 个 advanced、2
 
 加时结果全部验收并发布前，现有正式选择保持有效。发布后采用独立的 formal-selected-snapshots.json；
 必须注明“原 2h 尝试 + 超时 slot 的 12h 重跑”，并披露环境变化、历史尝试与实际新增消耗。
-执行入口及审核格式见 [加时补跑指南](TIMEOUT-RERUN-GUIDE.md)。
+执行入口及审核格式见 [加时补跑指南](../TIMEOUT-RERUN-GUIDE.md)。
+
+### 14.6.1 2026-10-28 范围修订（2026-10-29 核对）
+
+当前 campaign 保留原 44 候选 manifest，并通过 6 项 scope-amendment 和 2 项 terminal-deferral
+冻结全部 8 个 Advanced 004；有效补跑范围为 36 个，正式矩阵仍为 1136 个，1100 个原代表保留。
+六项未启动冻结：Claude Code × Qwen、Codex × Claude/DeepSeek/Qwen、Hermes × Claude、OpenClaw × DeepSeek。
+两项终态退休：Claude Code × OpenAI 的异常退出尝试，以及 Claude Code × Anthropic 的 12h 超时观察。
+
+证据为 run-artifacts/timeout-rerun/repeat1-12h-20261027 下的 manifest.json、scope-amendment.json、
+terminal-deferrals.json；后者逐项绑定授权、Trial 身份与结果哈希。冻结不自动解除，不将冻结尝试
+替换为正式代表，其错误、日志和实际消耗仍保留。本轮仅核对范围，不宣称 36 项已完成或修订结果已发布。
 
 ## 15. 附录
 
 ### 15.1 参考文档
-- [失败恢复迁移计划](plan/2026-10-12-plan-failure-recovery-migration.md)
+- [失败恢复迁移计划](../plan/2026-10-12-plan-failure-recovery-migration.md)
 - [模型矩阵](model-matrix.md)
-- [配置文档](CONFIGURATION.md)
+- [配置文档](../CONFIGURATION.md)
 - [化学环境](chemistry.md)
-- [架构文档](ARCHITECTURE.md)
+- [架构文档](../ARCHITECTURE.md)
 
 ### 15.2 变更历史
+- 2026-10-29：实验文档归入 experiments/；静态核对 16 份正式配置与运行锁，纠正第 5.4 节旧镜像；第 5.4.1 节补齐 Codex provider 条件，第 14.6.1 节同步 2026-10-28 的 8 项冻结。没有改写运行、配置或得分。
 - 2026-10-14: 初始版本，待审核
 - 2026-10-15: 用户确认固定时间能力比较、单 turn 64,000 输出约束、分 track 报告、按 repeat 轮次执行、当前补跑后再切换预装镜像；修正为 48 个原始 run / 3,408 slots，并收敛本地单组配置
 - 2026-10-16: 新增实验进度与分 track 得分台账，覆盖 48 个子实验，并记录已核对的 Claude Code × DeepSeek repeat1 合并快照结果
@@ -864,6 +910,9 @@ advanced；当前 G 的实际 merged 已包含 71 个代表（9 个 advanced、2
 - 2026-10-16: 核对并更新正式执行镜像为四个预装镜像，后续正式 run 固定使用主工作区 `runtime-lock.json`
 
 ### 15.3 审批
+
+下列未勾选项是原设计时的总体检查表，不撤销后续逐批授权，也不表示未来批次自动获批；
+实际派发、恢复和条件变更必须依据对应记录。
 - [x] 本轮实验设计调整确认（2026-10-15，见变更历史）
 - [ ] 资源与预算审批
 - [ ] 风险评估审批

@@ -40,7 +40,7 @@
 - 正式运行额外提供 --formal-provider PROVIDER --formal-repeat N；两者必须一起使用且必须通过 --config。
   provider 为 openai、anthropic、qwen、deepseek；repeat 从 1 开始。
 - 正式入口要求 skills_off、n_attempts=1、max_retries=0、并发 2 和匹配当前锁的预装镜像。
-  任务集等完整实验要求另见 [正式实验方案](formal-experiment-plan.md)。
+  任务集等完整实验要求另见 [正式实验方案](experiments/formal-experiment-plan.md)。
 - --formal-root 默认为 run-artifacts/formal；正式输出名固定为 <harness>-<provider>-repeat<N>。
   如同时指定 --output-dir，必须等于规范路径；已有正式目录拒绝重新启动。
 

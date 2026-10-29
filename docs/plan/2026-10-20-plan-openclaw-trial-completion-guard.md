@@ -3,7 +3,7 @@
 日期：2026-10-20
 文档类型：plan
 状态：暂停等待与恢复已实施并通过隔离验收；本文保留审核时的方案。
-实施结果见 [暂停恢复验收记录](../openclaw-pause-resume-acceptance.md)。
+实施结果见 [暂停恢复验收记录](../acceptance/2026-10-20-acceptance-openclaw-pause-resume.md)。
 
 ## 目标与边界
 

@@ -4,8 +4,8 @@
 选定代表，从头给予一次 43200 秒执行机会。该时限和范围由实现约束，不是任意任务重试工具。
 普通能力超时仍按 [常规恢复规则](RECOVERY-SYSTEM-GUIDE.md) 保留。
 
-实验协议见 [正式实验方案](formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)，
-具体实验协议和批次范围见[正式实验方案](formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)。
+实验协议见 [正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)，
+具体实验协议和批次范围见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)。
 本手册只定义模块操作，不用历史批次快照代替 campaign 当前状态。
 
 ## 1. 冻结清单
@@ -108,4 +108,4 @@ formal-selected-snapshots.json 列出本轮修订后的统计入口，只选其�
 
 Docker gate 使用本地锁定镜像和假 Agent，以短时限验证超时、保存、清理和重启；
 不调用 provider 或私有评分数据。固定生产预算、审核、评分修复及发布范围由契约测试验证。
-实现入口：[timeout_rerun/](../src/harbor_agent_infra/timeout_rerun/)，完整参数见 [CLI 参考](CLI-REFERENCE.md)。
+实现入口：[timeout_rerun/](../src/harbor_agent_infra/timeout_rerun)，完整参数见 [CLI 参考](CLI-REFERENCE.md)。

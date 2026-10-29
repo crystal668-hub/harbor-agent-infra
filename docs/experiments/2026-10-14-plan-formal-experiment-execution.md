@@ -4,7 +4,7 @@
 
 日期：2026-10-14（修订：2026-10-15）
 文档类型：plan（实验执行）
-状态：历史执行计划；现行协议见[正式实验方案](../formal-experiment-plan.md)，命令见[执行速查](../EXECUTION-QUICK-REF.md)。
+状态：历史执行计划；现行协议见[正式实验方案](formal-experiment-plan.md)，命令见[执行速查](../EXECUTION-QUICK-REF.md)。
 
 ## 1. 规模与执行顺序
 
@@ -107,7 +107,7 @@ uv run --locked --python 3.12 hai summary \
 
 输出 `track` 为跨 run 的分 track 统计，`run_track` 为各原始 run 的分 track 统计，
 `summary` 保留兼容的整体辅助统计。未知评分保留缺失，不作为零分。
-完整报告要求见[正式方案](../formal-experiment-plan.md)。
+完整报告要求见[正式方案](formal-experiment-plan.md)。
 
 ## 6. 时间估算
 

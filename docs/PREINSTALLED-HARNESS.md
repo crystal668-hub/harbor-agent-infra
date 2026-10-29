@@ -83,7 +83,7 @@ experiment.agent.installation_mode 设置为 preinstalled，experiment.image 必
 scripts/verify_preinstalled_matrix.py 用于单独的 provider/VGB 工程验收，支持 --harness / --provider
 子集；它会添加验收 instruction prefix，不能把结果当作原正式题面下的成绩。
 子集通过也不能代表完整矩阵。实验条件与化学要求分别引用
-[实验方案](formal-experiment-plan.md)、[化学配置](chemistry.md)。
+[实验方案](experiments/formal-experiment-plan.md)、[化学配置](experiments/chemistry.md)。
 
 ## 交付、切换与故障处理
 
@@ -97,3 +97,24 @@ setup 漂移应检查版本、路径和 manifest，不通过联网重装绕过�
 
 实现入口：[build_preinstalled_image.py](../scripts/build_preinstalled_image.py)、
 [preinstalled.py](../adapters/preinstalled.py)、[preinstalled_probe.py](../adapters/preinstalled_probe.py)。
+
+## 镜像退役与运行锁清理
+
+### 2026-10-26 清理记录
+
+以下为已执行的运维记录，不是再次删除镜像的指令；当前执行身份仍以运行锁为准。
+
+日期：2026-10-26。用户确认无需复现或恢复使用旧镜像的历史运行，并授权清理。
+
+唯一活动锁为 [runtime-lock.json](../runtime-lock.json)，内容逐字节来自原 runtime-lock.preinstalled.json，SHA256 为 17b64c39058302a948d17ebf3d022c07231460d4bac46ed93660efb1229ec8bf。旧默认锁移除，正式入口、配置更新器、测试及本机 16 份正式配置同步改用唯一锁。四个 harness 的 digest、manifest、版本、父镜像及化学身份未更改。
+
+本次定向删除两个已退役 OpenClaw 镜像：
+
+- sha256:485e1ca1e3962aedc59a7b1486c652a47f0028f2c71c60924ab767a4f276f83f
+- sha256:083e6590790627b6f35dc4b771d89d635e724b5b28f29037ea55746c9e05f54f
+
+该次清理保留 OpenClaw sha256:d744a3474f60e123a86f4c9dcb314c12810104e290eb982ac556ecff32c4255c、Claude Code、Codex、Hermes、共用基础及其他项目镜像；不执行全局 prune。
+
+历史运行说明：该镜像已作为旧版本被更新，并没有发生实验条件上的变化。这里指本次清理和锁文件改名没有改变已完成运行的条件或结果；历史运行的原镜像身份、配置、锁快照和恢复证据保持原样。此前补跑中已经记录的镜像切换仍按原 condition-change 证据解释，不能据此宣称不同 digest 的执行环境完全相同。
+
+旧锁路径在历史产物中仅作为原始证据保留，不添加兼容链接，也不把历史任务重绑定到新锁。历史锁内容仍可通过 Git 历史查阅；不再支持从已删除的本机旧镜像恢复运行。

@@ -11,6 +11,7 @@
 | [CONFIGURATION.md](CONFIGURATION.md) | 配置 schema、资源、运行环境与材料化规则 |
 | [CLI-REFERENCE.md](CLI-REFERENCE.md) | 查询命令、参数、执行影响和返回结果 |
 | [CROSS-PROVIDER.md](CROSS-PROVIDER.md) | 配置 provider 路由、协议桥和 Codex 压缩接口 |
+| [ACCEPTANCE.md](ACCEPTANCE.md) | 系统框架验收基线、分阶段门禁及历史验证边界 |
 
 ## 操作与运维
 
@@ -24,14 +25,17 @@
 
 ## 实验文档与历史记录
 
-- [正式实验方案](formal-experiment-plan.md)：任务范围、实验协议和统计口径。
-- [模型矩阵](model-matrix.md)：实验模型、输出参数及验证范围。
-- [化学工具配置](chemistry.md)：实验环境与化学工具一致性要求。
-- [验收标准](acceptance.md)：测试和集成门禁。
-- 加时补跑的协议及当前实现状态见[正式实验方案](formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
+- [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
+- [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
+- [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
+- 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
 
 ## 维护约定
 
 接口与默认行为以当前源码、锁文件和 CLI 帮助为准。修改命令、配置或模块行为时，
 同步更新对应手册和示例；淘汰的操作从手册删除，历史证据保留在记录文档中。
 版本、模型矩阵和批次统计引用其来源，不在各手册重复维护。更名时同步更新相对链接。
+
+实验方案和配置在原文对应章节维护现行值；变动时注明日期、旧值/新值、证据和适用范围，
+不把静态核对记成重新运行验收。验收报告归 acceptance/，工程实施记录归 implementation/；
+镜像退役记录并入 [预装镜像运维章节](PREINSTALLED-HARNESS.md#镜像退役与运行锁清理)。

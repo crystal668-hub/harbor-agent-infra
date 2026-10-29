@@ -3,8 +3,8 @@
 # 正式实验方案总结
 **日期**: 2026-10-15（按用户确认修订）
 **文档类型**: plan（实验摘要）
-**状态**: 历史方案摘要；现行协议以[正式实验方案](../formal-experiment-plan.md)为准。
-**完整方案**: [正式实验方案](../formal-experiment-plan.md)
+**状态**: 历史方案摘要；现行协议以[正式实验方案](formal-experiment-plan.md)为准。
+**完整方案**: [正式实验方案](formal-experiment-plan.md)
 
 ---
 
@@ -231,7 +231,7 @@ uv run --locked hai view
 ### 恢复与正式统计
 
 现行命令统一参见[当前 CLI 参考](../CLI-REFERENCE.md)及
-[正式方案的恢复示例](../formal-experiment-plan.md#94-恢复阶段)。
+[正式方案的恢复示例](formal-experiment-plan.md#94-恢复阶段)。
 `audit` 接受 run 名称；`recover` 接受清单位置参数并要求配置；
 `merge` 发布新的代表快照；`summary` 汇总正式分 track 成绩。
 旧方案中的 `aggregate`、`audit --run-dir`、`recover --plan` 不是现行接口。
@@ -297,4 +297,4 @@ uv run --locked hai view
 
 ---
 
-**详细内容请参考**: [正式实验方案](../formal-experiment-plan.md)
+**详细内容请参考**: [正式实验方案](formal-experiment-plan.md)

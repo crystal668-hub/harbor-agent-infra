@@ -2,7 +2,7 @@
 
 适用于开发者和维护者。所有命令从仓库根目录执行；路径占位符需替换。
 参数定义见 [CLI 参考](CLI-REFERENCE.md)，实验规模与执行顺序见
-[正式实验方案](formal-experiment-plan.md) 和 [执行计划](experiments/2026-10-14-plan-formal-experiment-execution.md)。
+[正式实验方案](experiments/formal-experiment-plan.md) 和 [执行计划](experiments/2026-10-14-plan-formal-experiment-execution.md)。
 
 ## 准备
 
@@ -12,7 +12,7 @@
 准备本机 YAML、环境变量、隔离 VGB runtime、锁定预装镜像及化学环境。
 doctor 只检查基础运行条件，不能代替镜像、provider 和 VGB 验收。
 参考 [配置接口](CONFIGURATION.md)、[预装镜像](PREINSTALLED-HARNESS.md) 和
-[实验化学配置](chemistry.md)。示例模板不是完整正式配置。
+[实验化学配置](experiments/chemistry.md)。示例模板不是完整正式配置。
 
 ## 新运行
 

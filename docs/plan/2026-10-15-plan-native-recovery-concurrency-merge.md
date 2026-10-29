@@ -452,7 +452,7 @@ git diff --check
 
 相关依据：
 
-- [正式实验协议](../formal-experiment-plan.md)
+- [正式实验协议](../experiments/formal-experiment-plan.md)
 - [失败恢复迁移计划](2026-10-12-plan-failure-recovery-migration.md)
 - [恢复系统使用说明](../RECOVERY-SYSTEM-GUIDE.md)
 

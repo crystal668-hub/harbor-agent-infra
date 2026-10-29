@@ -63,4 +63,4 @@ Harbor Job.create 会清理缺少 result.json 的目录，因此 resume 先盘�
 
 Docker gate 使用锁定本地镜像、FakeAgent 与合成评分器，验证取消后重跑/仅评分和身份保留，
 不调用真实 provider 或私有 VGB；不替代真实端到端验收。
-实现入口：[resume/](../src/harbor_agent_infra/resume/)，CLI 定义见 [命令参考](CLI-REFERENCE.md)。
+实现入口：[resume/](../src/harbor_agent_infra/resume)，CLI 定义见 [命令参考](CLI-REFERENCE.md)。

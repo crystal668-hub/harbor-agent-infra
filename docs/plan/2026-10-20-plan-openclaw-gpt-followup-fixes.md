@@ -3,7 +3,7 @@
 日期：2026-10-20（修订：2026-10-21）
 文档类型：plan
 状态：两项修复已实施并通过本机验收；本文保留审核后的实施方案。
-结果见 [实施与验收记录](../openclaw-gpt-two-fixes-acceptance.md)；以下保留审核后的实施计划。
+结果见 [实施与验收记录](../acceptance/2026-10-21-acceptance-openclaw-gpt-two-fixes.md)；以下保留审核后的实施计划。
 原计划提交：`c8ef108`；本次文档审核基线：`3391254`。
 固定运行时：OpenClaw `2026.6.34`、锁定 Harbor commit
 `1e5c5c6db929a10a140d05e606882c671ae20729`。
@@ -20,7 +20,7 @@ Basic 027 的独立诊断列入实施范围，超出了这两个根因；本次�
 实施文件仅覆盖两个原生补丁、必要的安装/镜像接入和直接验证它们的测试。
 不新增通用 Trial 完成协议，不调整评分或恢复审计规则，不添加额外“继续”提示或重发任务。
 
-此前 [Trial 暂停恢复修复](../openclaw-pause-resume-acceptance.md) 解决的是
+此前 [Trial 暂停恢复修复](../acceptance/2026-10-20-acceptance-openclaw-pause-resume.md) 解决的是
 `meta.yielded == true` 或 `meta.livenessState == "paused"` 时同一 Trial 的原生等待与恢复。
 该实现保持原行为，作为此次补丁的回归基线；不扩大暂停判定，也不重写 SessionRun。
 

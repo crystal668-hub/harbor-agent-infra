@@ -3,13 +3,13 @@
 推荐入口是单个 harbor-run.v1 YAML。解析由
 [RunConfig](../src/harbor_agent_infra/contracts/run.py) 定义，未知字段被拒绝；
 字段支持与默认值以契约源码为准。模型组合和化学工具条件分别见
-[实验模型矩阵](model-matrix.md)、[实验化学配置](chemistry.md)。
+[实验模型矩阵](experiments/model-matrix.md)、[实验化学配置](experiments/chemistry.md)。
 
 ## 文件与环境
 
 - examples/experiments/<harness>/ 提供受版本控制的示例及 CONTRACT.md。
 - configs/experiments/<harness>/ 存放被 Git 忽略的本地配置；缺失时从对应示例复制，避免覆盖已有文件。
-- 示例是小任务验收配置，不是正式实验配置；正式任务集、资源和参数按 [实验方案](formal-experiment-plan.md) 准备。
+- 示例是小任务验收配置，不是正式实验配置；正式任务集、资源和参数按 [实验方案](experiments/formal-experiment-plan.md) 准备。
 - 从仓库根目录执行命令。相对路径按进程工作目录使用；本地绝对路径仅保留在忽略文件或环境变量中。
 - 读取 consolidated YAML 时，从该文件所在目录向上查找最近的 .env；已有进程环境优先。
   缺失的环境变量占位符会报错。provider 密钥只由环境提供，YAML 保存变量名而非密钥值。

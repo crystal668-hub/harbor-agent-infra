@@ -36,18 +36,18 @@ Harbor Agent Infra 是实验控制面：校验配置、材料化任务、连接�
 
 | 模块 | 契约与用途 |
 | --- | --- |
-| [contracts/](../src/harbor_agent_infra/contracts/) | Pydantic 配置、镜像、资源、实验组及失败分类契约 |
-| [preparation/](../src/harbor_agent_infra/preparation/) | YAML/环境加载、锁文件、镜像身份、技能清单和资源配置 |
+| [contracts/](../src/harbor_agent_infra/contracts) | Pydantic 配置、镜像、资源、实验组及失败分类契约 |
+| [preparation/](../src/harbor_agent_infra/preparation) | YAML/环境加载、锁文件、镜像身份、技能清单和资源配置 |
 | [harness_runner.py](../src/harbor_agent_infra/harness_runner.py) | 根据 agent.adapter 选择 runner，生成原生 AgentConfig 与 runner 身份 |
 | [harbor/job_config.py](../src/harbor_agent_infra/harbor/job_config.py) | 将实验和资源契约投影为 Harbor JobConfig |
 | [harbor/task_materializer.py](../src/harbor_agent_infra/harbor/task_materializer.py) | 生成公开题面、任务配置和 verifier 入口 |
 | [harbor/run.py](../src/harbor_agent_infra/harbor/run.py)、[harbor/audit.py](../src/harbor_agent_infra/harbor/audit.py) | 调用 Harbor，收集生命周期事件并投影结果 |
-| [adapters/](../adapters/) | OpenClaw Gateway 会话、Hermes、Codex、预装校验与 VGB verifier |
-| [integrations/vgb/](../integrations/vgb/) | 官方包的进程隔离接口、prompt、评分、化学预检和结果投影 |
+| [adapters/](../adapters) | OpenClaw Gateway 会话、Hermes、Codex、预装校验与 VGB verifier |
+| [integrations/vgb/](../integrations/vgb) | 官方包的进程隔离接口、prompt、评分、化学预检和结果投影 |
 | [formal.py](../src/harbor_agent_infra/formal.py) | 正式运行身份、冻结协议与选定快照汇总 |
-| [recovery/](../src/harbor_agent_infra/recovery/) | 已结束失败的分类、获批执行和按 slot 合并 |
-| [resume/](../src/harbor_agent_infra/resume/) | 原始运行的中断盘点、答案评分、续跑和元数据对账 |
-| [timeout_rerun/](../src/harbor_agent_infra/timeout_rerun/) | 特定协议修订的冻结清单、执行、审核和发布 |
+| [recovery/](../src/harbor_agent_infra/recovery) | 已结束失败的分类、获批执行和按 slot 合并 |
+| [resume/](../src/harbor_agent_infra/resume) | 原始运行的中断盘点、答案评分、续跑和元数据对账 |
+| [timeout_rerun/](../src/harbor_agent_infra/timeout_rerun) | 特定协议修订的冻结清单、执行、审核和发布 |
 | [viewer.py](../src/harbor_agent_infra/viewer.py) | 运行目录发现与 Harbor 官方 Viewer 路由 |
 
 新增 harness 需同时扩展 schema、runner 注册、版本/镜像契约和产物解析，

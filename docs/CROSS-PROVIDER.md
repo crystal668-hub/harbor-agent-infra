@@ -1,7 +1,7 @@
 # Provider 路由与协议桥
 
 本手册定义 native Codex / Claude Code 的 provider 选择、endpoint 绑定与压缩配置。
-模型选择和实测范围见 [实验模型矩阵](model-matrix.md)；支持某个协议路径不等于
+模型选择和实测范围见 [实验模型矩阵](experiments/model-matrix.md)；支持某个协议路径不等于
 证明所有模型、推理档位或实验任务均已通过。
 
 ## 配置契约

@@ -2,8 +2,8 @@
 
 日期：2026-10-20
 文档类型：plan
-状态：代码、镜像与验收已完成；本文保留原实施方案，当前行为见[实施记录](../openclaw-network-retry-implementation.md)。
-实施状态见 [网络重试实施记录](../openclaw-network-retry-implementation.md)；下文保留审核方案。
+状态：代码、镜像与验收已完成；本文保留原实施方案，当前行为见[实施记录](../implementation/2026-10-20-implementation-openclaw-network-retry.md)。
+实施状态见 [网络重试实施记录](../implementation/2026-10-20-implementation-openclaw-network-retry.md)；下文保留审核方案。
 基线：`04d65be`，OpenClaw 固定版本 `2026.6.34`。
 规划分支：`codex/openclaw-provider-network-retry-plan`。
 独立工作树：`/Users/xutao/.codex/worktrees/openclaw-trial-incomplete/harbor-agent-infra`。

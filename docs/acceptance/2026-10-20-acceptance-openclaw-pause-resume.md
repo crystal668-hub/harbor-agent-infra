@@ -1,5 +1,11 @@
 # OpenClaw Trial 暂停恢复验收
 
+日期：2026-10-20
+
+文档类型：acceptance
+
+状态：已实现并通过当时隔离验收；以下保留原测试范围与证据。
+
 日期：2026-10-20。分支：`codex/openclaw-trial-incomplete`。
 实施工作树：`/Users/xutao/.codex/worktrees/openclaw-trial-incomplete/harbor-agent-infra`。
 

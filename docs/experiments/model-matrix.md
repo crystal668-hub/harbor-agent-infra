@@ -1,6 +1,40 @@
 # Four harnesses and four selected models
 
-> 文档类型：实验文档（实验模型矩阵、参数与验证范围）。不属于通用开发者手册。
+**文档类型**：实验模型与协议配置（持续维护）
+**配置核对日期**：2026-10-29（Asia/Shanghai）
+**状态**：已核对当前锁、16 份本地正式 YAML 和 runner/bridge 契约；未新增 provider 探测。
+
+修改模型、provider 路由、推理等级或输出参数时，在对应章节记明日期、旧值/新值、原因与适用范围。
+历史探测结果保留原日期，不用静态配置核对替代真实验证。配套文档：[正式协议](formal-experiment-plan.md)、
+[化学配置](chemistry.md)、[跨 provider 接口](../CROSS-PROVIDER.md)。
+
+## 当前正式配置
+
+| 配置项 | 2026-10-29 核对结果 |
+| --- | --- |
+| 模型 | GPT gpt-6.1-sol；Claude claude-opus-5.5；Qwen qwen3.8-max；DeepSeek deepseek-v4-pro |
+| Harness | OpenClaw 2026.6.34；Hermes 0.21.6；Codex 0.162.1；Claude Code 2.1.296 |
+| 运行环境 | runtime-lock.json 的不可变预装镜像；正式 YAML 显式 installation_mode=preinstalled |
+| 推理与输出 | 全部请求 high；max_output_tokens=64000，为单次响应参数，不是整个任务预算 |
+| 实验组 | skills_off；本地正式配置仅含此组 |
+| 模板边界 | examples/ 中为小任务示例；本机 configs/ 中为 71 题、并发 2 的正式配置，两者不混用 |
+
+> 2026-10-29 文档同步：模型与上述版本未变。原文中“桥已重启、health 为 200”属于 2026-10-14
+> 观测，不能作为当前服务健康证明；本轮仅读取配置。镜像变化见正式方案第 5.4 节。
+
+### Codex Qwen/DeepSeek 的压缩条件
+
+> 2026-10-22 变更（2026-10-29 复核）：正式配置分别使用 qwen-responses / deepseek-responses，
+> 从原内置 provider 的 remote compaction v2 路径转为自定义 Responses provider 的文本摘要压缩。
+> 两份正式 YAML 均未启用 compact_prompt，不覆盖上下文窗口或压缩阈值，保留 high 和 64000。
+> 该变化不自动回写历史 Job；恢复条件声明见 [跨 provider 手册](../CROSS-PROVIDER.md#冻结-job-的恢复条件)。
+
+当前配置字段 agent.max_output_tokens 已由 schema 和 runner 支持。
+下文“无通用输出字段”的陈述仅描述 2026-10-14 较早审计时点，不代表当前接口。
+
+## 2026-10-14 输出上限验证记录
+
+下表中的“passed”保留当时的测试结论和范围，不表示 2026-10-29 重新执行过测试。
 
 The selected single-response output setting is now **64,000 tokens** in all
 16 example templates and local configurations. The field is
@@ -46,8 +80,8 @@ Claude keeps Responses-to-Chat conversion and explicitly preserves
 `CODEX_DEEPSEEK_BASE_URL` to the matching bridge routes. Their Docker Desktop
 paths are `/openai/v1`, `/anthropic/v1`, `/qwen/v1`, `/deepseek/v1` on the host
 bridge; upstream provider base variables keep their original gateway values.
-The current local bridge has been restarted with these routes and its health
-endpoint returned HTTP 200. The GPT Claude Code conversion route also forwards
+During the 2026-10-14 validation, the local bridge was restarted with these routes and its health
+endpoint returned HTTP 200; this is historical evidence, not a current health check. The GPT Claude Code conversion route also forwards
 64,000 to Responses. A single cap spans the response, including reasoning where
 counted by the upstream protocol, rather than the entire multi-turn run.
 
@@ -83,7 +117,7 @@ CLI output and the selected-setting matrix are under
 `run-artifacts/model-matrix-2026-10-14/output-64000/`. Full Docker/VGB benchmarks
 were not rerun for this parameter audit.
 
-## Earlier boundary audit (before the 64,000 decision and compatibility fix)
+## Earlier boundary audit (2026-10-14, before the 64,000 decision and compatibility fix)
 
 The 16 templates select GPT `gpt-6.1-sol`, Claude `claude-opus-5.5`, Qwen
 `qwen3.8-max`, and DeepSeek `deepseek-v4-pro`. Live output-cap probes on
@@ -117,8 +151,8 @@ tested on those routes.
 | Codex | Responses / Responses → local Chat Completions bridge / Responses / Responses | Native CLI through a recording proxy that injected `max_output_tokens`. The locked native request builder has no output-cap field; all four captured original requests omitted it. |
 | Claude Code | Messages → local Responses bridge / Messages / Messages / Messages | Native CLI with `CLAUDE_CODE_MAX_OUTPUT_TOKENS`, captured as Messages `max_tokens`. |
 
-The Infra `experiment.agent` schema exposes model selection and effort, but no
-generic maximum-output-token field. Context windows, compaction thresholds and
+At this earlier audit point, the Infra `experiment.agent` schema exposed model selection and effort, but no
+generic maximum-output-token field. The later 64,000 implementation added `max_output_tokens`. Context windows, compaction thresholds and
 tool-output truncation are separate controls. These settings limit one response,
 including reasoning when counted by the protocol, rather than an entire run.
 

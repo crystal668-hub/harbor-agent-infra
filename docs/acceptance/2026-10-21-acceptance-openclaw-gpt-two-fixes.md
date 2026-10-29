@@ -1,8 +1,14 @@
-> 2026-10-26 更新：原预装锁已原样迁移为唯一的 runtime-lock.json；下文旧锁名称为历史记录，当前执行请使用新名称。
-
 # OpenClaw GPT 两项局部修复与验收
 
-日期：2026-10-21。实施范围按 [已审核计划](plan/2026-10-20-plan-openclaw-gpt-followup-fixes.md)。
+日期：2026-10-21
+
+文档类型：acceptance
+
+状态：已实现并通过当时本机验收；以下为历史验收证据，不代表本轮重新验收。
+
+> 2026-10-26 更新：原预装锁已原样迁移为唯一的 runtime-lock.json；下文旧锁名称为历史记录，当前执行请使用新名称。
+
+日期：2026-10-21。实施范围按 [已审核计划](../plan/2026-10-20-plan-openclaw-gpt-followup-fixes.md)。
 开发工作树：`/Users/xutao/.codex/worktrees/openclaw-gpt-two-fixes/harbor-agent-infra`。
 代码提交：`f52a124`（no-op edit）、`4fc19f6`（GPT 解密错误识别）；原生验收测试：`6edd6a7`。
 
