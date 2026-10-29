@@ -2,7 +2,7 @@
 
 # OpenClaw GPT 两项局部修复与验收
 
-日期：2026-10-21。实施范围按 [已审核计划](plan/2026-10-20-openclaw-gpt-batch1-followup-fixes.md)。
+日期：2026-10-21。实施范围按 [已审核计划](plan/2026-10-20-plan-openclaw-gpt-followup-fixes.md)。
 开发工作树：`/Users/xutao/.codex/worktrees/openclaw-gpt-two-fixes/harbor-agent-infra`。
 代码提交：`f52a124`（no-op edit）、`4fc19f6`（GPT 解密错误识别）；原生验收测试：`6edd6a7`。
 

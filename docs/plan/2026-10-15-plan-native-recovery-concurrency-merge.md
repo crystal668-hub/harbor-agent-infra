@@ -1,7 +1,8 @@
 # 正式实验原生恢复、双并发与按 slot 合并适配计划
 
-日期：2026-10-15（Asia/Shanghai）  
-状态：用户已审核；已在独立 worktree 实现并通过 provider-free 验证，尚未部署至进行中的补跑环境
+日期：2026-10-15（Asia/Shanghai）
+文档类型：plan
+状态：恢复与合并能力已实现并通过 provider-free 验证；本文记录当时的 Docker 验证边界，当前操作见[恢复手册](../RECOVERY-SYSTEM-GUIDE.md)。
 代码核对基线：`e2d4b15`（原生 JobConfig 加载与单任务恢复修复）
 
 ## 1. 目标与范围
@@ -452,7 +453,7 @@ git diff --check
 相关依据：
 
 - [正式实验协议](../formal-experiment-plan.md)
-- [失败恢复迁移计划](../failure-recovery-migration-plan.md)
+- [失败恢复迁移计划](2026-10-12-plan-failure-recovery-migration.md)
 - [恢复系统使用说明](../RECOVERY-SYSTEM-GUIDE.md)
 
 

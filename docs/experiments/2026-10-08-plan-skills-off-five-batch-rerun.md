@@ -1,7 +1,8 @@
 # skills_off 五阶段补跑计划
 
 日期：2026-10-08  
-状态：历史任务范围记录；执行入口已统一，当前操作参见[CLI 参考](../CLI-REFERENCE.md)
+文档类型：plan（实验执行）
+状态：历史任务范围记录；原执行方式已退役，当前操作参见[CLI 参考](../CLI-REFERENCE.md)
 范围：只处理 `skills_off` 中没有产生 `FINAL ANSWER:` 的 trial；不读取、不修改或执行备份目录
 
 ## 目标与边界

@@ -1,6 +1,10 @@
 # 预装 harness 实施记录
 
-本记录对应已审批的 `2026-10-15-preinstalled-harness-migration-plan.md`。
+日期：2026-10-15 至 2026-10-16
+文档类型：implementation
+状态：实施和本地验收已完成；镜像发布与跨主机可用性需依当前部署分别核验。
+
+本记录对应已审批的 `2026-10-15-plan-preinstalled-harness-migration.md`。
 用户于本聊天明确批准实施，并要求独立 worktree 保护正在运行的补跑。
 Registry 发布、主目录默认切换和正式实验派发不属于本次开发的默认动作。
 
@@ -113,7 +117,7 @@ Registry 发布、主目录默认切换和正式实验派发不属于本次开�
 ## 最终本地验收与交付
 
 2026-10-16：独立 worktree 的开发及本地候选验收完成。
-最终结果以 [`2026-10-16-preinstalled-harness-acceptance.md`](2026-10-16-preinstalled-harness-acceptance.md)
+最终结果以 [`2026-10-16-acceptance-preinstalled-harness.md`](../acceptance/2026-10-16-acceptance-preinstalled-harness.md)
 和 `outputs/preinstalled/acceptance-summary.json` 为准；本记录以上各节保留中间状态和失败历史。
 
 - 最终 provider-free：428 passed / 75 deselected；修改的 24 个 Python 文件 Ruff 通过。

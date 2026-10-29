@@ -2,7 +2,8 @@
 
 日期：2026-10-10（Asia/Shanghai）
 
-状态：基础接入与 high 等级验证已完成；其余模型等级仍按计划待执行。
+文档类型：plan
+状态：部分实现；high 已完成验证，其他 reasoning 等级的 provider 实测仍未由本文证明。
 
 基线：Harbor 0.23.0；Codex 0.162.1；Claude Code 2.1.296；代码基线 53ed34d。
 
@@ -35,7 +36,7 @@
 - Claude Code 2.1.296 + `claude-opus-5.5`：provider smoke 以 `--effort high` 成功，原生 session 明确记录 `effort: "high"`；显式 high 的单任务 VGB E2E 成功，score `0.723213`，耗时约 102 秒，ATIF thinking/reasoning tokens `1564`。
 - 两次 E2E 均使用 `skills_off`、单并发、单次尝试、无重试；配置、版本、模型、session、ATIF、VGB schema-v5 和 reward/score 可追溯。
 - `observability.totals.tokens.reasoning` 现在从统一 Harbor Trial metadata 或 ATIF trajectory 投影；`observability.provider_usage.model_usage` 保留 Harbor 原生模型 usage。此次补齐后不需要额外 agent runner 或旁路执行脚手架。
-- 指标完整性仍有边界：API 调用计数未由 native Harbor 明确提供；cost 来源未全部统一标记；Codex 部分原生工具失败在 ATIF 中丢失结构化状态；CPU/内存只有资源配置，没有实测峰值。详见同目录 `2026-10-10-native-high-observability-review.md`。这些项不能因为基础 E2E 通过就宣称与 Hermes 的每项指标完全对齐。
+- 指标完整性仍有边界：API 调用计数未由 native Harbor 明确提供；cost 来源未全部统一标记；Codex 部分原生工具失败在 ATIF 中丢失结构化状态；CPU/内存只有资源配置，没有实测峰值。详见[观测审查](../audit/2026-10-10-review-native-high-observability.md)。这些项不能因为基础 E2E 通过就宣称与 Hermes 的每项指标完全对齐。
 
 high 的真实请求通过只能证明当前模型、provider、CLI 和网关接受该等级并完成任务；不能推导 low/medium/xhigh/max 也都已通过，也不能证明网关将同名等级映射为相同 token 预算。
 
@@ -179,7 +180,7 @@ uv run --locked ruff check src integrations adapters tests scripts
 
 ## 7. 证据来源
 
-本轮检查的代码：src/harbor_agent_infra/contracts/experiment.py、src/harbor_agent_infra/harness_runner.py；锁定 Harbor 的 agents/installed/codex.py、agents/installed/claude_code.py、agents/options.py。历史实测见 2026-10-09-codex-claude-native-integration-handoff.md。
+本轮检查的代码：src/harbor_agent_infra/contracts/experiment.py、src/harbor_agent_infra/harness_runner.py；锁定 Harbor 的 agents/installed/codex.py、agents/installed/claude_code.py、agents/options.py。历史实测见[Codex / Claude Code 接入交接](../handoff/2026-10-09-handoff-codex-claude-native-integration.md)。
 
 已成功获取的 Claude 官方在线文档（2026-10-10，不能等同精确 CLI 全量实测）：
 

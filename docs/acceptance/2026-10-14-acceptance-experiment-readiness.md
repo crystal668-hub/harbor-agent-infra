@@ -1,5 +1,7 @@
 # 正式实验准备情况检查报告
 **检查日期**: 2026-10-14  
+**文档类型**: acceptance
+**状态**: 历史准备度快照；不代表当前本机环境、凭据或镜像仍就绪。
 **检查人**: Claude Code  
 **基线**: `74e2b2e` (docs: record 64000 matrix validation and adaptive thinking fix)
 

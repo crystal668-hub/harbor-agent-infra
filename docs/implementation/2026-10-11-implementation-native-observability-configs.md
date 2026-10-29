@@ -1,6 +1,9 @@
 # Native 观测补强与本地配置模板实施记录
 
-日期：2026-10-11（Asia/Shanghai）。未改变 CLI/image 锁、provider 配置或 Harbor 生命周期。
+日期：2026-10-11（Asia/Shanghai）
+文档类型：implementation
+状态：实施与 provider-free 验证已完成；观测限制以现行架构手册和源码为准。
+未改变 CLI/image 锁、provider 配置或 Harbor 生命周期。
 
 ## 已完成
 

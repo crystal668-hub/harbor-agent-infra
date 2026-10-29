@@ -2,7 +2,7 @@
 
 适用于开发者和维护者。所有命令从仓库根目录执行；路径占位符需替换。
 参数定义见 [CLI 参考](CLI-REFERENCE.md)，实验规模与执行顺序见
-[正式实验方案](formal-experiment-plan.md) 和 [执行计划](plan/2026-10-14-experiment-execution-plan.md)。
+[正式实验方案](formal-experiment-plan.md) 和 [执行计划](experiments/2026-10-14-plan-formal-experiment-execution.md)。
 
 ## 准备
 

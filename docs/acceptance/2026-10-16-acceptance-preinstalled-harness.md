@@ -2,10 +2,11 @@
 
 日期：2026-10-16（Asia/Shanghai）
 
-状态：**独立 worktree 开发和本地候选验收完成；未合并、未发布 Registry、未切换默认配置**。
+文档类型：acceptance
+状态：独立 worktree 开发和本地候选验收已完成；本文记录当时未合并、未发布 Registry、未切换默认配置的边界。当前部署状态见[预装镜像手册](../PREINSTALLED-HARNESS.md)。
 
-对应计划：[`2026-10-15-preinstalled-harness-migration-plan.md`](2026-10-15-preinstalled-harness-migration-plan.md)。
-实施流水：[`2026-10-15-preinstalled-harness-execution.md`](2026-10-15-preinstalled-harness-execution.md)。
+对应计划：[`2026-10-15-plan-preinstalled-harness-migration.md`](../plan/2026-10-15-plan-preinstalled-harness-migration.md)。
+实施流水：[`2026-10-15-implementation-preinstalled-harness.md`](../implementation/2026-10-15-implementation-preinstalled-harness.md)。
 
 ## 1. 隔离与交付
 

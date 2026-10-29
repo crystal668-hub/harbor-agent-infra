@@ -1,7 +1,8 @@
 # Codex 与 Claude Code 接入实施计划
 
 日期：2026-10-09  
-状态：已完成 native 接入与本轮 smoke/E2E 验证；结果见执行记录
+文档类型：handoff
+状态：交接事项已完成；本文保留当时的接入决策和验证记录，不是当前待办清单。
 目标仓库：`harbor-agent-infra`  
 参考仓库：`/Users/xutao/harbor-agent-framework/`（只读成熟实现参考）  
 执行对象：从本计划开始工作的全新 Codex 会话

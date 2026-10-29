@@ -2,7 +2,9 @@
 
 # 正式实验执行计划
 
-制定日期：2026-10-14；最后更新：2026-10-15（按用户确认修订）。
+日期：2026-10-14（修订：2026-10-15）
+文档类型：plan（实验执行）
+状态：历史执行计划；现行协议见[正式实验方案](../formal-experiment-plan.md)，命令见[执行速查](../EXECUTION-QUICK-REF.md)。
 
 ## 1. 规模与执行顺序
 
@@ -84,13 +86,13 @@ uv run --locked --python 3.12 hai view
 正常超时、预算耗尽、错误答案和零分是有效观测，保留；工程故障经审查后补跑，
 评分工程故障仅重评。每个原 slot 的执行替代与评分替代各最多 2 次，跨批次累计。
 恢复、原生目录合并与首条有效代表选择遵循
-[正式恢复约定](2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
+[正式恢复约定](../plan/2026-10-15-plan-native-recovery-concurrency-merge.md)。
 
 **后续正式 run 固定使用主工作区 `runtime-lock.preinstalled.json` 与对应的预装执行镜像。**
 配置更新器写入绝对锁路径、`installation_mode: preinstalled` 和锁定 digest，
 矩阵入口与 `hai run --formal-repeat` 都在派发前验证；任何不符直接拒绝启动。
 原始及恢复 run 保留原冻结环境身份，跨环境不自动替代。
-预装验收范围见[验收报告](2026-10-16-preinstalled-harness-acceptance.md)。
+预装验收范围见[验收报告](../acceptance/2026-10-16-acceptance-preinstalled-harness.md)。
 
 ## 5. 分 track 统计与报告
 

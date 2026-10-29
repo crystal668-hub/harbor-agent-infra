@@ -1,14 +1,16 @@
 # 实验失败分类与重试／补跑策略迁移计划
 
+日期：2026-10-12（复审：2026-10-13）
+文档类型：plan
+状态：原提案未按本文接口实施；后续恢复体系已重新设计并实现。本文仅作设计沿革，当前行为见[恢复手册](../RECOVERY-SYSTEM-GUIDE.md)和[CLI 参考](../CLI-REFERENCE.md)。
+
 > 命令口径说明（2026-10-23）：本文保留历史方案，拟议的 `reassess`、`aggregate`
 > 不代表现有 CLI。当前合并用 `hai merge`，正式统计用 `hai summary`；
-> 实际命令和参数统一参见[当前 CLI 参考](CLI-REFERENCE.md)。
-
-初稿日期：2026-10-12；复审日期：2026-10-13（Asia/Shanghai）。
+> 实际命令和参数统一参见[当前 CLI 参考](../CLI-REFERENCE.md)。
 
 核对基线：初稿 Git `7490b8b`，本次复审起点 Git `1ef9482`；Python 3.12.13；锁定 Harbor 0.23.0 / `1e5c5c6db929a10a140d05e606882c671ae20729`；VGB 0.10.0。复审期间存在镜像、化学环境锁、VGB runtime 与预检的进行中修改，其衔接另列于第 3 节；未将其视为已验收的新正式环境，后续运行以实际冻结快照为准。
 
-状态：方案与实施计划，尚未实施。本文中的新 schema、状态、命令和门禁均为拟议契约，不代表当前可用能力。
+本文中的 schema、状态、命令和门禁是原提案，不代表当前可用能力。
 
 ## 1. 目标与迁移结论
 
@@ -48,24 +50,24 @@
 
 | 编号 | 已核实行为及证据 | 迁移影响 |
 | --- | --- | --- |
-| C1 | [实验契约](../src/harbor_agent_infra/contracts/experiment.py) 的 `RetrySpec` 只有 `n_attempts=1`、`max_retries=0`；Harbor `job.py` 按 `n_attempts × task × agent` 建立 TrialConfig | 有正式重复，但没有独立、稳定的 `slot_id/repeat_id` 与替代预算契约 |
-| C2 | [JobConfig 材料化](../src/harbor_agent_infra/harbor/job_config.py) 仅传 `RetryConfig(max_retries=...)`，其他重试设置继承 Harbor 默认 | 不能假定 AIREADY 的异常排除列表适用；需显式冻结有效重试配置 |
-| C3 | Harbor `trial/queue.py::_execute_trial_with_retries` 在重试前 `rmtree(trial.paths.trial_dir)`，再基于同一 TrialConfig 创建执行；[生命周期测试](../tests/test_harbor_lifecycle_integration.py) 验证新上下文与清理 | 事件中的旧 TrialResult 不等于旧日志、轨迹、评分原件仍然存在；开启内部重试前必须验证归档能力 |
+| C1 | [实验契约](../../src/harbor_agent_infra/contracts/experiment.py) 的 `RetrySpec` 只有 `n_attempts=1`、`max_retries=0`；Harbor `job.py` 按 `n_attempts × task × agent` 建立 TrialConfig | 有正式重复，但没有独立、稳定的 `slot_id/repeat_id` 与替代预算契约 |
+| C2 | [JobConfig 材料化](../../src/harbor_agent_infra/harbor/job_config.py) 仅传 `RetryConfig(max_retries=...)`，其他重试设置继承 Harbor 默认 | 不能假定 AIREADY 的异常排除列表适用；需显式冻结有效重试配置 |
+| C3 | Harbor `trial/queue.py::_execute_trial_with_retries` 在重试前 `rmtree(trial.paths.trial_dir)`，再基于同一 TrialConfig 创建执行；[生命周期测试](../../tests/test_harbor_lifecycle_integration.py) 验证新上下文与清理 | 事件中的旧 TrialResult 不等于旧日志、轨迹、评分原件仍然存在；开启内部重试前必须验证归档能力 |
 | C4 | 历史任务级覆盖机制曾按 lifecycle 非 completed 选择 task 并删除旧产物；该执行路径已移除 | 当前恢复统一使用审查后的 slot 清单，不覆盖原始证据 |
 | C5 | 历史任务级追加机制没有独立的 slot 替代预算，已从运行入口移除 | 当前 `recover` 使用冻结配置与获批 slot，`merge` 发布独立快照 |
-| C6 | `_job_execution_settings` 对比重复数、并发、retry、environment、agents、verifier；允许任务选择变化时可放宽来源配置哈希比较；[任务材料化](../src/harbor_agent_infra/harbor/task_materializer.py) 在共享 `tasks/` 路径写入 task.toml 和 prompt | 该比较不覆盖完整任务文件内容及其时间／网络设置，不能当作严格同条件补跑证明；物化发生在部分已有 manifest 校验之前，需防止先改旧任务快照再拒绝 |
-| C7 | `RunEventSink` 按 exception 决定 completed/failed/cancelled，并据此设置 protocol completion；[audit.failure_mode](../src/harbor_agent_infra/harbor/audit.py) 映射 setup、provider、timeout、verifier 等标签 | 有诊断线索，缺少执行机会、因果证据、有效性与处置分层；不能从标签自动推出补跑许可 |
-| C8 | [VgbVerifier](../adapters/vgb_verifier.py) 保存 `vgb-evaluation.json`，返回相同的 `vgb_score/reward`；non-scored 或非法分数被包装为 `VgbVerifierError`，错误产物只保留异常 type/message，不保留已返回的 domain_result | 已保留有效零分，但领域根因可能丢失。合成复现确认 failure_type 未保存；先补齐官方返回值与提取输入证据，不能假定现有错误文件足以分类 |
-| C9 | `_evaluate_record_file` 只处理 lifecycle completed；优先复用 verifier 产物并核对 reward；[投影](../integrations/vgb/result_projection.py) 根据 scored 状态写 lifecycle/protocol 字段 | 合成复现确认 failed 记录即使已有评分产物也被跳过。Harbor 在部分 Agent 超时／非零退出后仍会评分；应独立读取该评分并保留原生命周期，没有分数时再决定是否重评 |
-| C10 | [VgbRuntime.call](../integrations/vgb/runtime.py) 使用无显式 timeout 的 `subprocess.run`；verifier 通过 `asyncio.to_thread` 调用，Harbor 外层用 `wait_for` 限时 | 协程超时不保证线程及评分子进程停止。恢复前需确认旧评分已结束，后续增加评分子进程期限与回收契约并验证，不推断为已发生泄漏 |
-| C11 | [任务设置](../src/harbor_agent_infra/contracts/run.py) 默认 Agent 900 秒、Verifier 60 秒；[Codex 模板](../examples/experiments/codex/vgb-gpt.config.yaml) 明确 1800/120 秒、4 CPU/4096 MB、单并发、无内部 retry | 超时必须读取实际物化配置，不能硬编码 1800 秒；资源额度与资源峰值是两回事 |
-| C12 | [可观测性实施记录](plan/2026-10-11-native-observability-and-configs.md) 与 [观测实现](../src/harbor_agent_infra/harbor/observability.py) 提供阶段时长、usage、成本来源和工具失败下界；HTTP 请求重试、CPU 时间、内存峰值不可完整观测 | 未知继续为 null/unknown；不能把响应计数当 HTTP attempts，不能靠资源上限确认 OOM |
-| C13 | 历史补跑曾按缺最终答案标记选任务，并按最新完成时间选结果；相关执行代码已清除 | 历史结果和备份保留，当前选择采用[恢复与合并契约](RECOVERY-SYSTEM-GUIDE.md)，不以旧规则判断新正式样本 |
+| C6 | `_job_execution_settings` 对比重复数、并发、retry、environment、agents、verifier；允许任务选择变化时可放宽来源配置哈希比较；[任务材料化](../../src/harbor_agent_infra/harbor/task_materializer.py) 在共享 `tasks/` 路径写入 task.toml 和 prompt | 该比较不覆盖完整任务文件内容及其时间／网络设置，不能当作严格同条件补跑证明；物化发生在部分已有 manifest 校验之前，需防止先改旧任务快照再拒绝 |
+| C7 | `RunEventSink` 按 exception 决定 completed/failed/cancelled，并据此设置 protocol completion；[audit.failure_mode](../../src/harbor_agent_infra/harbor/audit.py) 映射 setup、provider、timeout、verifier 等标签 | 有诊断线索，缺少执行机会、因果证据、有效性与处置分层；不能从标签自动推出补跑许可 |
+| C8 | [VgbVerifier](../../adapters/vgb_verifier.py) 保存 `vgb-evaluation.json`，返回相同的 `vgb_score/reward`；non-scored 或非法分数被包装为 `VgbVerifierError`，错误产物只保留异常 type/message，不保留已返回的 domain_result | 已保留有效零分，但领域根因可能丢失。合成复现确认 failure_type 未保存；先补齐官方返回值与提取输入证据，不能假定现有错误文件足以分类 |
+| C9 | `_evaluate_record_file` 只处理 lifecycle completed；优先复用 verifier 产物并核对 reward；[投影](../../integrations/vgb/result_projection.py) 根据 scored 状态写 lifecycle/protocol 字段 | 合成复现确认 failed 记录即使已有评分产物也被跳过。Harbor 在部分 Agent 超时／非零退出后仍会评分；应独立读取该评分并保留原生命周期，没有分数时再决定是否重评 |
+| C10 | [VgbRuntime.call](../../integrations/vgb/runtime.py) 使用无显式 timeout 的 `subprocess.run`；verifier 通过 `asyncio.to_thread` 调用，Harbor 外层用 `wait_for` 限时 | 协程超时不保证线程及评分子进程停止。恢复前需确认旧评分已结束，后续增加评分子进程期限与回收契约并验证，不推断为已发生泄漏 |
+| C11 | [任务设置](../../src/harbor_agent_infra/contracts/run.py) 默认 Agent 900 秒、Verifier 60 秒；[Codex 模板](../../examples/experiments/codex/vgb-gpt.config.yaml) 明确 1800/120 秒、4 CPU/4096 MB、单并发、无内部 retry | 超时必须读取实际物化配置，不能硬编码 1800 秒；资源额度与资源峰值是两回事 |
+| C12 | [可观测性实施记录](../implementation/2026-10-11-implementation-native-observability-configs.md) 与 [观测实现](../../src/harbor_agent_infra/harbor/observability.py) 提供阶段时长、usage、成本来源和工具失败下界；HTTP 请求重试、CPU 时间、内存峰值不可完整观测 | 未知继续为 null/unknown；不能把响应计数当 HTTP attempts，不能靠资源上限确认 OOM |
+| C13 | 历史补跑曾按缺最终答案标记选任务，并按最新完成时间选结果；相关执行代码已清除 | 历史结果和备份保留，当前选择采用[恢复与合并契约](../RECOVERY-SYSTEM-GUIDE.md)，不以旧规则判断新正式样本 |
 | C14 | Harbor `job.py::_maybe_init_existing_job` 在 Job 创建时删除没有 `result.json` 的 Trial 目录；regrade 要求 separate verifier 与足够的 artifact manifest | 保全必须早于 `Job.create()`，不能依赖其后的 hook。首版通过新 Job 恢复；宿主 VGB 离线重评可独立实现，原生 regrade 兼容性不再作为前置门槛 |
-| C15 | [CLI](../src/harbor_agent_infra/cli.py) 的 run 不传 `--group` 仍执行双组；materialize 没有 group 参数且材料化双组；native E2E helper 已要求显式 paired opt-in | run 与 materialize 都应默认 skills_off，并提供显式 paired 选择；保持 experiment.v2 双组 schema 兼容，不为单组执行强制重做整个配置 schema |
+| C15 | [CLI](../../src/harbor_agent_infra/cli.py) 的 run 不传 `--group` 仍执行双组；materialize 没有 group 参数且材料化双组；native E2E helper 已要求显式 paired opt-in | run 与 materialize 都应默认 skills_off，并提供显式 paired 选择；保持 experiment.v2 双组 schema 兼容，不为单组执行强制重做整个配置 schema |
 | C16 | Harbor `Trial.run` 的 CANCEL 早于输出恢复和最终 result 落盘，END 在容器停止和 result 写入之后；END 之后仍会做日志脱敏和关闭。`_emit` 会 await hook 且异常向外传播 | CANCEL 与 END 属于同一个 attempt；hook 不等于最终稳定快照，END 也无法抓已删除的容器现场。首版在原生执行终止后核对归档，内部 retry 继续关闭；更早遥测需单独验证 Harbor 能力 |
 | C17 | Harbor Job 将重复 TrialConfig 保存在私有 `_trial_configs`；`JobLock.trials` 是条件锁定信息，没有稳定的 repeat_id → trial_name 映射 | 不依赖私有属性或把 lock 顺序视作公开 repeat 契约；首版可按 repeat 材料化 `n_attempts=1` 的 Job，绑定 repeat 后仍由 Harbor 调度其中多个 task |
-| C18 | [运行器](../src/harbor_agent_infra/harbor/run.py) 把 artifact 路径写入 events/per-record/manifest；[Viewer](../src/harbor_agent_infra/viewer.py) 以目录 basename 作为查找和缓存键；[VGB 安装脚本](../scripts/provision_vgb_runtime.py) 验证 wheel，但 runtime metadata 只返回 package/version/tracks | 目录搬迁要有旧路径解析，类别发现要避免重名误路由；同名 VGB 版本不足以证明相同宿主评分依赖，需要独立评分环境身份 |
+| C18 | [运行器](../../src/harbor_agent_infra/harbor/run.py) 把 artifact 路径写入 events/per-record/manifest；[Viewer](../../src/harbor_agent_infra/viewer.py) 以目录 basename 作为查找和缓存键；[VGB 安装脚本](../../scripts/provision_vgb_runtime.py) 验证 wheel，但 runtime metadata 只返回 package/version/tracks | 目录搬迁要有旧路径解析，类别发现要避免重名误路由；同名 VGB 版本不足以证明相同宿主评分依赖，需要独立评分环境身份 |
 
 进行中改动的衔接（与上述已提交基线区分）：审查结束前，工作区已增加 `integrations/vgb/chemistry.py` 的宿主／Agent 化学环境探测、二进制与参数／包哈希校验、`chemistry-preflight.json`，并在 run 和 VGB evaluate 路径接入检查。后续 P0/P3 **复用这套报告与锁**，分别引用 agent 与 verifier 快照，不另建重复的化学环境管理器。该改动尚未解决本文的 slot 身份、评分错误丢失、评分进程期限及生命周期耦合问题。只读 audit 不调用这项会访问 Docker 的运行预检；离线 reassess 使用宿主侧校验，不要求重新探测旧 Agent 容器。恢复预检写新 repair 目录，避免覆盖旧 run 的预检证据。
 

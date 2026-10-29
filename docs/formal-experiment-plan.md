@@ -233,7 +233,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 正式矩阵启动器和带 `--formal-repeat` 的直接运行在派发前校验这些条件；
 不符合则拒绝启动，不回退到历史运行时安装条件。镜像目前仅在本机，跨主机运行前需发布并核对
 Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨环境自动替代。
-验收依据见[预装镜像验收报告](plan/2026-10-16-preinstalled-harness-acceptance.md)。
+验收依据见[预装镜像验收报告](acceptance/2026-10-16-acceptance-preinstalled-harness.md)。
 
 ### 5.5 技能配置
 - **Group**: 仅运行 `skills_off`
@@ -255,7 +255,7 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 
 ### 6.1 失败分类原则
 
-按照 [失败恢复迁移计划](failure-recovery-migration-plan.md) 的判定矩阵：
+按照 [失败恢复迁移计划](plan/2026-10-12-plan-failure-recovery-migration.md) 的判定矩阵：
 
 | 失败类型 | 有效性判定 | 恢复策略 |
 |---------|-----------|---------|
@@ -783,7 +783,7 @@ uv run --locked --python 3.12 hai summary \
 | S | `openclaw-qwen-repeat1` + recovery batch1/2 | `openclaw-qwen-repeat1-merged` | 2026-10-26 | Advanced 004 两次获批补跑均因工程故障失败，恢复预算耗尽后按用户裁定计可评分 0；另 5 个 7200 秒能力超时按用户裁定各计 0。执行错误与三次尝试证据均保留。71/71 可评分；Advanced 20/20、均分 0.380477，Basic 51/51、均分 0.900612；`hai audit` 无待处理 recovery slot。 |
 
 来源 A 的 `summary` 内部原始 run ID 为历史名称 `claude-code-vgb-deepseek-cross-provider`，
-与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-native-recovery-concurrency-and-merge-plan.md)。
+与规范目录的对应关系见[恢复与目录迁移记录](plan/2026-10-15-plan-native-recovery-concurrency-merge.md)。
 Qwen 的首轮 71 个 slot 跨两个冻结环境；本轮按用户明确授权，将来源 F 作为 advanced 的临时新条件观测纳入来源 G 的最终选择，不新增正式 repeat。来源 F 的条件 ID 为 `claude-code-qwen-repeat1-advanced-preinstalled-20261017`，通过 manifest 的显式 `condition_change` 绑定目标材料化快照与锁文件哈希；每个恢复 Job 记录 `statistical_role: new_condition_observation`。basic 仍使用来源 C 的预装结果，7 个任务的来源关联和实际尝试次数保留。
 
 条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `reports/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
@@ -837,7 +837,7 @@ advanced；当前 G 的实际 merged 已包含 71 个代表（9 个 advanced、2
 ## 15. 附录
 
 ### 15.1 参考文档
-- [失败恢复迁移计划](failure-recovery-migration-plan.md)
+- [失败恢复迁移计划](plan/2026-10-12-plan-failure-recovery-migration.md)
 - [模型矩阵](model-matrix.md)
 - [配置文档](CONFIGURATION.md)
 - [化学环境](chemistry.md)
