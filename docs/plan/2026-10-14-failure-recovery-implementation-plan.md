@@ -1,7 +1,7 @@
 # 失败恢复系统实现计划
 
 > 历史实施方案，保留当时的拟议接口。文中的 `aggregate` 不是现有命令；
-> 实际执行统一使用[当前 CLI 参考](../cli-reference.md)中的命令与参数，
+> 实际执行统一使用[当前 CLI 参考](../CLI-REFERENCE.md)中的命令与参数，
 > 合并为 `hai merge`，正式成绩统计为 `hai summary`。
 
 ## 概述

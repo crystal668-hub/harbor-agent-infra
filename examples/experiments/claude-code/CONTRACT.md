@@ -6,7 +6,7 @@ Credentials are loaded from `.env` through `ANTHROPIC_API_KEY` and
 without a trailing `/v1`; do not normalize another gateway without testing it.
 
 Cross-provider templates for GPT, Qwen and DeepSeek are documented in
-`docs/cross-provider.md`. Their `provider` and `base_url_env` fields route host
+`docs/CROSS-PROVIDER.md`. Their `provider` and `base_url_env` fields route host
 credentials without embedding values in this configuration.
 
 ```bash

@@ -287,7 +287,7 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 4. **人工审查**: 检查恢复计划的准确性和合理性
 5. **执行恢复**: 运行 `recover` 命令，提交获准的补跑
 6. **合并与复审**: 用 `hai merge --dry-run` 审查代表选择，再用 `hai merge` 发布新快照；如有缺口，在派生快照上重新 audit，核对累计预算后再审查下一批
-7. **正式统计**: 运行 `hai summary` 汇总选定快照；命令名称与参数统一以[当前 CLI 参考](cli-reference.md)为准
+7. **正式统计**: 运行 `hai summary` 汇总选定快照；命令名称与参数统一以[当前 CLI 参考](CLI-REFERENCE.md)为准
 
 ### 6.3 替代预算
 
@@ -832,16 +832,16 @@ advanced；当前 G 的实际 merged 已包含 71 个代表（9 个 advanced、2
 
 加时结果全部验收并发布前，现有正式选择保持有效。发布后采用独立的 formal-selected-snapshots.json；
 必须注明“原 2h 尝试 + 超时 slot 的 12h 重跑”，并披露环境变化、历史尝试与实际新增消耗。
-执行入口及审核格式见 [加时补跑指南](timeout-rerun-guide.md)。
+执行入口及审核格式见 [加时补跑指南](TIMEOUT-RERUN-GUIDE.md)。
 
 ## 15. 附录
 
 ### 15.1 参考文档
 - [失败恢复迁移计划](failure-recovery-migration-plan.md)
 - [模型矩阵](model-matrix.md)
-- [配置文档](configuration.md)
+- [配置文档](CONFIGURATION.md)
 - [化学环境](chemistry.md)
-- [架构文档](architecture.md)
+- [架构文档](ARCHITECTURE.md)
 
 ### 15.2 变更历史
 - 2026-10-14: 初始版本，待审核

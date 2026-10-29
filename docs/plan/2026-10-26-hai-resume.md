@@ -2,7 +2,7 @@
 
 日期：2026-10-26（Asia/Shanghai）
 状态：用户已批准并完成实现；代码与使用说明见 src/harbor_agent_infra/resume/
-及 [续跑指南](../resume-guide.md)。已通过 provider-free 回归和两个合成 Docker
+及 [续跑指南](../RESUME-GUIDE.md)。已通过 provider-free 回归和两个合成 Docker
 取消续跑场景；未执行正式实验或调用真实 provider/私有 VGB 评分。
 
 ## 1. 唯一职责与范围

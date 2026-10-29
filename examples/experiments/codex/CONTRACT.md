@@ -10,7 +10,7 @@ No secret or endpoint value belongs in this YAML. The CLI version and immutable
 image come from `runtime-lock.json`.
 
 Cross-provider templates for Claude, Qwen and DeepSeek are documented in
-`docs/cross-provider.md`. Their `provider` and `base_url_env` fields route host
+`docs/CROSS-PROVIDER.md`. Their `provider` and `base_url_env` fields route host
 credentials without embedding values in this configuration.
 
 ```bash

@@ -1,5 +1,7 @@
 # Four harnesses and four selected models
 
+> 文档类型：实验文档（实验模型矩阵、参数与验证范围）。不属于通用开发者手册。
+
 The selected single-response output setting is now **64,000 tokens** in all
 16 example templates and local configurations. The field is
 `experiment.agent.max_output_tokens: 64000`. Probes on 2026-10-14 requested

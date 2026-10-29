@@ -1,8 +1,10 @@
 # 实验补跑快速指南
 
+> 文档类型：历史实验探索记录；不列入现行操作手册。
+
 > 本文是 2026-10-15 的历史探索记录，不是当前操作指南。下文试探性的
 > `hai run --resume` 不受现有 CLI 支持。实际执行请使用
-> [当前 CLI 参考](../cli-reference.md)及[恢复系统指南](../recovery-system-guide.md)，
+> [当前 CLI 参考](../CLI-REFERENCE.md)及[恢复系统指南](../RECOVERY-SYSTEM-GUIDE.md)，
 > 不按本历史记录重跑整个正式实验。
 
 ## 当前状态

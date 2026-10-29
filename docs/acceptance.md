@@ -5,7 +5,7 @@ Phase 0 is complete when a clean Python 3.12 environment can run `uv sync --froz
 VGB track fixtures are separate acceptance gates in later phases.
 
 Strict preinstalled harness images have separate gates described in
-[the preinstalled workflow](preinstalled-harness.md). The shared base's absence-of-harness
+[the preinstalled workflow](PREINSTALLED-HARNESS.md). The shared base's absence-of-harness
 assertion remains valid; each derived execution image instead must pass actual version,
 artifact, chemistry and offline Harbor setup checks. The original runtime-install gates
 below continue to validate historical configurations.

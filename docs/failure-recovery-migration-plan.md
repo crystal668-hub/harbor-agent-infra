@@ -2,7 +2,7 @@
 
 > 命令口径说明（2026-10-23）：本文保留历史方案，拟议的 `reassess`、`aggregate`
 > 不代表现有 CLI。当前合并用 `hai merge`，正式统计用 `hai summary`；
-> 实际命令和参数统一参见[当前 CLI 参考](cli-reference.md)。
+> 实际命令和参数统一参见[当前 CLI 参考](CLI-REFERENCE.md)。
 
 初稿日期：2026-10-12；复审日期：2026-10-13（Asia/Shanghai）。
 
@@ -60,7 +60,7 @@
 | C10 | [VgbRuntime.call](../integrations/vgb/runtime.py) 使用无显式 timeout 的 `subprocess.run`；verifier 通过 `asyncio.to_thread` 调用，Harbor 外层用 `wait_for` 限时 | 协程超时不保证线程及评分子进程停止。恢复前需确认旧评分已结束，后续增加评分子进程期限与回收契约并验证，不推断为已发生泄漏 |
 | C11 | [任务设置](../src/harbor_agent_infra/contracts/run.py) 默认 Agent 900 秒、Verifier 60 秒；[Codex 模板](../examples/experiments/codex/vgb-gpt.config.yaml) 明确 1800/120 秒、4 CPU/4096 MB、单并发、无内部 retry | 超时必须读取实际物化配置，不能硬编码 1800 秒；资源额度与资源峰值是两回事 |
 | C12 | [可观测性实施记录](plan/2026-10-11-native-observability-and-configs.md) 与 [观测实现](../src/harbor_agent_infra/harbor/observability.py) 提供阶段时长、usage、成本来源和工具失败下界；HTTP 请求重试、CPU 时间、内存峰值不可完整观测 | 未知继续为 null/unknown；不能把响应计数当 HTTP attempts，不能靠资源上限确认 OOM |
-| C13 | 历史补跑曾按缺最终答案标记选任务，并按最新完成时间选结果；相关执行代码已清除 | 历史结果和备份保留，当前选择采用[恢复与合并契约](recovery-system-guide.md)，不以旧规则判断新正式样本 |
+| C13 | 历史补跑曾按缺最终答案标记选任务，并按最新完成时间选结果；相关执行代码已清除 | 历史结果和备份保留，当前选择采用[恢复与合并契约](RECOVERY-SYSTEM-GUIDE.md)，不以旧规则判断新正式样本 |
 | C14 | Harbor `job.py::_maybe_init_existing_job` 在 Job 创建时删除没有 `result.json` 的 Trial 目录；regrade 要求 separate verifier 与足够的 artifact manifest | 保全必须早于 `Job.create()`，不能依赖其后的 hook。首版通过新 Job 恢复；宿主 VGB 离线重评可独立实现，原生 regrade 兼容性不再作为前置门槛 |
 | C15 | [CLI](../src/harbor_agent_infra/cli.py) 的 run 不传 `--group` 仍执行双组；materialize 没有 group 参数且材料化双组；native E2E helper 已要求显式 paired opt-in | run 与 materialize 都应默认 skills_off，并提供显式 paired 选择；保持 experiment.v2 双组 schema 兼容，不为单组执行强制重做整个配置 schema |
 | C16 | Harbor `Trial.run` 的 CANCEL 早于输出恢复和最终 result 落盘，END 在容器停止和 result 写入之后；END 之后仍会做日志脱敏和关闭。`_emit` 会 await hook 且异常向外传播 | CANCEL 与 END 属于同一个 attempt；hook 不等于最终稳定快照，END 也无法抓已删除的容器现场。首版在原生执行终止后核对归档，内部 retry 继续关闭；更早遥测需单独验证 Harbor 能力 |

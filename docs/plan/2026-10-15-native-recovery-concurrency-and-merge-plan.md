@@ -386,7 +386,7 @@ uv run --locked --python 3.12 hai merge \
 | 3 | 新快照与原生记录投影 | merger、harbor/run.py 的必要共享投影、相关测试 | 原始证据不变；新路径可解析；VGB 分数一致 |
 | 4 | 汇总、预算与再审计衔接 | merger、auditor、analyzer、Viewer 必要部分 | 任意 run 的原 slot 集合不变；尝试/代表分层；不重复批准或消耗预算 |
 | 5 | 全矩阵入口与命名衔接 | 正式实验执行脚本、正式配置生成入口、对应契约测试 | 全部 16 组合／3 repeat 使用统一命名、显式身份、配置快照与恢复路径 |
-| 6 | 统一操作说明与验收报告 | recovery-system-guide.md、实验本地报告 | 通用流程说明、全矩阵合成验收及首个真实案例 dry-run／合并记录 |
+| 6 | 统一操作说明与验收报告 | RECOVERY-SYSTEM-GUIDE.md、实验本地报告 | 通用流程说明、全矩阵合成验收及首个真实案例 dry-run／合并记录 |
 
 若单步仍过大，继续按模块拆分，不把恢复、合并和历史数据迁移塞进一个提交。
 每次修改 tracked 文件后先运行适用测试，再提交；使用 Python 3.12 和 `uv --locked`。
@@ -453,7 +453,7 @@ git diff --check
 
 - [正式实验协议](../formal-experiment-plan.md)
 - [失败恢复迁移计划](../failure-recovery-migration-plan.md)
-- [恢复系统使用说明](../recovery-system-guide.md)
+- [恢复系统使用说明](../RECOVERY-SYSTEM-GUIDE.md)
 
 
 ## 14. 实施与隔离验证记录
@@ -473,7 +473,7 @@ git diff --check
 - 并发修改不会切换已经启动的旧进程；主 checkout 的部署、真实合并发布和当前批次切换
   均未执行。当前兼容符号链接保持有效。
 
-运行说明及已实现命令见 [恢复系统使用说明](../recovery-system-guide.md)。
+运行说明及已实现命令见 [恢复系统使用说明](../RECOVERY-SYSTEM-GUIDE.md)。
 
 
 ## Consolidated merged view

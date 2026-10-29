@@ -13,7 +13,7 @@ uv sync --locked --python 3.12
 uv run --locked --python 3.12 hai doctor
 ```
 
-Formal runs also require the locked harness images, a provisioned VGB runtime, the chemistry tools, and provider credentials in the local environment. See [preinstalled harness setup](docs/preinstalled-harness.md) and [chemistry setup](docs/chemistry.md).
+Formal runs also require the locked harness images, a provisioned VGB runtime, the chemistry tools, and provider credentials in the local environment. See [preinstalled harness setup](docs/PREINSTALLED-HARNESS.md) and [chemistry setup](docs/chemistry.md).
 
 ## Run and inspect experiments
 
@@ -27,9 +27,11 @@ uv run --locked --python 3.12 hai run \
   --formal-repeat 1
 ```
 
-Browse local artifacts with `uv run --locked --python 3.12 hai view`. The canonical commands, arguments, and recovery sequence are in the [CLI reference](docs/cli-reference.md). Use the [formal experiment plan](docs/formal-experiment-plan.md) for the protocol and [configuration guide](docs/configuration.md) for templates. Use [resume](docs/resume-guide.md) only for unexpectedly interrupted runs; completed failures follow the audit, review, recover, and merge workflow.
+Browse local artifacts with `uv run --locked --python 3.12 hai view`. The canonical commands, arguments, and recovery sequence are in the [CLI reference](docs/CLI-REFERENCE.md). Use the [formal experiment plan](docs/formal-experiment-plan.md) for the protocol and [configuration guide](docs/CONFIGURATION.md) for templates. Use [resume](docs/RESUME-GUIDE.md) only for unexpectedly interrupted runs; completed failures follow the audit, review, recover, and merge workflow.
 
 ## Development
+
+See the [developer and maintainer manuals](docs/README.md) for architecture, configuration contracts, CLI reference, and operations.
 
 Run provider-free tests with:
 

@@ -8,7 +8,7 @@
 run → audit → 人工审查 → recover → merge → summary
 ```
 
-命令和参数以[当前 CLI 参考](../cli-reference.md)、CLI 注册代码及 `--help` 为准。
+命令和参数以[当前 CLI 参考](../CLI-REFERENCE.md)、CLI 注册代码及 `--help` 为准。
 `recover` 和 `merge` 均先预览并审查；每个原始 slot 仅保留一个正式代表，
 全部实际尝试及其成本、错误和来源仍保留在产物中。
 

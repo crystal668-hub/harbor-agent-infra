@@ -19,7 +19,7 @@
 - 新配置明确使用 `installation_mode: preinstalled`，仅声明 `skills_off`；旧锁和旧双组配置兼容。
 - 独立 4142 端口的验收桥接服务已停止；开发验收没有遗留运行容器。
 
-操作入口见 [`docs/preinstalled-harness.md`](../preinstalled-harness.md)。
+操作入口见 [`docs/PREINSTALLED-HARNESS.md`](../PREINSTALLED-HARNESS.md)。
 
 ## 2. 四个保留的本地执行镜像
 

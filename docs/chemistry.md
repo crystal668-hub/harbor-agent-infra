@@ -1,5 +1,7 @@
 # Chemistry alignment
 
+> 文档类型：实验文档（实验化学工具配置与一致性要求）。不属于通用开发者手册。
+
 The agent image and host verifier share the `chemistry` lock in `runtime-lock.json`:
 RDKit 2026.03.2, xTB 6.7.1, and CREST 2.12. VGB Python remains in its isolated
 Python 3.12 runtime. Both ordinary xTB and CREST verifiers use the tools from one

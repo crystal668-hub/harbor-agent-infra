@@ -228,7 +228,7 @@ uv run --locked hai view
 
 ### 恢复与正式统计
 
-现行命令统一参见[当前 CLI 参考](../cli-reference.md)及
+现行命令统一参见[当前 CLI 参考](../CLI-REFERENCE.md)及
 [正式方案的恢复示例](../formal-experiment-plan.md#94-恢复阶段)。
 `audit` 接受 run 名称；`recover` 接受清单位置参数并要求配置；
 `merge` 发布新的代表快照；`summary` 汇总正式分 track 成绩。
