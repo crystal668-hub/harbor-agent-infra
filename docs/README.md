@@ -32,6 +32,7 @@
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
 
 - [VGB RC接入验收](acceptance/2026-10-30-acceptance-vgb-rc-upgrade.md)：包来源、repeat1迁移、开放生成准备及验证边界。
+- [通用Agent化学任务研究（VGB RC1）](audit/2026-10-31-audit-general-agent-chemistry-vgb-rc.html)：基于 CURRENT 的 70 题、1120 个slot互动报告；0.10.0历史评分未重评。2026-10-29 的71题报告保留为历史口径。
 
 ## 维护约定
 
