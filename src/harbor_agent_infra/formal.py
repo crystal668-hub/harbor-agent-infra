@@ -42,10 +42,12 @@ def validate_formal_preinstalled_experiment(experiment: dict, workspace_root: Pa
         raise ValueError("formal config must declare only skills_off")
 
 
-def formal_run_name(harness: str, provider: str, repeat: int) -> str:
+def formal_run_name(
+    harness: str, provider: str, repeat: int, *, namespace: str = ""
+) -> str:
     if harness not in HARNESSES or provider not in PROVIDERS or repeat < 1:
         raise ValueError("Formal run needs a known harness/provider and a positive repeat")
-    return f"{harness}-{provider}-repeat{repeat}"
+    return "-".join(part for part in (harness, provider, namespace, f"repeat{repeat}") if part)
 
 
 def freeze_formal_slots(output: Path, context: dict, materialized, experiment: dict) -> dict:

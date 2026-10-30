@@ -391,6 +391,9 @@ def main(argv: list[str] | None = None) -> int:
             validate_formal_preinstalled_experiment(
                 spec.model_dump(mode="json"), Path(__file__).resolve().parents[2]
             )
+            required_root = Path("run-artifacts/formal")
+            if args.formal_root.parts[-2:] != required_root.parts:
+                raise ValueError(f"Formal execution requires --formal-root {required_root}")
             from integrations.vgb.catalog import SUBSETS, locked_cases
 
             selected_lock = json.loads(Path(spec.benchmark.package_lock).read_text())
@@ -406,11 +409,12 @@ def main(argv: list[str] | None = None) -> int:
                 actual_cases = [case.model_dump() for case in spec.benchmark.cases]
                 if actual_cases != expected_cases:
                     raise ValueError("Formal task inventory differs from locked VGB subset")
-                required_root = Path("run-artifacts/formal") / f"vgb-{locked_version}" / subset
-                if args.formal_root.parts[-2:] != (f"vgb-{locked_version}", subset):
-                    raise ValueError(f"RC formal execution requires --formal-root {required_root}")
                 benchmark_identity = {"version": locked_version, "subset": subset, "view": "native"}
-            name = formal_run_name(spec.agent.adapter, args.formal_provider, args.formal_repeat)
+            namespace = subset if subset == "open-generation" else ""
+            name = formal_run_name(
+                spec.agent.adapter, args.formal_provider, args.formal_repeat,
+                namespace=namespace,
+            )
             expected_output = args.formal_root / name
             if (args.output_dir is not None
                     and args.output_dir.resolve() != expected_output.resolve()):

@@ -276,7 +276,18 @@ def test_formal_naming_rejects_ambiguous_inputs(args):
         formal_run_name(*args)
 
 
-def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("tracks", "expected_name"),
+    [
+        (("property_calculation_advanced", "property_calculation_basic"),
+         "claude-code-deepseek-repeat2"),
+        (("open_generation_rdkit", "open_generation_xtb"),
+         "claude-code-deepseek-open-generation-repeat2"),
+    ],
+)
+def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(
+    tmp_path, monkeypatch, tracks, expected_name
+):
     from unittest.mock import AsyncMock
 
     from harbor_agent_infra.cli import main
@@ -298,7 +309,7 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
             spec.benchmark.cases[0].model_copy(
                 update={"track": track, "task_ids": [track + "_001"]}
             )
-            for track in ("property_calculation_advanced", "property_calculation_basic")
+            for track in tracks
         ]}),
         "agent": spec.agent.model_copy(update={"installation_mode": "preinstalled"}),
         "image": spec.image.model_copy(update={
@@ -318,7 +329,7 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
     monkeypatch.setattr("harbor_agent_infra.cli.run_paired_jobs", run)
     monkeypatch.setattr("integrations.vgb.catalog.locked_cases",
                         lambda *_: [c.model_dump() for c in spec.benchmark.cases])
-    formal_root = tmp_path / "vgb-1.0.0rc1" / "property-calculation"
+    formal_root = tmp_path / "run-artifacts" / "formal"
     args = [
         "run",
         "--config",
@@ -334,9 +345,13 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
         main(args)
     assert run.await_count == 0
     monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: config)
+    versioned_args = args.copy()
+    versioned_args[-1] = str(tmp_path / "vgb-1.0.0rc1" / "property-calculation")
+    with pytest.raises(ValueError, match="requires --formal-root run-artifacts/formal"):
+        main(versioned_args)
     assert main(args) == 0
     kwargs = run.await_args.kwargs
-    assert kwargs["output_root"] == formal_root / "claude-code-deepseek-repeat2"
+    assert kwargs["output_root"] == formal_root / expected_name
     assert kwargs["group_id"] == "skills_off"
     assert kwargs["formal_context"]["repeat"] == 2
     kwargs["output_root"].mkdir(parents=True)
@@ -357,7 +372,9 @@ def test_rc_matrix_isolated_by_subset_and_repeat():
         for name, cmd in commands:
             root = cmd[cmd.index('--formal-root') + 1]
             roots.append(root + '/' + name)
-            assert root == 'run-artifacts/formal/vgb-1.0.0rc1/' + subset
+            assert root == 'run-artifacts/formal'
+            if subset == 'open-generation':
+                assert '-open-generation-repeat' in name
             assert '/' + subset + '/' in cmd[cmd.index('--config') + 1]
     assert len(set(roots)) == 80
     with pytest.raises(ValueError):
@@ -371,3 +388,31 @@ def test_matrix_cli_requires_explicit_subset(monkeypatch):
     with pytest.raises(SystemExit) as error:
         main()
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize(
+    ("subset", "repeat"),
+    [("property-calculation", 2), ("open-generation", 1)],
+)
+def test_formal_matrix_logs_use_shared_layout(tmp_path, monkeypatch, subset, repeat):
+    from scripts.run_formal_matrix import main
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", [
+        "matrix", "--subset", subset, "--repeats", str(repeat),
+    ])
+    monkeypatch.setattr("scripts.run_formal_matrix.validate_formal_configs", lambda *_: None)
+    dispatched = []
+
+    def fake_run(command, **kwargs):
+        dispatched.append(command)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("scripts.run_formal_matrix.subprocess.run", fake_run)
+    assert main() == 0
+    assert len(dispatched) == 16
+    assert {p.name for p in (tmp_path / "logs/formal-experiments").iterdir()} == {
+        name + ".log" for name, _ in matrix_commands(subset, (repeat,))
+    }
+    assert all(command[command.index("--formal-root") + 1] == "run-artifacts/formal"
+               for command in dispatched)

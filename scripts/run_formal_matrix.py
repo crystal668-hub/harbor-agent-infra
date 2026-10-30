@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 from pathlib import Path
 
@@ -61,7 +60,6 @@ def validate_formal_configs(workspace_root: Path, subset: str | None = None) -> 
 def matrix_commands(
     subset: str = "property-calculation",
     repeats: tuple[int, ...] = (1, 2, 3),
-    version: str = "1.0.0rc1",
 ) -> list[tuple[str, list[str]]]:
     from integrations.vgb.catalog import SUBSETS
 
@@ -73,7 +71,8 @@ def matrix_commands(
     for repeat in sorted(repeats):
         for harness in HARNESSES:
             for template, provider in MODELS:
-                name = formal_run_name(harness, provider, repeat)
+                namespace = subset if subset == "open-generation" else ""
+                name = formal_run_name(harness, provider, repeat, namespace=namespace)
                 commands.append(
                     (
                         name,
@@ -88,7 +87,7 @@ def matrix_commands(
                             "--config",
                             f"configs/experiments/{subset}/{harness}/vgb-{template}.config.yaml",
                             "--formal-root",
-                            f"run-artifacts/formal/vgb-{version}/{subset}",
+                            "run-artifacts/formal",
                             "--group",
                             "skills_off",
                             "--formal-provider",
@@ -113,11 +112,10 @@ def main() -> int:
     try:
         workspace = Path(__file__).resolve().parents[1]
         validate_formal_configs(workspace, args.subset)
-        version = json.loads((workspace / "runtime-lock.json").read_text())["vgb"]["version"]
         repeats = tuple(
             args.repeats or ((2, 3) if args.subset == "property-calculation" else (1, 2, 3))
         )
-        commands = matrix_commands(args.subset, repeats, version)
+        commands = matrix_commands(args.subset, repeats)
     except ValueError as exc:
         parser.error(str(exc))
     for name, command in commands:
@@ -133,7 +131,7 @@ def main() -> int:
                 return 0
             if choice != "y":
                 continue
-        logs = Path("logs/formal-experiments") / f"vgb-{version}" / args.subset
+        logs = Path("logs/formal-experiments")
         logs.mkdir(parents=True, exist_ok=True)
         with (logs / f"{name}.log").open("x") as handle:
             result = subprocess.run(command, stdout=handle, stderr=subprocess.STDOUT)

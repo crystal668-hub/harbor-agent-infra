@@ -26,11 +26,13 @@ doctor 只检查基础运行条件，不能代替镜像、provider 和 VGB 验�
 
     uv run --locked --python 3.12 hai run \
       --config 'configs/experiments/property-calculation/<harness>/vgb-<model>.config.yaml' \
-      --formal-root run-artifacts/formal/vgb-1.0.0rc1/property-calculation \
+      --formal-root run-artifacts/formal \
       --group skills_off --formal-provider '<provider>' --formal-repeat 2
 
 GPT 模板对应 provider openai，Claude 模板对应 anthropic。
-正式目录为 run-artifacts/formal/vgb-1.0.0rc1/<subset>/<harness>-<provider>-repeat<N>/；已存在的目录拒绝重建。
+正式运行共用 run-artifacts/formal/<run-name>/；性质计算 repeat2 的 run-name 为
+<harness>-<provider>-repeat2，沿用 repeat1 格式。开放生成 run-name 另含 open-generation 子集标识，
+以免与性质计算 repeat1 冲突。已存在的目录拒绝重建；详见 [CLI 参考](CLI-REFERENCE.md#vgb-rc-正式子集与结果迁移)。
 run 会启动实际实验；材料化也会写入任务和配置，两者都没有 --dry-run 参数。
 
 ## 批量辅助入口
@@ -42,7 +44,8 @@ run 会启动实际实验；材料化也会写入任务和配置，两者都没�
 以上是三种分别选择的操作：预览、交互执行、自动执行。预览仅打印命令，但也先检查正式配置。
 辅助脚本调用 scripts/run_formal_matrix.py，逐个原始 run 串行调度；Job 内并发由配置和正式入口约束。
 2026-10-31 核对：脚本遇到已有目标目录直接报错，不隐式跳过或恢复。进入下一轮前应核对上一轮所有 run 的终态；
-非零退出应先排查，不通过删除目录重复派发。日志保存到 logs/formal-experiments/vgb-1.0.0rc1/<subset>/。
+非零退出应先排查，不通过删除目录重复派发。所有矩阵日志保存到
+logs/formal-experiments/<run-name>.log；性质计算 repeat2 仅将 repeat1 改为 repeat2。
 
 ## 浏览与汇总
 

@@ -139,8 +139,12 @@ bash scripts/run_formal_experiments.sh --subset property-calculation --repeats 2
 bash scripts/run_formal_experiments.sh --subset open-generation --dry-run
 ```
 
-新正式运行使用 `--formal-root run-artifacts/formal/vgb-1.0.0rc1/<subset>`，
-并选择 `configs/experiments/<subset>/<harness>/vgb-<model>.config.yaml`。
+2026-10-31 按用户要求，所有正式运行统一使用 `--formal-root run-artifacts/formal`，
+输出为 `run-artifacts/formal/<run-name>/`，矩阵日志为
+`logs/formal-experiments/<run-name>.log`；路径不依赖 VGB 包版本。
+性质计算 run-name 为 `<harness>-<provider>-repeat<N>`，repeat2 仅将 repeat1 改为 repeat2；
+开放生成 run-name 为 `<harness>-<provider>-open-generation-repeat<N>`，避免与已存在的
+性质计算 repeat1 同名。配置仍选择 `configs/experiments/<subset>/<harness>/vgb-<model>.config.yaml`。
 已有目录直接报错，不隐式跳过或恢复。跨版本、子集或迁移口径的summary混合输入被拒绝。
 
 任务清单更新器从当前锁匹配的runtime读取完整ID：

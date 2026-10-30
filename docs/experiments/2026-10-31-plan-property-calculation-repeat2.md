@@ -22,7 +22,7 @@
 | 执行环境 | 主工作区绝对路径 `runtime-lock.json`；preinstalled、linux/arm64、pull_policy=never |
 | 模型 | gpt-6.1-sol、claude-opus-5.5、qwen3.8-max、deepseek-v4-pro；路由和模型版本不变 |
 | 本机准备 | 必需环境变量均非空，skills_root存在；仅核对存在性，不披露值，不代表认证/额度可用 |
-| 输出隔离 | 版本/子集目录下生成16个 `*-repeat2`；核对时性质计算目标树及对应矩阵日志均不存在 |
+| 输出与日志 | 沿用 repeat1 目录格式，仅将名称中的 repeat1 替换为 repeat2；16个目标和日志路径无冲突 |
 
 四个本地执行镜像的 ID、平台与运行锁完全一致；Docker daemon 可访问，`hai doctor`全部通过。
 本轮未重跑镜像内化学探测或 provider 端到端，2026-10-30 的化学验收仍按其原范围解释。
@@ -84,7 +84,14 @@ repeat1 状态复核证据：
 5. 16个组合全部结案后，分别报告 Advanced 304 slots、Basic 816 slots，区分官方评分、
    协议计零、未评分、工程失败及全部尝试成本。每个run只选一个代表快照，验收后再准备repeat3。
 
-目标为 `run-artifacts/formal/vgb-1.0.0rc1/property-calculation/<harness>-<provider>-repeat2/`，
-日志位于 `logs/formal-experiments/vgb-1.0.0rc1/property-calculation/`。
+2026-10-31 按用户要求调整：输出由版本/子集分层路径改为
+`run-artifacts/formal/<harness>-<provider>-repeat2/`，
+日志由版本/子集分层路径改为
+`logs/formal-experiments/<harness>-<provider>-repeat2.log`；
+与 repeat1 格式一致，仅替换 repeat 编号。矩阵入口和 CLI 路径校验同步调整；
+所有正式运行共用上述两级根目录，包版本/子集身份仍冻结在协议中，不参与路径路由。
+开放生成为避免与已有性质计算 repeat1 同名，采用
+`run-artifacts/formal/<harness>-<provider>-open-generation-repeat<N>/` 和对应同名日志。
+本轮不创建任何实验目录或日志。
 按每题均耗时30分钟的假设，一轮约280小时（11.7天）；若全部用满2小时Agent预算，
 Agent部分约1120小时（46.7天）。均不含评分、暂停、故障和恢复开销，不作工期承诺。

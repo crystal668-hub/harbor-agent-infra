@@ -368,11 +368,10 @@ configs/experiments/
 
 ### 8.2 关键配置字段
 
-需要在启动前调整的字段（其他保持模板默认值）：
+关键配置字段（本机配置已物化）：
 
 ```yaml
 run:
-  output_dir: run-artifacts/formal/vgb-1.0.0rc1/<subset>/<harness>-<provider>-repeat<N>
   vgb_python: .vgb-runtime-1.0.0rc1/bin/python
 
 experiment:
@@ -388,6 +387,11 @@ experiment:
     n_attempts: 1
     max_retries: 0
 ```
+
+正式运行输出由 CLI 的 `--formal-root run-artifacts/formal` 与规范 run-name 决定，
+不使用模板中 `run.output_dir` 的路径。矩阵日志统一位于 `logs/formal-experiments/`。
+性质计算 run-name 保持 `<harness>-<provider>-repeat<N>`；开放生成加入
+`open-generation` 子集标识，防止与性质计算 repeat1 同名。
 
 ### 8.3 环境变量（.env）
 
@@ -465,7 +469,7 @@ bash scripts/run_formal_experiments_interactive.sh --subset open-generation
 # 示例: OpenClaw + GPT，开放生成repeat1（执行命令，本轮未运行）
 uv run --locked --python 3.12 hai run \
   --config configs/experiments/open-generation/openclaw/vgb-gpt.config.yaml \
-  --formal-root run-artifacts/formal/vgb-1.0.0rc1/open-generation \
+  --formal-root run-artifacts/formal \
   --group skills_off --formal-provider openai --formal-repeat 1
 ```
 
@@ -473,7 +477,11 @@ uv run --locked --python 3.12 hai run \
 不能作为后续正式 run 的启动配置。
 
 统一入口要求显式 --subset；开放生成默认repeat1/2/3，性质计算默认repeat2/3，可用 --repeats显式选择。
-新目录隔离在 run-artifacts/formal/vgb-1.0.0rc1/<subset>/。已有目标直接报错，须检查后显式恢复；不隐式跳过。
+2026-10-31 按用户要求，所有正式实验共用 `run-artifacts/formal/<run-name>/` 和
+`logs/formal-experiments/<run-name>.log`，不按 VGB 包版本路由。性质计算 repeat2
+沿用 repeat1 的名称格式，仅替换 repeat 编号；开放生成名称带子集标识以避免碰撞。
+旧值为版本/子集分层目录；历史运行目录和结果不移动。
+已有目标直接报错，须检查后显式恢复；不隐式跳过。
 
 ### 9.3 监控与验收
 
