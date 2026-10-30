@@ -92,6 +92,8 @@ def freeze_formal_slots(output: Path, context: dict, materialized, experiment: d
                 "resource_config_sha256": group.resource_config_sha256,
                 "public_task_sha256": public_hash.hexdigest(),
             }
+            if context.get("benchmark_identity"):
+                identity["benchmark_identity"] = context["benchmark_identity"]
             slot_id = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
             slot = {**identity, "slot_id": slot_id}
             slots.append(slot)
@@ -117,8 +119,16 @@ def aggregate_formal_snapshots(
     run_timing = {}
     analysis_entries = []
     include_analysis = top_n is not None or score_bins is not None
+    selected_identity = None
     for path in paths:
         payload = json.loads((path / "results.json").read_text())
+        identity = payload.get("benchmark_identity")
+        if identity is None and (path / "protocol.json").is_file():
+            identity = json.loads((path / "protocol.json").read_text()).get("benchmark_identity")
+        identity = identity or {"version": "legacy", "subset": "legacy", "view": "legacy"}
+        if selected_identity is not None and selected_identity != identity:
+            raise ValueError("Cannot aggregate mixed benchmark versions, subsets or views")
+        selected_identity = identity
         if payload.get("baseline_score_dispositions"):
             from harbor_agent_infra.timeout_rerun.dispositions import scoring_records
 
@@ -148,6 +158,7 @@ def aggregate_formal_snapshots(
 
     summary = {
         "schema_version": "formal-summary.v1",
+        "benchmark_identity": selected_identity,
         "runs": len(seen_runs),
         "slots": len(slots),
         "summary": score_summary(results),
