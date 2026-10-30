@@ -151,6 +151,24 @@ def test_skip_non_job_directories(tmp_path: Path) -> None:
     assert "no-jobs-dir" not in run_by_name  # Skipped because no jobs/ dir
 
 
+def test_discover_timeout_rerun_campaigns_recursively(tmp_path: Path) -> None:
+    base = tmp_path / "artifacts"
+    campaign_jobs = base / "timeout-rerun" / "batch" / "campaign-001" / "jobs"
+    (campaign_jobs / "job-a").mkdir(parents=True)
+    (campaign_jobs / "job-a" / "config.json").touch()
+    unrelated_jobs = base / "other-archive" / "nested" / "jobs"
+    (unrelated_jobs / "job-b").mkdir(parents=True)
+    (unrelated_jobs / "job-b" / "config.json").touch()
+
+    runs = discover_artifact_runs(base)
+
+    assert len(runs) == 1
+    assert runs[0].name == "timeout-rerun/batch/campaign-001"
+    assert runs[0].category == "timeout-rerun"
+    assert runs[0].jobs_dir == campaign_jobs
+    assert runs[0].job_count == 1
+
+
 def test_cache_key_format(artifacts_dir: Path) -> None:
     """Test that _cache_key generates correct format for categorized vs legacy."""
     from harbor_agent_infra.viewer import _RunDispatcher

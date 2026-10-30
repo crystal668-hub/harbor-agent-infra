@@ -38,11 +38,11 @@ class ArtifactRun:
     jobs_dir: Path
     job_count: int
     modified_at: float
-    category: str | None  # 'formal', 'temporary', or None for legacy top-level
+    category: str | None  # formal, temporary, timeout-rerun, or None for legacy
 
 
 def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
-    """Discover artifact runs, supporting categorized (formal/temporary) and legacy top-level layout."""
+    """Discover categorized, timeout-rerun, and legacy top-level artifact runs."""
     runs = []
 
     # Discover categorized runs (formal/ and temporary/)
@@ -66,10 +66,40 @@ def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
                     )
                 )
 
+    # Timeout campaigns are nested below timeout-rerun/<campaign>/jobs.
+    timeout_dir = artifacts_dir / "timeout-rerun"
+    if timeout_dir.is_dir() and not timeout_dir.is_symlink():
+        for jobs_dir in timeout_dir.rglob("jobs"):
+            relative = jobs_dir.relative_to(timeout_dir)
+            if (
+                not jobs_dir.is_dir()
+                or jobs_dir.is_symlink()
+                or len(relative.parts) < 2
+                or "jobs" in relative.parts[:-1]
+                or any(
+                    (timeout_dir / Path(*relative.parts[:index])).is_symlink()
+                    for index in range(1, len(relative.parts))
+                )
+            ):
+                continue
+            run_dir = jobs_dir.parent
+            job_count = sum(
+                job.is_dir() and (job / "config.json").is_file() for job in jobs_dir.iterdir()
+            )
+            runs.append(
+                ArtifactRun(
+                    name=(Path("timeout-rerun") / run_dir.relative_to(timeout_dir)).as_posix(),
+                    jobs_dir=jobs_dir,
+                    job_count=job_count,
+                    modified_at=run_dir.stat().st_mtime,
+                    category="timeout-rerun",
+                )
+            )
+
     # Discover legacy top-level runs (backward compatibility)
     for child in artifacts_dir.iterdir():
         # Skip category directories
-        if child.name in ("formal", "temporary"):
+        if child.name in ("formal", "temporary", "timeout-rerun"):
             continue
 
         jobs_dir = child / "jobs"
@@ -293,6 +323,10 @@ def _directory_page(runs: tuple[ArtifactRun, ...]) -> str:
         background: #fee;
         color: #b71c1c;
       }}
+      .category.timeout-rerun {{
+        background: #e8eaf6;
+        color: #303f9f;
+      }}
       .category.legacy {{
         background: #e0e0e0;
         color: #616161;
@@ -329,6 +363,7 @@ def _directory_page(runs: tuple[ArtifactRun, ...]) -> str:
         .run:hover, .run:focus-visible {{ background: #19201b; }}
         .category.formal {{ background: #1a3d2a; color: #72d796; }}
         .category.temporary {{ background: #3d1a1a; color: #ff6b6b; }}
+        .category.timeout-rerun {{ background: #202b50; color: #b3c4ff; }}
         .category.legacy {{ background: #2a2a2a; color: #9e9e9e; }}
         .open, code {{ color: #72d796; }}
         .empty strong {{ color: #e6ebe7; }}
@@ -357,6 +392,8 @@ def _run_row(run: ArtifactRun) -> str:
         category_badge = '<span class="category formal">Formal</span>'
     elif run.category == "temporary":
         category_badge = '<span class="category temporary">Temporary</span>'
+    elif run.category == "timeout-rerun":
+        category_badge = '<span class="category timeout-rerun">Timeout rerun</span>'
     else:
         category_badge = '<span class="category legacy">Legacy</span>'
 

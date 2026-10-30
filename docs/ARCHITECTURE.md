@@ -79,5 +79,6 @@ Harbor Agent Infra 是实验控制面：校验配置、材料化任务、连接�
 - summary 的 selected_slot_sum 是最终代表 Trial 全生命周期时长之和，既不是墙钟跨度，
   也不是全部尝试消耗；缺失时长不补零。字段见 [CLI 参考](CLI-REFERENCE.md#最终-slot-累计运行时长)。
 
-Viewer 默认扫描 run-artifacts 下的 formal/、temporary/ 及直接包含 jobs/ 的旧顶层运行，
-按类别和名称区分；它不是任意深度的递归扫描器。运行路径另见 [执行手册](EXECUTION-QUICK-REF.md)。
+Viewer 默认扫描 run-artifacts 下的 formal/、temporary/、timeout-rerun/ 及直接包含 jobs/ 的旧顶层运行。
+timeout-rerun/ 会递归发现 campaign，并以相对路径和分类显示；其他归档目录不递归扫描。
+运行路径另见 [执行手册](EXECUTION-QUICK-REF.md)。
