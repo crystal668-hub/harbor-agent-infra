@@ -105,6 +105,43 @@ def reviews_by_attempt(plan: dict, path: Path | None) -> dict:
     return decisions
 
 
+def invalid_answer_review(path: Path, slot: dict, decision: dict, outcome: dict) -> bool:
+    """Permit an explicitly audited error/progress message, never a valid scored answer."""
+    evidence = decision.get("invalid_answer")
+    if evidence is None:
+        return False
+    trial = read_object(path)
+    answer = final_answer(path.parent / "agent", slot["harness"])
+    kind = (trial.get("exception_info") or {}).get("exception_type")
+    if (
+        not isinstance(evidence, dict)
+        or decision.get("category") != "engineering"
+        or not trial.get("finished_at")
+        or not kind
+        or kind in {"CancelledError", "AgentTimeoutError", "AgentSafetyRefusalError", "SafetyRefusalError"}
+        or outcome["status"] not in {"completed", "scoring_pending"}
+        or outcome.get("score", 0) != 0
+        or answer is None
+        or "final answer:" in answer.text.lower()
+        or evidence.get("answer_sha256") != object_digest(answer.text)
+        or not all(isinstance(evidence.get(k), str) and evidence[k].strip()
+                   for k in ("authorization", "reason"))
+    ):
+        raise ValueError("Invalid answer review cannot replace a valid or unbound result")
+    base = path.parent.resolve()
+    required = {"result.json", str(Path(answer.source).resolve().relative_to(base))}
+    required.update(name for name in ("verifier/vgb-evaluation.json", "timeout-scoring-repair.json")
+                    if (base / name).is_file())
+    bound = evidence.get("files")
+    if not isinstance(bound, dict) or not required <= bound.keys():
+        raise ValueError("Invalid answer review lacks complete evidence")
+    for name, checksum in bound.items():
+        target = (base / name).resolve()
+        if not target.is_relative_to(base) or not target.is_file() or digest(target) != checksum:
+            raise ValueError("Invalid answer review evidence changed")
+    return True
+
+
 def validate_trial(trial: dict, expected: dict, slot: dict):
     config = trial["config"]
     expected = JobConfig.model_validate(expected)
@@ -198,13 +235,17 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
             key = (sid, ordinal)
             if key in decisions:
                 d = decisions[key]
+                invalid_answer = invalid_answer_review(path, slots[sid], d, outcome)
                 if (
                     d["trial_id"] != trial["id"]
                     or d["evidence_sha256"] != digest(path)
-                    or outcome["status"] in TERMINAL | {"scoring_pending"}
+                    or (outcome["status"] in TERMINAL | {"scoring_pending"} and not invalid_answer)
                 ):
                     raise ValueError("Review is stale or tries to replace an effective result")
                 used_decisions.add(key)
+                if invalid_answer:
+                    entry["original_outcome"] = outcome
+                    entry.pop("score", None)
                 entry.update(
                     status="engineering_approved"
                     if d["category"] == "engineering"

@@ -226,3 +226,76 @@ def test_score_repair_success_keeps_native_execution_evidence(tmp_path, monkeypa
     # The atomic repair record remains sufficient if the optional projection was interrupted.
     (path.parent / "verifier/vgb-evaluation.json").unlink()
     assert scan(plan)["complete"]
+
+
+def bind_invalid_answer(plan, path):
+    from harbor_agent_infra.resume.answers import final_answer
+
+    target = Path(plan["root"]) / "review-decisions.json"
+    payload = read_object(target)
+    answer = final_answer(path.parent / "agent", plan["slots"][0]["harness"])
+    payload["decisions"][-1]["invalid_answer"] = {
+        "answer_sha256": object_digest(answer.text),
+        "authorization": "Explicit review: error message is not a task answer",
+        "reason": "Synthetic provider failure produced only a progress message",
+        "files": files(path.parent),
+    }
+    write_object(target, payload)
+
+
+@pytest.mark.parametrize("score", [0.0, None])
+def test_bound_invalid_answer_can_retry_without_mutating_evidence(tmp_path, score):
+    plan, _ = campaign(tmp_path)
+    path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Request not processed", score=score)
+    original = files(path.parent)
+    approve(plan, path)
+    with pytest.raises(ValueError, match="effective result"):
+        scan(plan)
+    bind_invalid_answer(plan, path)
+    state = scan(plan)
+    item = state["slots"][plan["slots"][0]["slot_id"]]
+    assert item["status"] == "engineering_approved" and item["next_ordinal"] == 2
+    assert "score" not in item["attempts"][0]
+    assert item["attempts"][0]["original_outcome"]["status"] in {"completed", "scoring_pending"}
+    assert files(path.parent) == original
+    dispatch(plan, ordinal=2, score=0.75)
+    assert scan(plan)["complete"]
+
+
+@pytest.mark.parametrize("kind,answer,score", [
+    (None, "Request not processed", 0),
+    ("AgentTimeoutError", "Request not processed", 0),
+    ("SafetyRefusalError", "Request not processed", 0),
+    ("NonZeroAgentExitCodeError", "FINAL ANSWER: 42", 0),
+    ("NonZeroAgentExitCodeError", "42", 0.75),
+])
+def test_invalid_answer_override_preserves_effective_results(tmp_path, kind, answer, score):
+    plan, _ = campaign(tmp_path)
+    path = dispatch(plan, kind=kind, answer=answer, score=score)
+    approve(plan, path)
+    bind_invalid_answer(plan, path)
+    with pytest.raises(ValueError, match="Invalid answer review"):
+        scan(plan)
+
+
+@pytest.mark.parametrize("mutation", ["changed_answer", "changed_score_artifact", "missing_file", "missing_authorization"])
+def test_invalid_answer_override_requires_fresh_complete_evidence(tmp_path, mutation):
+    plan, _ = campaign(tmp_path)
+    path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Request not processed", score=0)
+    approve(plan, path)
+    bind_invalid_answer(plan, path)
+    target = Path(plan["root"]) / "review-decisions.json"
+    payload = read_object(target)
+    evidence = payload["decisions"][0]["invalid_answer"]
+    if mutation == "changed_answer":
+        evidence["answer_sha256"] = "stale"
+    elif mutation == "changed_score_artifact":
+        with (path.parent / "verifier/vgb-evaluation.json").open("a") as stream:
+            stream.write(" ")
+    elif mutation == "missing_file":
+        evidence["files"].pop("verifier/vgb-evaluation.json")
+    else:
+        evidence.pop("authorization")
+    write_object(target, payload)
+    with pytest.raises(ValueError, match="Invalid answer review"):
+        scan(plan)
