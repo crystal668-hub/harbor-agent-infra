@@ -158,7 +158,9 @@ def load_environment(context: ResumeContext, env_file: Path | None = None) -> di
     if not os.environ.get("VGB_PYTHON"):
         saved_python = context.manifest.get("vgb_runtime", {}).get("python_executable")
         if saved_python:
-            os.environ["VGB_PYTHON"] = str(context.absolute(saved_python))
+            os.environ["VGB_PYTHON"] = str(
+                (context.working_directory / saved_python).absolute()
+            )
         elif local.get("vgb_python"):
             os.environ["VGB_PYTHON"] = str(expand_required(local["vgb_python"]))
     return payload

@@ -58,7 +58,8 @@ async def preflight(context, plan):
             context.manifest.get("vgb_runtime", {}).get("python_executable"))
         if not python:
             raise ValueError("Missing VGB_PYTHON in frozen or local runtime settings")
-        runtime = VgbRuntime.from_executable(context.absolute(python))
+        # Preserve the venv entrypoint; resolving its symlink selects the base interpreter.
+        runtime = VgbRuntime.from_executable(context.working_directory / python)
         meta = await asyncio.to_thread(runtime.metadata)
         locked = read_object(lock)["vgb"]
         if any(meta.get(k) != locked.get(k) for k in ("package", "version", "tracks")):
