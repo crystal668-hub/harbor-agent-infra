@@ -10,6 +10,8 @@
 
 ## 当前正式配置
 
+2026-10-30：模型与路由不变；VGB升级至1.0.0rc1，两子集独立配置、skills_off。旧运行仍按冻结版本解释。
+
 | 配置项 | 2026-10-29 核对结果 |
 | --- | --- |
 | 模型 | GPT gpt-6.1-sol；Claude claude-opus-5.5；Qwen qwen3.8-max；DeepSeek deepseek-v4-pro |
@@ -17,7 +19,7 @@
 | 运行环境 | runtime-lock.json 的不可变预装镜像；正式 YAML 显式 installation_mode=preinstalled |
 | 推理与输出 | 全部请求 high；max_output_tokens=64000，为单次响应参数，不是整个任务预算 |
 | 实验组 | skills_off；本地正式配置仅含此组 |
-| 模板边界 | examples/ 中为小任务示例；本机 configs/ 中为 71 题、并发 2 的正式配置，两者不混用 |
+| 模板边界 | examples/ 中为小任务示例；本机 configs/ 中性质计算70题、开放生成30题、并发2；旧repeat1原始配置为71题，两者不混用 |
 
 > 2026-10-29 文档同步：模型与上述版本未变。原文中“桥已重启、health 为 200”属于 2026-10-14
 > 观测，不能作为当前服务健康证明；本轮仅读取配置。镜像变化见正式方案第 5.4 节。

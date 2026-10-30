@@ -92,3 +92,18 @@ setup 校验实际版本、入口和安装文件身份，不自动联网补装�
 
 启动方法见 [执行手册](EXECUTION-QUICK-REF.md)，镜像准备见
 [预装手册](PREINSTALLED-HARNESS.md)，失败处理见 [恢复手册](RECOVERY-SYSTEM-GUIDE.md)。
+
+## 2026-10-30 VGB RC 运行绑定
+
+当前`runtime-lock.json`绑定本地开发端已验收的`1.0.0rc1` wheel，不代表公共发布。
+宿主运行时为`.vgb-runtime-1.0.0rc1/bin/python`；正式配置显式写入该路径，
+不依赖全局`VGB_PYTHON`切换。性质计算70题、开放生成30题分别存于
+`configs/experiments/property-calculation/`与`configs/experiments/open-generation/`。
+旧路径的16份配置同步为性质计算RC兼容入口。
+
+旧`.vgb-runtime`保留，旧锁按SHA-256归档到`run-artifacts/runtime-locks/`；
+resume只接受与冻结哈希完全相等的锁及相同包版本，不自动使用当前RC。
+本次切换备份、依赖约束和验收证据位于`run-artifacts/vgb-rc-upgrade-20261030/`。
+若需回退，恢复该目录的`runtime-lock-0.10.0.json`及`original-configs/`，恢复旧runtime绑定，
+将结果入口指回旧selection；不删除新旧运行结果。历史恢复须显式使用原配置与锁，
+不把新70题配置传给旧71题冻结Job。

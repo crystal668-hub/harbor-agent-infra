@@ -128,3 +128,38 @@ argparse 参数错误返回 2。一般命令成功返回 0，异常或操作失�
 timeout-rerun 执行/发布仍需审查或中断协调时返回 2，校验失败返回 1；成功预览返回 0。
 
 常用步骤见 [执行速查](EXECUTION-QUICK-REF.md)。历史计划中的未注册接口不作为命令别名。
+
+## VGB RC 正式子集与结果迁移
+
+2026-10-30：当前包为1.0.0rc1；原始repeat1冻结版本为0.10.0。
+矩阵入口要求显式子集，性质计算默认repeat2/3，开放生成默认repeat1/2/3：
+
+```bash
+bash scripts/run_formal_experiments.sh --subset property-calculation --repeats 2 3 --dry-run
+bash scripts/run_formal_experiments.sh --subset open-generation --dry-run
+```
+
+新正式运行使用 `--formal-root run-artifacts/formal/vgb-1.0.0rc1/<subset>`，
+并选择 `configs/experiments/<subset>/<harness>/vgb-<model>.config.yaml`。
+已有目录直接报错，不隐式跳过或恢复。跨版本、子集或迁移口径的summary混合输入被拒绝。
+
+任务清单更新器从当前锁匹配的runtime读取完整ID：
+
+```bash
+uv run --locked --python 3.12 python -m scripts.update_phase1_tasks \
+  --runtime .vgb-runtime-1.0.0rc1/bin/python --lock runtime-lock.json \
+  --destination configs/experiments
+```
+
+repeat1迁移命令不调用模型、不重评；输入selection显式绑定每个来源results哈希，
+2小时口径还绑定原补跑campaign manifest以恢复已批准的协议零分。
+
+```bash
+uv run --locked --python 3.12 python -m harbor_agent_infra.benchmark_migration \
+  --selection SELECTION.json --lock LOCK.json --migration task-id-migration.json \
+  --inventory task-inventory.json --output NEW_DIRECTORY --dry-run
+```
+
+去掉`--dry-run`发布新快照；相同输入且完整输出重复执行返回已发布，篡改或冲突终止。
+当前两套选择见本机`run-artifacts/formal/current-selection.json`，可读入口为`CURRENT.md`。
+原始报告、Trial和冻结slot保持不变。迁移视图仅用于报告，不作为resume目标。

@@ -1,12 +1,12 @@
 # 正式实验方案
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
-**配置核对日期**：2026-10-29（Asia/Shanghai）
-**状态**：原始运行配置已与当前锁和本机 16 份正式 YAML 静态核对；加时修订见第 14.6 节。
+**配置核对日期**：2026-10-30（Asia/Shanghai）
+**状态**：VGB RC 已接入；两套 repeat1 迁移视图已核验发布；开放生成配置已准备，正式实验未启动。验收范围见第 14.7 节。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
-本轮没有启动实验或重新验证 provider、镜像实际可用性，也未重算成绩；第 14 节保留其明示日期的结果台账。
+本轮没有启动正式实验或调用 provider；已验证四个镜像化学环境并重算迁移视图汇总，未重新评分。第 14 节旧台账保留其日期和冻结口径。
 
 ---
 
@@ -51,96 +51,48 @@
 
 ## 3. 任务范围
 
-### 3.1 第一阶段实验（本次实施）
+### 3.1 性质计算（当前任务集）
 
-包含 VGB 的 2 个 track，共 71 个任务：
+2026-10-30 变更：VGB 0.10.0 → 1.0.0rc1；71 → 70 题（Advanced 20→19，Basic 51 不变）。
+依据为锁定 RC wheel、发布 inventory 和完整 ID 迁移映射。旧 repeat1 的执行条件不回写。
+旧 Advanced 004 IR-frequency 删除，后续16题按完整 ID 映射；新版004为旧005 crystal_density。
 
-#### Track 1: property_calculation_advanced (20 tasks)
+Advanced 当前任务 ID：
 ```
 property_calculation_advanced_001_free_energy
 property_calculation_advanced_002_crystal_phase
 property_calculation_advanced_003_hbond_count
-property_calculation_advanced_004_ir_top2_frequencies
-property_calculation_advanced_005_crystal_density
-property_calculation_advanced_006_cocrystal_ratio
-property_calculation_advanced_007_polymorph_free_energy_crossover
-property_calculation_advanced_008_interaction_binding_energy
-property_calculation_advanced_009_homo_lumo_gap
-property_calculation_advanced_010_hbond_distances
-property_calculation_advanced_011_accessible_pore_volume_ratio
-property_calculation_advanced_012_carboxyl_hydrogen_distance
-property_calculation_advanced_013_halogen_bond_energy
-property_calculation_advanced_014_bay069_pka
-property_calculation_advanced_015_formaldehyde_socme
-property_calculation_advanced_016_anthracene_isc_rate
-property_calculation_advanced_017_biacetyl_phosphorescence_rate
-property_calculation_advanced_018_anthracene_ht_contribution
-property_calculation_advanced_019_acetophenone_isc_rate
-property_calculation_advanced_020_azulene_internal_conversion_rate
+property_calculation_advanced_004_crystal_density
+property_calculation_advanced_005_cocrystal_ratio
+property_calculation_advanced_006_polymorph_free_energy_crossover
+property_calculation_advanced_007_interaction_binding_energy
+property_calculation_advanced_008_homo_lumo_gap
+property_calculation_advanced_009_hbond_distances
+property_calculation_advanced_010_accessible_pore_volume_ratio
+property_calculation_advanced_011_carboxyl_hydrogen_distance
+property_calculation_advanced_012_halogen_bond_energy
+property_calculation_advanced_013_bay069_pka
+property_calculation_advanced_014_formaldehyde_socme
+property_calculation_advanced_015_anthracene_isc_rate
+property_calculation_advanced_016_biacetyl_phosphorescence_rate
+property_calculation_advanced_017_anthracene_ht_contribution
+property_calculation_advanced_018_acetophenone_isc_rate
+property_calculation_advanced_019_azulene_internal_conversion_rate
 ```
+Basic 51题完整清单由锁定包生成到 `configs/experiments/property-calculation/`，不另维护手写列表。
 
-#### Track 2: property_calculation_basic (51 tasks)
-```
-property_calculation_basic_001_toluene_aqueous_solvation_free_energy
-property_calculation_basic_002_ethanol_aqueous_solvation_free_energy
-property_calculation_basic_003_diethyl_ether_aqueous_solvation_free_energy
-property_calculation_basic_004_anisole_aqueous_solvation_free_energy
-property_calculation_basic_005_nitrobenzene_reduction_potential
-property_calculation_basic_006_tetracyanoethylene_reduction_potential
-property_calculation_basic_007_dimethylaniline_oxidation_potential
-property_calculation_basic_008_triphenylamine_oxidation_potential
-property_calculation_basic_009_thianthrene_oxidation_potential
-property_calculation_basic_010_water_dimer_binding_energy
-property_calculation_basic_011_ammonia_dimer_binding_energy
-property_calculation_basic_012_benzene_t_dimer_binding_energy
-property_calculation_basic_013_adenine_thymine_wc_pair_binding_energy
-property_calculation_basic_014_water_methanol_complex_binding_energy
-property_calculation_basic_015_ethene_ethyne_t_complex_binding_energy
-property_calculation_basic_016_thiophene_polarizability
-property_calculation_basic_017_benzene_polarizability
-property_calculation_basic_018_octatetraene_polarizability
-property_calculation_basic_019_dimethyl_sulfoxide_water_dipole_moment
-property_calculation_basic_020_cis_dichloroethene_dipole_moment
-property_calculation_basic_021_acetonitrile_dipole_moment
-property_calculation_basic_022_naphthalene_bridge_bond_order
-property_calculation_basic_023_dimethyl_sulfone_so_bond_order
-property_calculation_basic_024_methyl_nitrate_no_bond_order
-property_calculation_basic_025_phenol_surface_esp_minimum
-property_calculation_basic_026_nitrobenzene_vdw_surface_area
-property_calculation_basic_027_pyrrole_surface_esp_variance
-property_calculation_basic_028_urea_crystal_density
-property_calculation_basic_029_tnt_crystal_density
-property_calculation_basic_030_picric_acid_crystal_density
-property_calculation_basic_031_allyl_radical_c1_spin_density
-property_calculation_basic_032_benzyl_radical_para_c_spin_density
-property_calculation_basic_033_phenoxy_radical_o_spin_density
-property_calculation_basic_034_indole_c3_fukui_minus
-property_calculation_basic_035_chloronitrobenzene_c_fukui_plus
-property_calculation_basic_036_furfural_carbonyl_c_fukui_plus
-property_calculation_basic_037_benzene_standard_entropy
-property_calculation_basic_038_acetonitrile_standard_entropy
-property_calculation_basic_039_neopentane_standard_entropy
-property_calculation_basic_040_methane_standard_entropy
-property_calculation_basic_041_ammonia_standard_entropy
-property_calculation_basic_042_carbon_dioxide_standard_entropy
-property_calculation_basic_043_acetic_acid_dimerization_enthalpy
-property_calculation_basic_044_caffeine_most_negative_mulliken_atom
-property_calculation_basic_045_trifluoroacetic_acid_hydrogen_charge
-property_calculation_basic_046_methyl_azide_most_negative_mulliken_atom
-property_calculation_basic_047_formaldehyde_s1_vertical_excitation_energy
-property_calculation_basic_048_acetaldehyde_s1_vertical_excitation_energy
-property_calculation_basic_049_acetone_s1_vertical_excitation_energy
-property_calculation_basic_050_pyrazine_s1_vertical_excitation_energy
-property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
-```
+### 3.2 开放生成（已规划，未启动）
 
-### 3.2 第二阶段实验（预留）
+2026-10-30 从预留阶段改为正式计划，使用同一 RC 包：
+- `open_generation_rdkit`：10题（旧14题删除4题，9个保留ID改名）。
+- `open_generation_xtb`：20题，任务ID不变。
+- 16个 harness/model 组合、skills_off、3次独立重复；30×16×3 = **1440 slots，48个run**。
+- 依次完成所有组合repeat1、repeat2、repeat3；每个Job并发2，Agent 7200秒、Verifier 120秒。
+- 其余模型、high、64000单次响应参数、镜像、资源和重试条件沿用第5节。
 
-包含另外 2 个 track：
-- **open_generation_rdkit** (14 tasks)
-- **open_generation_xtb** (20 tasks)
-
-第二阶段使用相同的实验协议，可在第一阶段完成并验证恢复流程后启动。
+配置位于 `configs/experiments/open-generation/`。已完成包接口、配置物化、四镜像化学探测和
+xTB/CREST样例评分；CREST样例118.478秒，接近120秒上限。此为单样例通过，不代表全题目或重复
+稳定性验收；不擅自扩大超时，未来运行失败仍按协议记录。未进行provider端到端或正式实验。
 
 ---
 
@@ -149,19 +101,18 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 ### 4.1 独立重复
 每个 "harness × model × task" 组合独立重复 **3 次**。
 
-### 4.2 第一阶段样本规模
-- **组合数**: 4 harness × 4 model = 16
-- **任务数**: 71 (20 advanced + 51 basic)
-- **重复次数**: 3
-- **总 slot 数**: 16 × 71 × 3 = **3,408 slots**
-- **原始 run 数**: 16 × 3 = **48 个**，每个 run 对应一个组合的一次 repeat，包含 71 slots
-- **轮次顺序**: 完成所有 16 个组合的 repeat1，再运行 repeat2、repeat3；轮内保持现有 harness/model 顺序
+### 4.2 性质计算样本规模
+
+2026-10-30 旧71题×16×3=3408 slots 更新为 **70题×16×3=3360 slots**。
+repeat1 两套迁移视图各1120条；后续repeat2/3为RC原生运行，共2240 slots、32个run。
+迁移视图是旧版执行结果的身份投影，不宣称重新执行了RC实验。
+比较统一7200秒条件时用2小时基线；含12小时补跑的合并版作为当前正式展示，单独标注条件。
 
 ### 4.3 Slot 身份
 每个 slot 由以下要素唯一确定：
 - Experiment ID
 - Execution condition (harness, model, 推理设置, 镜像, 资源配置等)
-- Track + Task ID
+- Benchmark版本 + 子集 + Track + Task ID（新协议）；旧冻结身份保持原样
 - Group (固定为 `skills_off`)
 - Repeat index (0, 1, 2)
 
@@ -169,7 +120,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 
 ## 5. 统一配置参数
 
-以下为 16 组正式原始运行的统一参数。已获批恢复条件和第 14.6 节的加时 campaign 分别冻结，不回写原始协议。
+以下参数继续适用于RC新运行；旧版16组原始运行保持冻结条件。已获批恢复条件和第 14.6 节的加时 campaign 分别冻结，不回写原始协议。
 
 > 2026-10-29 核对：本机 16 份正式 YAML 均为 71 题、skills_off、preinstalled、high、64000、
 > 4 CPU / 6144 MB、7200/120 秒、并发 2、n_attempts=1、max_retries=0；模型组合未改变。
@@ -221,7 +172,7 @@ property_calculation_basic_051_formaldehyde_t1_vertical_excitation_energy
 | xTB | 6.7.1 | Agent 与 Verifier 共享锁 |
 | CREST | 2.12 | Agent 与 Verifier 共享锁 |
 | Harbor | 0.23.0 | Commit: `1e5c5c6db929a10a140d05e606882c671ae20729` |
-| VGB | 0.10.0 | Wheel: `verifier_grounded_benchmark-0.10.0-py3-none-any.whl` |
+| VGB | 1.0.0rc1 | 2026-10-30由0.10.0升级；历史repeat1仍为旧版执行 |
 | OpenClaw | 2026.6.34 | 锁定 npm 包，包含 adaptive thinking 修复 |
 | Hermes | 0.21.6 | Commit: `818c13be1dc4fd28987e1e881a9408224afd4535` |
 | Codex | 0.162.1 | 通过本地 protocol bridge 配置输出上限 |
@@ -390,7 +341,7 @@ run-artifacts/
 | 产物 | 内容 | 用途 |
 |------|------|------|
 | `protocol.json` | 冻结条件、规则与哈希 | 确保补跑使用相同条件 |
-| `slots.jsonl` | 完整预定 slot 矩阵 | 每个原始 run 派发前即存在，71 条；48 个 run 共 3,408 条 |
+| `slots.jsonl` | 完整预定 slot 矩阵 | 每个run派发前冻结；当前性质计算70条、开放生成30条；旧71条保持原样 |
 | `attempts.jsonl` | Slot、ordinal、Harbor ID、证据索引 | 追溯每次执行 |
 | `decisions.jsonl` | 分层状态、reason、证据、规则版本 | 判定依据与修订历史 |
 | `recovery-manifest.json` | 精确 slot/attempt 清单、条件、预算 | 审查后执行补跑 |
@@ -407,17 +358,9 @@ run-artifacts/
 每个 harness 目录下有 4 个模型的模板：
 ```
 configs/experiments/
-  openclaw/
-    vgb-gpt.config.yaml
-    vgb-claude.config.yaml
-    vgb-qwen.config.yaml
-    vgb-deepseek.config.yaml
-  hermes/
-    (同上)
-  codex/
-    (同上)
-  claude-code/
-    (同上)
+  property-calculation/<harness>/vgb-<model>.config.yaml
+  open-generation/<harness>/vgb-<model>.config.yaml
+  <harness>/vgb-<model>.config.yaml  # 性质计算兼容入口
 ```
 
 ### 8.2 关键配置字段
@@ -426,15 +369,15 @@ configs/experiments/
 
 ```yaml
 run:
-  output_dir: run-artifacts/formal/<harness>-<provider>-repeat<N>
-  vgb_python: .vgb-runtime/bin/python
+  output_dir: run-artifacts/formal/vgb-1.0.0rc1/<subset>/<harness>-<provider>-repeat<N>
+  vgb_python: .vgb-runtime-1.0.0rc1/bin/python
 
 experiment:
   experiment_id: <experiment-id>-<harness>-<model>
   benchmark:
     cases:
     - track: property_calculation_advanced
-      task_ids: [所有 20 个任务]
+      task_ids: [由当前包生成的19个任务ID]
     - track: property_calculation_basic
       task_ids: [所有 51 个任务]
   
@@ -447,7 +390,7 @@ experiment:
 
 ```bash
 # VGB Runtime
-VGB_PYTHON=.vgb-runtime/bin/python
+VGB_PYTHON=.vgb-runtime-1.0.0rc1/bin/python
 OPENCLAW_SKILLS_ROOT=<skills-root-path>
 
 # Provider Credentials (不写入 YAML)
@@ -480,8 +423,8 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
    # VGB Runtime
    uv run --locked --python 3.12 python scripts/provision_vgb_runtime.py \
      --lock runtime-lock.json \
-     --wheel /path/to/verifier_grounded_benchmark-0.10.0-py3-none-any.whl \
-     --runtime-dir .vgb-runtime \
+     --wheel /path/to/verifier_grounded_benchmark-1.0.0rc1-py3-none-any.whl \
+     --runtime-dir .vgb-runtime-1.0.0rc1 \
      --chemistry-prefix /path/to/vgb-crest
    
    # 四个预装执行镜像已构建并验收；正式准备不重建基础镜像
@@ -491,7 +434,7 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
    ```bash
    uv run --locked --python 3.12 hai doctor
    uv run --locked --python 3.12 pytest -m 'not integration'
-   VGB_PYTHON=.vgb-runtime/bin/python uv run --locked --python 3.12 pytest \
+   VGB_PYTHON=.vgb-runtime-1.0.0rc1/bin/python uv run --locked --python 3.12 pytest \
      tests/test_vgb_integration.py \
      tests/test_chemistry_integration.py
    ```
@@ -499,7 +442,7 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
 3. **准备配置并验证预装锁**:
    ```bash
    uv run --locked --python 3.12 python scripts/update_experiment_configs.py
-   bash scripts/run_formal_experiments.sh --dry-run
+   bash scripts/run_formal_experiments.sh --subset open-generation --dry-run
    ```
    配置更新器从主工作区预装锁写入四个执行镜像；矩阵预检必须通过。
 
@@ -509,24 +452,25 @@ CODEX_DEEPSEEK_BASE_URL=/deepseek/v1
 推荐使用统一入口预览或执行：
 
 ```bash
-bash scripts/run_formal_experiments.sh --dry-run
-bash scripts/run_formal_experiments_interactive.sh
+bash scripts/run_formal_experiments.sh --subset open-generation --dry-run
+bash scripts/run_formal_experiments_interactive.sh --subset open-generation
 ```
 
 单个原始 run 示例（provider 使用 `openai`/`anthropic`/`qwen`/`deepseek`）：
 
 ```bash
-# 示例: OpenClaw + GPT，repeat1
+# 示例: OpenClaw + GPT，开放生成repeat1（执行命令，本轮未运行）
 uv run --locked --python 3.12 hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
+  --config configs/experiments/open-generation/openclaw/vgb-gpt.config.yaml \
+  --formal-root run-artifacts/formal/vgb-1.0.0rc1/open-generation \
   --group skills_off --formal-provider openai --formal-repeat 1
 ```
 
 上述配置必须引用主工作区的预装锁及 OpenClaw 执行镜像。历史旧锁只用于核对历史产物，
 不能作为后续正式 run 的启动配置。
 
-统一入口串行调度 48 个原始 run，每个 Job 内并发 2 Trials。已有目录会保留并跳过，
-目录存在不代表完成；进入下一轮前须核对本轮全部 run 的结束状态，处理未完成或误跳过的 run。
+统一入口要求显式 --subset；开放生成默认repeat1/2/3，性质计算默认repeat2/3，可用 --repeats显式选择。
+新目录隔离在 run-artifacts/formal/vgb-1.0.0rc1/<subset>/。已有目标直接报错，须检查后显式恢复；不隐式跳过。
 
 ### 9.3 监控与验收
 
@@ -593,7 +537,7 @@ uv run --locked --python 3.12 hai summary \
    - 本文档及其冻结版本
 
 2. **执行记录**:
-   - `slots.jsonl` (48 份 × 71 条 = 3,408 预定 slots)
+   - `slots.jsonl`（按所选子集冻结：性质计算70条/组，开放生成30条/组）
    - `attempts.jsonl` (所有执行记录，包括原始和替代)
    - Harbor 原生 Trial 产物 (result, trajectory, logs)
 
@@ -714,6 +658,8 @@ uv run --locked --python 3.12 hai summary \
 - 人工审查时间: 每轮 0.5-1 天
 
 ---
+
+> 当前RC迁移结果入口见第14.7节；以下旧台账保留0.10.0、71题历史口径。
 
 ## 14. 实验进度与分 track 得分台账
 
@@ -878,6 +824,22 @@ advanced；当前 G 的实际 merged 已包含 71 个代表（9 个 advanced、2
 证据为 run-artifacts/timeout-rerun/repeat1-12h-20261027 下的 manifest.json、scope-amendment.json、
 terminal-deferrals.json；后者逐项绑定授权、Trial 身份与结果哈希。冻结不自动解除，不将冻结尝试
 替换为正式代表，其错误、日志和实际消耗仍保留。本轮仅核对范围，不宣称 36 项已完成或修订结果已发布。
+
+### 14.7 RC任务集迁移与当前正式结果（2026-10-30）
+
+旧2小时基线与已发布12小时补跑合并版均由1136条投影为1120条，删除16个旧IR题slot；
+16个后续Advanced ID在每个组合中改名。原始Trial、slot、回答、评分版本、人工计分和历史成本均保留。
+
+| 视图 | 组合 | 每组题数 | 计分记录 | 均分 |
+| --- | ---: | ---: | ---: | ---: |
+| 原始2小时基线迁移 | 16 | 70 | 1120 | 0.751390559868 |
+| 当前补跑合并迁移 | 16 | 70 | 1120 | 0.767389621830 |
+
+本机入口：`run-artifacts/formal/CURRENT.md`；机器入口：`run-artifacts/formal/current-selection.json`。
+原始文件哈希、逐条评分和证据相等性已核验，不重评、不改写历史冻结条件。
+旧日期研究报告保持原样；新入口提供两套口径切换。历史尝试消耗包含退役题，不作为70题运行成本。
+详见[接入验收](../acceptance/2026-10-30-acceptance-vgb-rc-upgrade.md)。
+
 
 ## 15. 附录
 
