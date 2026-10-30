@@ -674,6 +674,8 @@ async def run_paired_jobs(
             },
             "errors": errors,
         }
+        if formal_context and formal_context.get("benchmark_identity"):
+            results_payload["benchmark_identity"] = formal_context["benchmark_identity"]
         (output_root / "results.json").write_text(
             json.dumps(results_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )

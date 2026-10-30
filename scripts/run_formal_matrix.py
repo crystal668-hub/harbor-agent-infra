@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
 
@@ -22,13 +23,17 @@ MODELS = (
 HARNESSES = ("claude-code", "codex", "hermes", "openclaw")
 
 
-def validate_formal_configs(workspace_root: Path) -> None:
+def validate_formal_configs(workspace_root: Path, subset: str | None = None) -> None:
     """Refuse formal runs unless all configs use this workspace's preinstalled lock."""
     workspace_root = workspace_root.resolve()
     for harness in HARNESSES:
         for template, _ in MODELS:
             config_path = (
-                workspace_root / "configs" / "experiments" / harness
+                workspace_root
+                / "configs"
+                / "experiments"
+                / (subset or "")
+                / harness
                 / f"vgb-{template}.config.yaml"
             )
             if not config_path.is_file():
@@ -40,9 +45,19 @@ def validate_formal_configs(workspace_root: Path) -> None:
                 raise ValueError(f"{config_path}: {exc}") from exc
 
 
-def matrix_commands() -> list[tuple[str, list[str]]]:
+def matrix_commands(
+    subset: str = "property-calculation",
+    repeats: tuple[int, ...] = (1, 2, 3),
+    version: str = "1.0.0rc1",
+) -> list[tuple[str, list[str]]]:
+    from integrations.vgb.catalog import SUBSETS
+
+    if subset not in SUBSETS or not repeats or len(set(repeats)) != len(repeats):
+        raise ValueError("Choose a known subset and unique repeats")
+    if any(r not in (1, 2, 3) for r in repeats):
+        raise ValueError("Formal repeats must be 1, 2 or 3")
     commands = []
-    for repeat in (1, 2, 3):
+    for repeat in sorted(repeats):
         for harness in HARNESSES:
             for template, provider in MODELS:
                 name = formal_run_name(harness, provider, repeat)
@@ -58,7 +73,9 @@ def matrix_commands() -> list[tuple[str, list[str]]]:
                             "hai",
                             "run",
                             "--config",
-                            f"configs/experiments/{harness}/vgb-{template}.config.yaml",
+                            f"configs/experiments/{subset}/{harness}/vgb-{template}.config.yaml",
+                            "--formal-root",
+                            f"run-artifacts/formal/vgb-{version}/{subset}",
                             "--group",
                             "skills_off",
                             "--formal-provider",
@@ -73,28 +90,37 @@ def matrix_commands() -> list[tuple[str, list[str]]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--subset", choices=("property-calculation", "open-generation"), required=True
+    )
+    parser.add_argument("--repeats", type=int, nargs="+", choices=(1, 2, 3))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--interactive", action="store_true")
     args = parser.parse_args()
     try:
-        validate_formal_configs(Path(__file__).resolve().parents[1])
+        workspace = Path(__file__).resolve().parents[1]
+        validate_formal_configs(workspace, args.subset)
+        version = json.loads((workspace / "runtime-lock.json").read_text())["vgb"]["version"]
+        repeats = tuple(
+            args.repeats or ((2, 3) if args.subset == "property-calculation" else (1, 2, 3))
+        )
+        commands = matrix_commands(args.subset, repeats, version)
     except ValueError as exc:
         parser.error(str(exc))
-    for name, command in matrix_commands():
+    for name, command in commands:
         if args.dry_run:
             print(" ".join(command))
             continue
-        output = Path("run-artifacts/formal") / name
+        output = Path(command[command.index("--formal-root") + 1]) / name
         if output.exists():
-            print(f"Existing formal run retained: {output}")
-            continue
+            raise FileExistsError(f"Formal target exists; inspect or resume explicitly: {output}")
         if args.interactive:
             choice = input(f"Run {name}? [y/n/q] ").lower()
             if choice == "q":
                 return 0
             if choice != "y":
                 continue
-        logs = Path("logs/formal-experiments")
+        logs = Path("logs/formal-experiments") / f"vgb-{version}" / args.subset
         logs.mkdir(parents=True, exist_ok=True)
         with (logs / f"{name}.log").open("x") as handle:
             result = subprocess.run(command, stdout=handle, stderr=subprocess.STDOUT)

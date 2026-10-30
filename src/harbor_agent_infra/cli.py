@@ -391,6 +391,25 @@ def main(argv: list[str] | None = None) -> int:
             validate_formal_preinstalled_experiment(
                 spec.model_dump(mode="json"), Path(__file__).resolve().parents[2]
             )
+            from integrations.vgb.catalog import SUBSETS, locked_cases
+
+            selected_lock = json.loads(Path(spec.benchmark.package_lock).read_text())
+            locked_version = selected_lock["vgb"]["version"]
+            selected_tracks = {case.track for case in spec.benchmark.cases}
+            subset = next((key for key, tracks in SUBSETS.items()
+                           if selected_tracks == set(tracks)), None)
+            benchmark_identity = None
+            if locked_version == "1.0.0rc1":
+                if subset is None:
+                    raise ValueError("RC formal execution requires one complete benchmark subset")
+                expected_cases = locked_cases(runtime, Path(spec.benchmark.package_lock), subset)
+                actual_cases = [case.model_dump() for case in spec.benchmark.cases]
+                if actual_cases != expected_cases:
+                    raise ValueError("Formal task inventory differs from locked VGB subset")
+                required_root = Path("run-artifacts/formal") / f"vgb-{locked_version}" / subset
+                if args.formal_root.resolve() != required_root.resolve():
+                    raise ValueError(f"RC formal execution requires --formal-root {required_root}")
+                benchmark_identity = {"version": locked_version, "subset": subset, "view": "native"}
             name = formal_run_name(spec.agent.adapter, args.formal_provider, args.formal_repeat)
             expected_output = args.formal_root / name
             if (args.output_dir is not None
@@ -401,6 +420,8 @@ def main(argv: list[str] | None = None) -> int:
             output_dir = expected_output
             formal_context = {"run_id": name, "harness": spec.agent.adapter,
                               "provider": args.formal_provider, "repeat": args.formal_repeat}
+            if benchmark_identity is not None:
+                formal_context["benchmark_identity"] = benchmark_identity
         print("Computing experiment SHA256...", flush=True)
         source_experiment_sha256 = experiment_sha256(spec)
         print(f"Experiment SHA256: {source_experiment_sha256}", flush=True)

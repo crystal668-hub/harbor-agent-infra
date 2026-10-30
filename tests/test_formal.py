@@ -335,3 +335,31 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
     with pytest.raises(FileExistsError):
         main(args)
     assert run.await_count == 1
+
+
+def test_rc_matrix_isolated_by_subset_and_repeat():
+    from scripts.run_formal_matrix import matrix_commands
+
+    properties = matrix_commands('property-calculation', (2, 3))
+    generation = matrix_commands('open-generation', (1, 2, 3))
+    assert len(properties) == 32 and len(generation) == 48
+    roots = []
+    for commands, subset in ((properties, 'property-calculation'),
+                             (generation, 'open-generation')):
+        for name, cmd in commands:
+            root = cmd[cmd.index('--formal-root') + 1]
+            roots.append(root + '/' + name)
+            assert root == 'run-artifacts/formal/vgb-1.0.0rc1/' + subset
+            assert '/' + subset + '/' in cmd[cmd.index('--config') + 1]
+    assert len(set(roots)) == 80
+    with pytest.raises(ValueError):
+        matrix_commands('open-generation', (1, 1))
+
+
+def test_matrix_cli_requires_explicit_subset(monkeypatch):
+    from scripts.run_formal_matrix import main
+
+    monkeypatch.setattr('sys.argv', ['matrix', '--dry-run'])
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 2
