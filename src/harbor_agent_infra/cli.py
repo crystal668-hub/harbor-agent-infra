@@ -407,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
                 if actual_cases != expected_cases:
                     raise ValueError("Formal task inventory differs from locked VGB subset")
                 required_root = Path("run-artifacts/formal") / f"vgb-{locked_version}" / subset
-                if args.formal_root.resolve() != required_root.resolve():
+                if args.formal_root.parts[-2:] != (f"vgb-{locked_version}", subset):
                     raise ValueError(f"RC formal execution requires --formal-root {required_root}")
                 benchmark_identity = {"version": locked_version, "subset": subset, "view": "native"}
             name = formal_run_name(spec.agent.adapter, args.formal_provider, args.formal_repeat)

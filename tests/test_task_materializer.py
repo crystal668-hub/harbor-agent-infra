@@ -23,7 +23,7 @@ class FakeVgbRuntime:
     def metadata(self) -> dict[str, object]:
         return {
             "package": "verifier-grounded-benchmark",
-            "version": "0.10.0",
+            "version": json.loads(Path("runtime-lock.json").read_text())["vgb"]["version"],
             "tracks": [
                 "open_generation_rdkit",
                 "open_generation_xtb",

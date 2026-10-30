@@ -397,18 +397,19 @@
   "schema_version": "infra-runtime-lock.v1",
   "vgb": {
     "package": "verifier-grounded-benchmark",
-    "release_manifest_sha256": "7d0b97bec75c30792dd737d89840f29dd5cefbad3604a7b4019aafebb08ef67f",
-    "source_commit": "5e4d345e47ff5e0cac16297972ce7a70e6577075",
-    "source_tag": "v0.10.0",
-    "task_inventory_sha256": "52cc8eadd09cc1e64897841f25fd8f6cbca740484f060ab9654c968609781245",
+    "release_manifest_sha256": "724bf51229534305d0f99d70cd1fe568ba5cfd4e135ecf3f0c57ef41e46c2349",
+    "source_commit": "c4a705a06f8e5e7310a8ac40e81b7612caead055",
+    "source_tag": "v1.0.0-rc",
+    "task_id_migration_sha256": "c4fcaefb0b620b09ffe726d7f143e674030323ebca00ff149321a530a51274c7",
+    "task_inventory_sha256": "7898c4d59399c619dbafab8751f7968b416ba80127a0207e30f14fddd617a1a5",
     "tracks": [
       "open_generation_rdkit",
       "open_generation_xtb",
       "property_calculation_advanced",
       "property_calculation_basic"
     ],
-    "version": "0.10.0",
-    "wheel": "verifier_grounded_benchmark-0.10.0-py3-none-any.whl",
-    "wheel_sha256": "019b7c90031355b804d8d6873cdc81b52153496b06681962775f54367c19140a"
+    "version": "1.0.0rc1",
+    "wheel": "verifier_grounded_benchmark-1.0.0rc1-py3-none-any.whl",
+    "wheel_sha256": "51e39ef4a50f47c5a5686042d0ef8924c0c44c752f43e15bb3199b07552dd56d"
   }
 }

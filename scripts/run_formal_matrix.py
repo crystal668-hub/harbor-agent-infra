@@ -26,6 +26,7 @@ HARNESSES = ("claude-code", "codex", "hermes", "openclaw")
 def validate_formal_configs(workspace_root: Path, subset: str | None = None) -> None:
     """Refuse formal runs unless all configs use this workspace's preinstalled lock."""
     workspace_root = workspace_root.resolve()
+    catalogs = {}
     for harness in HARNESSES:
         for template, _ in MODELS:
             config_path = (
@@ -41,6 +42,18 @@ def validate_formal_configs(workspace_root: Path, subset: str | None = None) -> 
             config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
             try:
                 validate_formal_preinstalled_experiment(config["experiment"], workspace_root)
+                if subset is not None:
+                    from integrations.vgb.catalog import locked_cases
+                    from integrations.vgb.runtime import VgbRuntime
+
+                    python = config["run"]["vgb_python"]
+                    if python not in catalogs:
+                        catalogs[python] = locked_cases(
+                            VgbRuntime.from_executable(python),
+                            workspace_root / "runtime-lock.json", subset,
+                        )
+                    if config["experiment"]["benchmark"]["cases"] != catalogs[python]:
+                        raise ValueError("Formal task inventory differs from locked subset")
             except ValueError as exc:
                 raise ValueError(f"{config_path}: {exc}") from exc
 

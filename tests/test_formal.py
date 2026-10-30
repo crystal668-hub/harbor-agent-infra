@@ -294,7 +294,12 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
     image = load_runtime_lock(lock_path).execution_image("claude-code", "preinstalled")
     spec = config.experiment
     spec = spec.model_copy(update={
-        "benchmark": spec.benchmark.model_copy(update={"package_lock": str(lock_path)}),
+        "benchmark": spec.benchmark.model_copy(update={"package_lock": str(lock_path), "cases": [
+            spec.benchmark.cases[0].model_copy(
+                update={"track": track, "task_ids": [track + "_001"]}
+            )
+            for track in ("property_calculation_advanced", "property_calculation_basic")
+        ]}),
         "agent": spec.agent.model_copy(update={"installation_mode": "preinstalled"}),
         "image": spec.image.model_copy(update={
             "reference": image.reference,
@@ -311,6 +316,9 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
     monkeypatch.setattr("harbor_agent_infra.cli.VgbRuntime.from_executable", lambda _: object())
     run = AsyncMock()
     monkeypatch.setattr("harbor_agent_infra.cli.run_paired_jobs", run)
+    monkeypatch.setattr("integrations.vgb.catalog.locked_cases",
+                        lambda *_: [c.model_dump() for c in spec.benchmark.cases])
+    formal_root = tmp_path / "vgb-1.0.0rc1" / "property-calculation"
     args = [
         "run",
         "--config",
@@ -320,7 +328,7 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
         "--formal-provider",
         "deepseek",
         "--formal-root",
-        str(tmp_path),
+        str(formal_root),
     ]
     with pytest.raises(ValueError, match="formal runtime lock"):
         main(args)
@@ -328,10 +336,10 @@ def test_formal_cli_dispatches_canonical_run_and_refuses_overwrite(tmp_path, mon
     monkeypatch.setattr("harbor_agent_infra.cli.load_run_config", lambda _: config)
     assert main(args) == 0
     kwargs = run.await_args.kwargs
-    assert kwargs["output_root"] == tmp_path / "claude-code-deepseek-repeat2"
+    assert kwargs["output_root"] == formal_root / "claude-code-deepseek-repeat2"
     assert kwargs["group_id"] == "skills_off"
     assert kwargs["formal_context"]["repeat"] == 2
-    kwargs["output_root"].mkdir()
+    kwargs["output_root"].mkdir(parents=True)
     with pytest.raises(FileExistsError):
         main(args)
     assert run.await_count == 1

@@ -398,8 +398,10 @@ def test_paired_run_writes_runtime_manifest_and_results(monkeypatch, tmp_path: P
     )
     assert manifest == json.loads((root / "runtime-manifest.json").read_text())
     assert manifest["status"] == "completed"
-    assert manifest["vgb_runtime"]["package"]["version"] == "0.10.0"
-    assert manifest["vgb_runtime"]["actual_metadata"]["version"] == "0.10.0"
+    assert manifest["vgb_runtime"]["package"]["version"] == json.loads(
+        Path("runtime-lock.json").read_text())["vgb"]["version"]
+    assert manifest["vgb_runtime"]["actual_metadata"]["version"] == json.loads(
+        Path("runtime-lock.json").read_text())["vgb"]["version"]
     assert manifest["agent_runtime"]["python"]["package_install_policy"] == "agent-managed"
     assert manifest["agent_runtime"]["chemistry"]["xtb_version"] == "6.7.1"
     assert manifest["groups"][0]["injected_skills"][0]["name"] == "rdkit"
