@@ -167,6 +167,13 @@ def load_environment(context: ResumeContext, env_file: Path | None = None) -> di
 def validate_runtime_lock(context: ResumeContext) -> Path:
     saved = context.manifest["vgb_runtime"]
     lock = context.absolute(saved["lock_path"])
-    if hashlib.sha256(lock.read_bytes()).hexdigest() != saved["lock_sha256"]:
-        raise ValueError("Original runtime lock is unavailable or has changed")
-    return lock
+    # Explicit, content-addressed archive; never substitute the current package lock.
+    archived = PROJECT_ROOT / "run-artifacts/runtime-locks" / (
+        saved["lock_sha256"] + ".json"
+    )
+    for candidate in (lock, archived):
+        if candidate.is_file() and hashlib.sha256(candidate.read_bytes()).hexdigest() == (
+            saved["lock_sha256"]
+        ):
+            return candidate
+    raise ValueError("Original runtime lock is unavailable or has changed")

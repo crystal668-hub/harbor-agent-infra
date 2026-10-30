@@ -10,7 +10,9 @@ from integrations.vgb.runtime import VgbRuntime
 from scripts.provision_chemistry import provision as provision_chemistry
 
 
-def provision(lock_path: Path, wheel_path: Path, runtime_dir: Path) -> None:
+def provision(
+    lock_path: Path, wheel_path: Path, runtime_dir: Path, constraints: Path | None = None,
+) -> None:
     lock = load_release_lock(lock_path)
     release_dir = wheel_path.parent.parent / "releases" / lock.source_tag
     manifest = release_dir / "manifest.json"
@@ -28,7 +30,8 @@ def provision(lock_path: Path, wheel_path: Path, runtime_dir: Path) -> None:
         )
     python = runtime_dir / "bin" / "python"
     subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), str(wheel_path)],
+        ["uv", "pip", "install", "--python", str(python), str(wheel_path),
+         *(["--constraint", str(constraints)] if constraints else [])],
         check=True,
     )
     runtime = VgbRuntime(python)
@@ -49,13 +52,14 @@ def main() -> int:
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--runtime-dir", type=Path, required=True)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--constraints", type=Path, help="Frozen host dependency versions")
     parser.add_argument("--chemistry-prefix", type=Path)
     args = parser.parse_args()
     if args.check:
         runtime = VgbRuntime(args.runtime_dir / "bin" / "python")
         print(json.dumps(runtime.metadata(), indent=2, sort_keys=True))
         return 0
-    provision(args.lock, args.wheel, args.runtime_dir)
+    provision(args.lock, args.wheel, args.runtime_dir, args.constraints)
     if args.chemistry_prefix is not None:
         provision_chemistry(args.chemistry_prefix, args.runtime_dir, args.lock)
     return 0

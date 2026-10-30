@@ -590,3 +590,26 @@ def test_scoring_respects_frozen_verifier_deadline(original, monkeypatch):
     assert directory.is_dir()
     assert json.loads((directory / "result.json").read_text())["exception_info"][
         "exception_type"] == "CancelledError"
+
+
+def test_resume_resolves_only_exact_archived_lock(tmp_path, monkeypatch):
+    import hashlib
+    from types import SimpleNamespace
+    from harbor_agent_infra.resume import context
+
+    monkeypatch.setattr(context, 'PROJECT_ROOT', tmp_path)
+    old = b'{"vgb":{"version":"0.10.0"}}'
+    checksum = hashlib.sha256(old).hexdigest()
+    current = tmp_path / 'runtime-lock.json'
+    current.write_text('{"vgb":{"version":"1.0.0rc1"}}')
+    ctx = SimpleNamespace(manifest={'vgb_runtime': {
+        'lock_path': str(current), 'lock_sha256': checksum}}, absolute=lambda p: tmp_path / p)
+    with pytest.raises(ValueError, match='unavailable or has changed'):
+        context.validate_runtime_lock(ctx)
+    archive = tmp_path / 'run-artifacts/runtime-locks' / (checksum + '.json')
+    archive.parent.mkdir(parents=True)
+    archive.write_bytes(old)
+    assert context.validate_runtime_lock(ctx) == archive
+    archive.write_text('tampered')
+    with pytest.raises(ValueError, match='unavailable or has changed'):
+        context.validate_runtime_lock(ctx)

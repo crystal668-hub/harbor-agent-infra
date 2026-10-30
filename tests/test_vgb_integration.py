@@ -22,18 +22,18 @@ def _runtime() -> VgbRuntime:
 
 
 def test_release_lock_matches_official_vgb_release() -> None:
-    wheel = Path(
-        "/Users/xutao/verifier-grounded-benchmark/dist/"
-        "verifier_grounded_benchmark-0.10.0-py3-none-any.whl"
-    )
-    manifest = Path("/Users/xutao/verifier-grounded-benchmark/releases/v0.10.0/manifest.json")
-    inventory = Path(
-        "/Users/xutao/verifier-grounded-benchmark/releases/v0.10.0/task-inventory.json"
-    )
+    from integrations.vgb.release_lock import load_release_lock
+
+    lock_path = Path(os.environ.get("VGB_RELEASE_LOCK", "runtime-lock.json"))
+    locked = load_release_lock(lock_path)
+    source = Path(os.environ.get("VGB_SOURCE", "/Users/xutao/verifier-grounded-benchmark"))
+    wheel = source / "dist" / locked.wheel
+    manifest = source / "releases" / locked.source_tag / "manifest.json"
+    inventory = manifest.with_name("task-inventory.json")
     if not all(path.is_file() for path in (wheel, manifest, inventory)):
         pytest.skip("official VGB release artifacts are not available")
     lock = verify_release_lock(
-        Path("runtime-lock.json"),
+        lock_path,
         wheel_path=wheel,
         release_manifest_path=manifest,
         task_inventory_path=inventory,
