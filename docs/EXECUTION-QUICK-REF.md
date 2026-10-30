@@ -2,7 +2,7 @@
 
 适用于开发者和维护者。所有命令从仓库根目录执行；路径占位符需替换。
 参数定义见 [CLI 参考](CLI-REFERENCE.md)，实验规模与执行顺序见
-[正式实验方案](experiments/formal-experiment-plan.md) 和 [执行计划](experiments/2026-10-14-plan-formal-experiment-execution.md)。
+[正式实验方案](experiments/formal-experiment-plan.md) 和 [repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)。
 
 ## 准备
 
@@ -25,23 +25,24 @@ doctor 只检查基础运行条件，不能代替镜像、provider 和 VGB 验�
 正式运行使用已按实验方案准备的本地配置：
 
     uv run --locked --python 3.12 hai run \
-      --config 'configs/experiments/<harness>/vgb-<model>.config.yaml' \
-      --group skills_off --formal-provider '<provider>' --formal-repeat 1
+      --config 'configs/experiments/property-calculation/<harness>/vgb-<model>.config.yaml' \
+      --formal-root run-artifacts/formal/vgb-1.0.0rc1/property-calculation \
+      --group skills_off --formal-provider '<provider>' --formal-repeat 2
 
 GPT 模板对应 provider openai，Claude 模板对应 anthropic。
-正式目录为 run-artifacts/formal/<harness>-<provider>-repeat<N>/；已存在的目录拒绝重建。
+正式目录为 run-artifacts/formal/vgb-1.0.0rc1/<subset>/<harness>-<provider>-repeat<N>/；已存在的目录拒绝重建。
 run 会启动实际实验；材料化也会写入任务和配置，两者都没有 --dry-run 参数。
 
 ## 批量辅助入口
 
-    bash scripts/run_formal_experiments.sh --dry-run
-    bash scripts/run_formal_experiments_interactive.sh
-    bash scripts/run_formal_experiments.sh
+    bash scripts/run_formal_experiments.sh --subset property-calculation --repeats 2 --dry-run
+    bash scripts/run_formal_experiments_interactive.sh --subset property-calculation --repeats 2
+    bash scripts/run_formal_experiments.sh --subset property-calculation --repeats 2
 
 以上是三种分别选择的操作：预览、交互执行、自动执行。预览仅打印命令，但也先检查正式配置。
 辅助脚本调用 scripts/run_formal_matrix.py，逐个原始 run 串行调度；Job 内并发由配置和正式入口约束。
-脚本保留并跳过已有目录，不等于确认其完成。进入下一轮前应核对上一轮所有 run 的终态；
-非零退出应先排查，不通过删除目录重复派发。日志保存到 logs/formal-experiments/。
+2026-10-31 核对：脚本遇到已有目标目录直接报错，不隐式跳过或恢复。进入下一轮前应核对上一轮所有 run 的终态；
+非零退出应先排查，不通过删除目录重复派发。日志保存到 logs/formal-experiments/vgb-1.0.0rc1/<subset>/。
 
 ## 浏览与汇总
 

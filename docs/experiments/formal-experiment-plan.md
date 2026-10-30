@@ -1,12 +1,13 @@
 # 正式实验方案
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
-**配置核对日期**：2026-10-30（Asia/Shanghai）
-**状态**：VGB RC 已接入；两套 repeat1 迁移视图已核验发布；开放生成配置已准备，正式实验未启动。验收范围见第 14.7 节。
+**配置核对日期**：2026-10-31（Asia/Shanghai）
+**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 配置完整性核对通过，尚未启动。开放生成配置已准备，尚未启动。范围见第 14.7 节及 [repeat2 计划](2026-10-31-plan-property-calculation-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
-本轮没有启动正式实验或调用 provider；已验证四个镜像化学环境并重算迁移视图汇总，未重新评分。第 14 节旧台账保留其日期和冻结口径。
+2026-10-31 仅核对配置、包与现有结果，未启动正式实验或调用 provider；四镜像化学验证及迁移汇总重算为
+2026-10-30 的验收范围，未重新评分。第 14 节旧台账保留其日期和冻结口径。
 
 ---
 
@@ -122,8 +123,10 @@ repeat1 两套迁移视图各1120条；后续repeat2/3为RC原生运行，共224
 
 以下参数继续适用于RC新运行；旧版16组原始运行保持冻结条件。已获批恢复条件和第 14.6 节的加时 campaign 分别冻结，不回写原始协议。
 
-> 2026-10-29 核对：本机 16 份正式 YAML 均为 71 题、skills_off、preinstalled、high、64000、
-> 4 CPU / 6144 MB、7200/120 秒、并发 2、n_attempts=1、max_retries=0；模型组合未改变。
+> 2026-10-31 核对：本机 `configs/experiments/property-calculation/` 的 16 份正式 YAML
+> 已由旧 71 题改为 RC 70 题（依据 2026-10-30 升级及锁定包清单）；仍为 skills_off、
+> preinstalled、high、64000、4 CPU / 6144 MB、7200/120 秒、并发 2、n_attempts=1、
+> max_retries=0，模型组合未改变。旧 repeat1 冻结配置不回写。
 
 ### 5.1 推理与输出参数
 
@@ -823,7 +826,13 @@ advanced；当前 G 的实际 merged 已包含 71 个代表（9 个 advanced、2
 
 证据为 run-artifacts/timeout-rerun/repeat1-12h-20261027 下的 manifest.json、scope-amendment.json、
 terminal-deferrals.json；后者逐项绑定授权、Trial 身份与结果哈希。冻结不自动解除，不将冻结尝试
-替换为正式代表，其错误、日志和实际消耗仍保留。本轮仅核对范围，不宣称 36 项已完成或修订结果已发布。
+替换为正式代表，其错误、日志和实际消耗仍保留。上述为 2026-10-29 范围记录。
+
+2026-10-31 完成状态复核：campaign `state.json` 为 `complete=true/status=completed`，
+2026-10-30 发布检查确认 1136 个旧 slots 中 36 个替换、1100 个保留（含 8 个冻结项），
+`summary_exit_code=0`。发布入口为 `run-artifacts/formal/repeat1-timeout12h-20261027/`；
+RC 迁移后的当前入口见第 14.7 节。早期 `effective-scope-state.json` 是历史快照，
+其中 pending/interrupted 数量不代表最终 campaign 状态；本轮未改写该证据。
 
 ### 14.7 RC任务集迁移与当前正式结果（2026-10-30）
 

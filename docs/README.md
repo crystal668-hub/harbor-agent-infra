@@ -26,6 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
+- [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：2026-10-31 配置核对证据、执行范围与后续启动入口；本轮未启动。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
