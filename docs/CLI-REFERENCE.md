@@ -117,6 +117,8 @@ analyze 用于恢复次数、失败分类与恢复统计，不是正式成绩选
 ## Viewer、镜像与返回值
 
 view 默认 --artifacts-dir run-artifacts、--host 127.0.0.1、--port 8080。
+扫描 `ROOT/formal/<run>/jobs`、`ROOT/timeout-rerun/**/jobs` 和 `ROOT/<run>/jobs`；
+不扫描 `ROOT/temporary`。formal 与根目录仅发现一级 run，timeout-rerun 递归发现且排除 jobs 内嵌套的 jobs。
 目录发现规则见 [架构](ARCHITECTURE.md)。image 默认 linux/arm64，引用必须绑定 digest；
 pull 使用 if_missing，不是强制刷新；inspect 不自动拉取。
 

@@ -38,33 +38,32 @@ class ArtifactRun:
     jobs_dir: Path
     job_count: int
     modified_at: float
-    category: str | None  # formal, temporary, timeout-rerun, or None for legacy
+    category: str | None  # formal, timeout-rerun, or None for legacy
 
 
 def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
-    """Discover categorized, timeout-rerun, and legacy top-level artifact runs."""
+    """Discover formal, timeout-rerun, and legacy runs, excluding temporary."""
     runs = []
 
-    # Discover categorized runs (formal/ and temporary/)
-    for category_name in ["formal", "temporary"]:
-        category_dir = artifacts_dir / category_name
-        if category_dir.is_dir() and not category_dir.is_symlink():
-            for child in category_dir.iterdir():
-                jobs_dir = child / "jobs"
-                if not child.is_dir() or child.is_symlink() or not jobs_dir.is_dir():
-                    continue
-                job_count = sum(
-                    job.is_dir() and (job / "config.json").is_file() for job in jobs_dir.iterdir()
+    # Discover formal runs
+    category_dir = artifacts_dir / "formal"
+    if category_dir.is_dir() and not category_dir.is_symlink():
+        for child in category_dir.iterdir():
+            jobs_dir = child / "jobs"
+            if not child.is_dir() or child.is_symlink() or not jobs_dir.is_dir():
+                continue
+            job_count = sum(
+                job.is_dir() and (job / "config.json").is_file() for job in jobs_dir.iterdir()
+            )
+            runs.append(
+                ArtifactRun(
+                    name=child.name,
+                    jobs_dir=jobs_dir,
+                    job_count=job_count,
+                    modified_at=child.stat().st_mtime,
+                    category="formal",
                 )
-                runs.append(
-                    ArtifactRun(
-                        name=child.name,
-                        jobs_dir=jobs_dir,
-                        job_count=job_count,
-                        modified_at=child.stat().st_mtime,
-                        category=category_name,
-                    )
-                )
+            )
 
     # Timeout campaigns are nested below timeout-rerun/<campaign>/jobs.
     timeout_dir = artifacts_dir / "timeout-rerun"
@@ -98,7 +97,7 @@ def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
 
     # Discover legacy top-level runs (backward compatibility)
     for child in artifacts_dir.iterdir():
-        # Skip category directories
+        # Skip category directories, including excluded temporary runs
         if child.name in ("formal", "temporary", "timeout-rerun"):
             continue
 
@@ -134,7 +133,7 @@ class _RunDispatcher:
         ]
         if not candidates:
             return None
-        # Prefer categorized (formal or temporary) over legacy None
+        # Prefer categorized runs over legacy None
         categorized = [r for r in candidates if r.category is not None]
         return categorized[0] if categorized else candidates[0]
 
@@ -319,10 +318,6 @@ def _directory_page(runs: tuple[ArtifactRun, ...]) -> str:
         background: #d4f4e2;
         color: #0f6d38;
       }}
-      .category.temporary {{
-        background: #fee;
-        color: #b71c1c;
-      }}
       .category.timeout-rerun {{
         background: #e8eaf6;
         color: #303f9f;
@@ -362,7 +357,6 @@ def _directory_page(runs: tuple[ArtifactRun, ...]) -> str:
         .list, .run, .empty {{ border-color: #303832; }}
         .run:hover, .run:focus-visible {{ background: #19201b; }}
         .category.formal {{ background: #1a3d2a; color: #72d796; }}
-        .category.temporary {{ background: #3d1a1a; color: #ff6b6b; }}
         .category.timeout-rerun {{ background: #202b50; color: #b3c4ff; }}
         .category.legacy {{ background: #2a2a2a; color: #9e9e9e; }}
         .open, code {{ color: #72d796; }}
@@ -390,8 +384,6 @@ def _run_row(run: ArtifactRun) -> str:
     # Add category badge
     if run.category == "formal":
         category_badge = '<span class="category formal">Formal</span>'
-    elif run.category == "temporary":
-        category_badge = '<span class="category temporary">Temporary</span>'
     elif run.category == "timeout-rerun":
         category_badge = '<span class="category timeout-rerun">Timeout rerun</span>'
     else:

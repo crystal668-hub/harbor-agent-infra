@@ -36,7 +36,7 @@ def artifacts_dir(tmp_path: Path) -> Path:
     (base / "old-run" / "jobs" / "job-legacy").mkdir(parents=True)
     (base / "old-run" / "jobs" / "job-legacy" / "config.json").touch()
 
-    # Create same name in different categories (should be distinct)
+    # Temporary runs must not shadow formal runs with the same name
     (formal / "shared-name" / "jobs" / "job-1").mkdir(parents=True)
     (formal / "shared-name" / "jobs" / "job-1" / "config.json").touch()
     (temporary / "shared-name" / "jobs" / "job-2").mkdir(parents=True)
@@ -49,8 +49,8 @@ def test_discover_categorized_runs(artifacts_dir: Path) -> None:
     """Test that discover_artifact_runs finds all categorized and legacy runs."""
     runs = discover_artifact_runs(artifacts_dir)
 
-    # Should find 7 total runs (2 formal + 2 temporary + 1 legacy + 2 shared-name)
-    assert len(runs) == 7
+    # Only formal and legacy runs are visible.
+    assert len(runs) == 4
 
     # Check formal runs
     formal_runs = [r for r in runs if r.category == "formal"]
@@ -58,11 +58,7 @@ def test_discover_categorized_runs(artifacts_dir: Path) -> None:
     formal_names = {r.name for r in formal_runs}
     assert formal_names == {"experiment-001", "experiment-002", "shared-name"}
 
-    # Check temporary runs
-    temporary_runs = [r for r in runs if r.category == "temporary"]
-    assert len(temporary_runs) == 3
-    temporary_names = {r.name for r in temporary_runs}
-    assert temporary_names == {"smoke-test-123", "debug-run", "shared-name"}
+    assert not any(r.category == "temporary" for r in runs)
 
     # Check legacy run
     legacy_runs = [r for r in runs if r.category is None]
@@ -78,25 +74,26 @@ def test_job_count_correct(artifacts_dir: Path) -> None:
 
     assert run_by_name_category[("experiment-001", "formal")].job_count == 1
     assert run_by_name_category[("experiment-002", "formal")].job_count == 2
-    assert run_by_name_category[("smoke-test-123", "temporary")].job_count == 1
-    assert run_by_name_category[("debug-run", "temporary")].job_count == 0
     assert run_by_name_category[("old-run", None)].job_count == 1
 
 
-def test_same_name_different_category_distinct(artifacts_dir: Path) -> None:
-    """Test that same name in different categories are distinct runs."""
+def test_temporary_runs_are_excluded(artifacts_dir: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from harbor_agent_infra.viewer import create_multi_run_viewer
+
+    # Even a direct jobs folder must not turn temporary into a legacy run.
+    (artifacts_dir / "temporary" / "jobs").mkdir()
     runs = discover_artifact_runs(artifacts_dir)
+    shared = [r for r in runs if r.name == "shared-name"]
+    assert len(shared) == 1
+    assert shared[0].category == "formal"
+    assert {r.name for r in runs}.isdisjoint({"temporary", "smoke-test-123", "debug-run"})
 
-    shared_name_runs = [r for r in runs if r.name == "shared-name"]
-    assert len(shared_name_runs) == 2
-
-    categories = {r.category for r in shared_name_runs}
-    assert categories == {"formal", "temporary"}
-
-    # Verify they point to different directories
-    formal_shared = next(r for r in shared_name_runs if r.category == "formal")
-    temp_shared = next(r for r in shared_name_runs if r.category == "temporary")
-    assert formal_shared.jobs_dir != temp_shared.jobs_dir
+    client = TestClient(create_multi_run_viewer(artifacts_dir))
+    assert "smoke-test-123" not in client.get("/").text
+    assert client.get("/?run=smoke-test-123").status_code == 404
+    assert client.get("/api/config?hai_run=smoke-test-123").status_code == 409
 
 
 def test_empty_artifacts_dir(tmp_path: Path) -> None:
@@ -178,15 +175,11 @@ def test_cache_key_format(artifacts_dir: Path) -> None:
     formal_run = ArtifactRun(
         name="test", jobs_dir=Path("/fake"), job_count=1, modified_at=0.0, category="formal"
     )
-    temp_run = ArtifactRun(
-        name="test", jobs_dir=Path("/fake"), job_count=1, modified_at=0.0, category="temporary"
-    )
     legacy_run = ArtifactRun(
         name="test", jobs_dir=Path("/fake"), job_count=1, modified_at=0.0, category=None
     )
 
     assert dispatcher._cache_key(formal_run) == "formal/test"
-    assert dispatcher._cache_key(temp_run) == "temporary/test"
     assert dispatcher._cache_key(legacy_run) == "test"
 
 
