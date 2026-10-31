@@ -581,7 +581,7 @@ uv run --locked --python 3.12 hai summary \
 
 最终分析报告必须包含：
 
-1. **主结果**: basic（51 题）与 advanced（20 题）必须分别统计和报告，按 harness、model、repeat 区分
+1. **主结果**: 当前RC任务集 basic（51题）与 advanced（19题）必须分别统计和报告，按 harness、model、repeat区分；旧0.10.0历史轮次按原20+51任务集单独标注
    - 两个 track 分别给出样本数、已评分数、缺失原因和 VGB 得分；不以混合均分替代两个 track 的主结果
    - `hai summary` 提供 `track` 和 `run_track` 分项，原有 `summary` 仅为兼容的整体辅助统计
    - 均值、中位数、标准差
@@ -674,23 +674,58 @@ uv run --locked --python 3.12 hai summary \
 
 ---
 
-> 当前RC迁移结果入口见第14.7节；以下旧台账保留0.10.0、71题历史口径。
+> 当前RC迁移结果入口见第14.7节；第14.2.1与14.5节保留0.10.0、71题历史口径。
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-10-26。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-截至本次更新，**台账已收录 16/48 个子实验的最终验收结果**，包括 Claude Code 和 Hermes repeat1 的全部四个模型组合、Codex × GPT/Claude/DeepSeek/Qwen repeat1，以及 OpenClaw × Claude/GPT/DeepSeek/Qwen repeat1。Qwen 的两个 merged 快照均为 71/71 可评分；所有补跑和人工评分裁定均保留在对应快照证据中。
+**最后核对日期**：2026-10-31。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+旧 0.10.0 原生台账仍记录 16/48 个 repeat1 子实验；当前 VGB RC 迁移视图覆盖同一16个组合，
+按70题目标清单分别投影为 Advanced 19题与 Basic 51题。旧结果及人工评分来源保留在第14.5节，
+当前分数由第14.7节的迁移产物核对。
 
 ### 14.1 更新与统计口径
 
 - 按 repeat1 → repeat2 → repeat3 跟踪，每轮列出全部 16 个组合；repeat 对应内部索引 0、1、2。
-- 两个 track 独立统计。得分单元格格式为 **计分样本 / 预定数；VGB 均分**，advanced 每次 20 slots，basic 每次 51 slots；均分保留 6 位小数。
+- 两个 track 独立统计。得分单元格格式为 **计分样本 / 预定数；VGB 均分**；当前RC任务集 advanced 每次19 slots、basic每次51 slots，历史0.10.0 repeat1另见第14.2.1节；均分保留6位小数。
 - 正常评分中的零分保留；`AgentTimeoutError` 或明确达到 7200 秒协议上限且未产生分数的记录，按可评分 `0.0` 纳入对应 track 分母。本轮 Claude Code 与 Hermes 的 Claude Advanced 安全限制拒答也按用户决定计为 `0.0`；其他安全拒答、工程失败及无评分记录不默认补零，并在备注中单独列出。`—` 表示尚无可核实的分 track 统计，不代表零分或已确认未启动。
 - 状态随执行更新为运行中、待恢复、补跑中、已合并待验收、已验收或阻塞；不能仅凭目录存在或已评分数判定完成。部分结果须在备注中记录缺失数和原因。
 - 每个原始 run 只选一个原始或 merged 快照；补跑不新增子实验，不与原始结果重复计数。变更镜像或其他冻结条件时记录条件身份，按第 5.4 节处理。
 - 每次更新同步维护第 14.5 节的来源与备注；分数由 `hai summary` 的 `run_track` 核对，不使用混合 track 均分替代。
 
-### 14.2 Repeat 1
+### 14.2 Repeat 1：当前 VGB 1.0.0rc1 任务集视图
+
+当前台账采用正式选择入口的 amended-12h 迁移视图：目标任务集70题（Advanced 19、Basic 51），
+分数投影自0.10.0原始评分，没有使用RC重新评分。12小时视图由原2小时代表与获选超时
+加时重跑组成，不能视为统一12小时预算实验。16个组合均为Advanced 19/19、Basic 51/51计分，
+共304/304与816/816；原始执行错误仍按证据保留。
+
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 已迁移核验 | 19 / 19；0.386538 | 51 / 51；0.642258 |
+| Claude Code | Qwen | 已迁移核验 | 19 / 19；0.705505 | 51 / 51；0.861517 |
+| Claude Code | GPT | 已迁移核验 | 19 / 19；0.727798 | 51 / 51；0.885740 |
+| Claude Code | Claude | 已迁移核验 | 19 / 19；0.638808 | 51 / 51；0.859013 |
+| Codex | DeepSeek | 已迁移核验 | 19 / 19；0.289281 | 51 / 51；0.715334 |
+| Codex | Qwen | 已迁移核验 | 19 / 19；0.681420 | 51 / 51；0.907983 |
+| Codex | GPT | 已迁移核验 | 19 / 19；0.648317 | 51 / 51；0.908060 |
+| Codex | Claude | 已迁移核验 | 19 / 19；0.714562 | 51 / 51；0.886834 |
+| Hermes | DeepSeek | 已迁移核验 | 19 / 19；0.516524 | 51 / 51；0.753118 |
+| Hermes | Qwen | 已迁移核验 | 19 / 19；0.646576 | 51 / 51；0.831711 |
+| Hermes | GPT | 已迁移核验 | 19 / 19；0.642980 | 51 / 51；0.905121 |
+| Hermes | Claude | 已迁移核验 | 19 / 19；0.680417 | 51 / 51；0.869606 |
+| OpenClaw | DeepSeek | 已迁移核验 | 19 / 19；0.365373 | 51 / 51；0.611643 |
+| OpenClaw | Qwen | 已迁移核验 | 19 / 19；0.453052 | 51 / 51；0.900612 |
+| OpenClaw | GPT | 已迁移核验 | 19 / 19；0.667658 | 51 / 51；0.887851 |
+| OpenClaw | Claude | 已迁移核验 | 19 / 19；0.662200 | 51 / 51；0.914052 |
+
+当前跨组合 Advanced 均分为0.589188，Basic为0.833778。统一7200秒条件比较应使用
+baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见RC迁移结果入口
+（第14.7节）及 run-artifacts/formal/CURRENT.md。
+
+### 14.2.1 历史 Repeat1 原始任务集（VGB 0.10.0，71题）
+
+下表冻结为原始20 Advanced + 51 Basic统计，仅供历史查阅；不可作为当前RC任务集分母
+或当前Repeat1分数入口。旧执行、补跑及人工评分来源见第14.5节。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 20；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
@@ -711,12 +746,12 @@ uv run --locked --python 3.12 hai summary \
 | OpenClaw | GPT | 已验收 | 20 / 20；0.634276 | 51 / 51；0.887851 |
 | OpenClaw | Claude | 已验收 | 20 / 20；0.629090 | 51 / 51；0.914052 |
 
-### 14.3 Repeat 2
+### 14.3 Repeat 2（2026-10-31 进度核对）
 
-| Harness | Model | 进度 | Advanced：计分样本 / 20；均分 | Basic：计分样本 / 51；均分 |
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 未启动 | — | — |
-| Claude Code | Qwen | 未启动 | — | — |
+| Claude Code | DeepSeek | 正式轮已收尾；70/70计分，3个Agent超时按协议计0；Job保留3项错误 | 19 / 19；0.291048 | 51 / 51；0.645125 |
+| Claude Code | Qwen | 运行中；16个Trial已结束、2个运行中、52个待执行；当前7项错误，最终分数待结案 | — | — |
 | Claude Code | GPT | 未启动 | — | — |
 | Claude Code | Claude | 未启动 | — | — |
 | Codex | DeepSeek | 未启动 | — | — |
@@ -734,7 +769,7 @@ uv run --locked --python 3.12 hai summary \
 
 ### 14.4 Repeat 3
 
-| Harness | Model | 进度 | Advanced：计分样本 / 20；均分 | Basic：计分样本 / 51；均分 |
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 未启动 | — | — |
 | Claude Code | Qwen | 未启动 | — | — |
@@ -754,6 +789,9 @@ uv run --locked --python 3.12 hai summary \
 | OpenClaw | Claude | 未启动 | — | — |
 
 ### 14.5 结果来源与后续更新
+
+本节 A–S 来源表记录的是 VGB 0.10.0、71题原始执行/恢复来源，保留其冻结条件与历史分数；
+当前19题 Advanced 台账见第14.2节，RC任务身份迁移见第14.7节。
 
 | 来源 | 来源 run／补跑目录 | 本次入选快照（相对 `run-artifacts/formal/`） | 核对日期 | 缺失与验收备注 |
 | --- | --- | --- | --- | --- |
