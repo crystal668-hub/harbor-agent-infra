@@ -1,8 +1,8 @@
 # 正式实验方案
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
-**配置核对日期**：2026-11-01（Asia/Shanghai；本次仅调整开放生成 Verifier 时限）
-**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 已按授权启动前两个组合，Claude Code × DeepSeek正式轮已收尾（含3项超时协议零分），Qwen已启动。开放生成尚未启动。范围见第 14.7 节及 [repeat2 计划](2026-10-31-plan-property-calculation-repeat2.md)。
+**配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
+**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code × DeepSeek/Qwen 均已正常收尾并通过结案审核，分别含3/13项超时协议零分。其余14组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节及[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -685,7 +685,7 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-10-31。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+**最后核对日期**：2026-11-01。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
 旧 0.10.0 原生台账仍记录 16/48 个 repeat1 子实验；当前 VGB RC 迁移视图覆盖同一16个组合，
 按70题目标清单分别投影为 Advanced 19题与 Basic 51题。旧结果及人工评分来源保留在第14.5节，
 当前分数由第14.7节的迁移产物核对。
@@ -753,12 +753,12 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 | OpenClaw | GPT | 已验收 | 20 / 20；0.634276 | 51 / 51；0.887851 |
 | OpenClaw | Claude | 已验收 | 20 / 20；0.629090 | 51 / 51；0.914052 |
 
-### 14.3 Repeat 2（2026-10-31 进度核对）
+### 14.3 Repeat 2（2026-11-01 结案审核）
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 正式轮已收尾；70/70计分，3个Agent超时按协议计0；Job保留3项错误 | 19 / 19；0.291048 | 51 / 51；0.645125 |
-| Claude Code | Qwen | 运行中；16个Trial已结束、2个运行中、52个待执行；当前7项错误，最终分数待结案 | — | — |
+| Claude Code | DeepSeek | 正式轮已收尾并审核；67项VGB评分＋3项超时协议0分；保留3项原生错误 | 19 / 19；0.291048 | 51 / 51；0.645125 |
+| Claude Code | Qwen | 正式轮已收尾并审核；57项VGB评分＋13项超时协议0分；保留13项原生错误 | 19 / 19；0.301906 | 51 / 51；0.815410 |
 | Claude Code | GPT | 未启动 | — | — |
 | Claude Code | Claude | 未启动 | — | — |
 | Codex | DeepSeek | 未启动 | — | — |
@@ -773,6 +773,10 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 | OpenClaw | Qwen | 未启动 | — | — |
 | OpenClaw | GPT | 未启动 | — | — |
 | OpenClaw | Claude | 未启动 | — | — |
+
+前两组各70个唯一slot和70份原生Trial结果，hai audit均无工程/评分故障；全部异常为
+AgentTimeoutError。普通恢复不批准替代，16个超时slot留待后续独立加时轮。
+两组整体均分分别为0.549018与0.676030；核验范围及原始清单见[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
 
 ### 14.4 Repeat 3
 
