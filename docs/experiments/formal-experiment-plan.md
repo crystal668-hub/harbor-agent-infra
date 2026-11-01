@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code × DeepSeek/Qwen 均已正常收尾并通过结案审核，分别含3/13项超时协议零分。其余14组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节及[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
+**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code × DeepSeek/Qwen 已验收，Claude于2026-11-01 19:34启动、GPT排队等待，顺序为Claude → GPT。其余12组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节及[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -735,8 +735,8 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；0.291048 | 51 / 51；0.645125 |
 | Claude Code | Qwen | 已验收 | 19 / 19；0.301906 | 51 / 51；0.815410 |
-| Claude Code | GPT | 未启动 | — | — |
-| Claude Code | Claude | 未启动 | — | — |
+| Claude Code | GPT | 排队中 | — | — |
+| Claude Code | Claude | 运行中 | — | — |
 | Codex | DeepSeek | 未启动 | — | — |
 | Codex | Qwen | 未启动 | — | — |
 | Codex | GPT | 未启动 | — | — |

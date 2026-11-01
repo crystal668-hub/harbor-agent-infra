@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：前两个组合已于2026-11-01完成结案审核；DeepSeek/Qwen均70/70计分，分别含3/13项超时协议零分。其余组合和加时轮未启动。[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。下文准备检查保留原执行范围。
+状态：前两个组合已于2026-11-01完成结案审核；DeepSeek/Qwen均70/70计分，分别含3/13项超时协议零分。Claude于2026-11-01 19:34启动、GPT顺序排队；其余12组合和加时轮未启动。[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。下文准备检查保留原执行范围。
 
 ## 范围与配置结论
 
@@ -106,3 +106,16 @@ Advanced 006、Basic 029/030 均为 AgentTimeoutError，已通过独立计分裁
 原始results.json备份和授权证据留在该run目录，计分通过baseline_score_dispositions投影。
 协议零分不冒充官方verifier成功评分。该run正式轮已正常收尾；后续补跑轮尚未启动，
 不因本次计分立即执行补跑，其加时时限和执行清单在补跑轮单独冻结。
+
+## 2026-11-01 后两组启动顺序调整
+
+用户明确指定Claude → GPT，替代默认矩阵在这两组之间的GPT → Claude顺序；仅适用于
+Claude Code的本次repeat2后两组，不改变模型、提示、任务清单、资源或7200/120秒预算。
+Claude于19:34:14（上海）进入执行，Job ID为1a73fc0b-8223-476c-a20f-8ab76a96e53a，
+冻结70个slot；GPT在其进程返回0后自动派发，非零退出则停止，不启动其他组合。
+正常超时仍按既定规则计0，不阻塞正式轮收尾，后续加时轮单独处理。
+
+顺序控制由tmux会话harbor-repeat2-claude-gpt-20261101托管；本机控制证据为
+logs/formal-experiments/claude-code-repeat2-claude-then-gpt-20261101的
+.launch.json、.state.json、.sequence.py及.controller.log文件。
+实际实验输出及组合日志仍按统一格式，锁与对应配置哈希在每组派发前再次检查。
