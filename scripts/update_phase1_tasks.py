@@ -1,4 +1,4 @@
-"""Generate formal subset configs from the selected package, preserving execution settings."""
+"""Generate formal subset configs with the selected package and subset timeout policy."""
 
 from __future__ import annotations
 
@@ -26,6 +26,8 @@ def generate(workspace: Path, runtime: Path, lock: Path, destination: Path) -> l
             original = yaml.safe_load(source.read_text())
             for subset in SUBSETS:
                 config = copy.deepcopy(original)
+                if subset == "open-generation":
+                    config.setdefault("task", {})["verifier_timeout_sec"] = 180
                 config["experiment"]["benchmark"].update(
                     package_lock=str(lock), cases=cases[subset]
                 )

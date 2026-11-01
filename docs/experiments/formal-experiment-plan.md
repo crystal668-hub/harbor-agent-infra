@@ -1,7 +1,7 @@
 # 正式实验方案
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
-**配置核对日期**：2026-10-31（Asia/Shanghai）
+**配置核对日期**：2026-11-01（Asia/Shanghai；本次仅调整开放生成 Verifier 时限）
 **状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 已按授权启动前两个组合，Claude Code × DeepSeek正式轮已收尾（含3项超时协议零分），Qwen已启动。开放生成尚未启动。范围见第 14.7 节及 [repeat2 计划](2026-10-31-plan-property-calculation-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
@@ -92,12 +92,19 @@ Basic 51题完整清单由锁定包生成到 `configs/experiments/property-calcu
 - `open_generation_rdkit`：10题（旧14题删除4题，9个保留ID改名）。
 - `open_generation_xtb`：20题，任务ID不变。
 - 16个 harness/model 组合、skills_off、3次独立重复；30×16×3 = **1440 slots，48个run**。
-- 依次完成所有组合repeat1、repeat2、repeat3；每个Job并发2，Agent 7200秒、Verifier 120秒。
+- 依次完成所有组合repeat1、repeat2、repeat3；每个Job并发2，Agent 7200秒、Verifier 180秒。
 - 其余模型、high、64000单次响应参数、镜像、资源和重试条件沿用第5节。
 
 配置位于 `configs/experiments/open-generation/`。已完成包接口、配置物化、四镜像化学探测和
-xTB/CREST样例评分；CREST样例118.478秒，接近120秒上限。此为单样例通过，不代表全题目或重复
-稳定性验收；不擅自扩大超时，未来运行失败仍按协议记录。未进行provider端到端或正式实验。
+xTB/CREST样例评分；CREST样例在原120秒上限下耗时118.478秒。此为单样例通过，不代表全题目或重复
+稳定性验收。未进行provider端到端或正式实验。
+
+2026-11-01 按用户授权，将开放生成 Verifier 上限从 **120秒提高到180秒**，为上述接近原上限的
+CREST评分留出余量；适用于RDKit及xTB两条track、全部16组合及repeat1/2/3。
+配置生成逻辑及本机16份配置同步更新；性质计算仍为120秒，历史冻结配置、评分和样例耗时不回写。
+本次验收限于配置、任务物化与矩阵dry-run，不包含180秒条件下的真实评分或全任务时限稳定性验证。
+验收结果：31项相关测试通过，16份配置物化的480份任务定义均为Verifier 180秒、Agent 7200秒，
+矩阵dry-run生成48个独立目标；本机证据位于 `run-artifacts/open-generation-timeout-20261101/`。
 
 ---
 
@@ -153,7 +160,7 @@ repeat1 两套迁移视图各1120条；后续repeat2/3为RC原生运行，共224
 | CPU | 4 cores | `resources.profiles.*.cpus: 4` |
 | 内存 | 6144 MB | `resources.profiles.*.memory_mb: 6144` |
 | Agent 超时 | 7200 秒 (2 小时) | `task.agent_timeout_sec: 7200` |
-| Verifier 超时 | 120 秒 | `task.verifier_timeout_sec: 120` |
+| Verifier 超时 | 性质计算120秒；开放生成180秒 | `task.verifier_timeout_sec`；2026-11-01开放生成修订见第3.2节 |
 | 并发 Trials | 2 | `resources.capacity.max_concurrent_trials: 2` |
 
 ### 5.3 重试与恢复配置
