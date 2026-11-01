@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：前两个组合已于2026-11-01完成结案审核；DeepSeek/Qwen均70/70计分，分别含3/13项超时协议零分。Claude于2026-11-01 19:34启动、GPT顺序排队；其余12组合和加时轮未启动。[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。下文准备检查保留原执行范围。
+状态：前两个组合已于2026-11-01完成结案审核；DeepSeek/Qwen均70/70计分。2026-11-02核对：Claude已结束待验收、GPT运行中，Codex × DeepSeek已获授权排队；其余11组合和加时轮未启动。[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。下文准备检查保留原执行范围。
 
 ## 范围与配置结论
 
@@ -119,3 +119,17 @@ Claude于19:34:14（上海）进入执行，Job ID为1a73fc0b-8223-476c-a20f-8ab
 logs/formal-experiments/claude-code-repeat2-claude-then-gpt-20261101的
 .launch.json、.state.json、.sequence.py及.controller.log文件。
 实际实验输出及组合日志仍按统一格式，锁与对应配置哈希在每组派发前再次检查。
+
+## 2026-11-02 Codex × DeepSeek 等待队列
+
+用户授权将codex-deepseek-repeat2接在Claude Code × GPT之后。独立等待会话
+harbor-repeat2-codex-deepseek-20261102于00:36（上海）进入等待状态，不修改原控制进程。
+前序顺序控制完成且GPT进程exit_code=0后，核验其70个Trial全部结束、无运行/待执行/取消项，
+根结果含70条，再启动Codex × DeepSeek；正常预算超时不因本次等待检查变成工程失败。
+前序失败、目标已存在或所选配置/运行锁哈希漂移时停止，不自动覆盖、恢复或重复派发。
+
+Codex × DeepSeek继续使用70题、skills_off、high、64000、7200/120秒、并发2，
+deepseek-responses路由及预装不可变镜像。已核对配置、包任务清单、凭据存在性和协议桥health。
+等待控制文件为logs/formal-experiments/codex-deepseek-repeat2-after-claude-code-gpt-20261102的
+.launch.json、.state.json、.sequence.py和.controller.log；组合日志为codex-deepseek-repeat2.log。
+排队时尚未创建实验输出目录及组合日志，不启动其他组合。
