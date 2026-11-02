@@ -70,15 +70,25 @@ uv run --locked --python 3.12 pytest -q -m 'not integration' \
 
 ## 兼容与范围外引用
 
-顶层 `reports/`、`outputs/` 目前仅包含说明及 60 个兼容符号链接，没有第二份产物。
-新专题直接写规范位置，不再增加旧顶层入口。暂保留链接是为了兼容冻结清单、历史脚本、
-旧聊天路径和以下本机 LaunchAgent：
+用户随后批准移除兼容入口。已核对顶层内容只包含 60 个清单内符号链接和本次生成的
+`README.md` 入口索引；逐项确认目标存在后删除链接与索引，并移除空的顶层目录。
+迁移后的 60 个规范目标全部保留，未对目标做写入或删除。
+
+删除期间 `run-artifacts/formal/codex-anthropic-repeat2/` 新增了正式运行文件，
+因此最终扫描相比基线多出正式运行路径。该目录由外部执行过程创建，不属于迁移目标；
+本次最终检查要求所有基线保护路径的内容与哈希均不变，同时保留并记录新加路径。
+无旧路径被移除或修改。Viewer 保留全部基线运行项，并额外发现新运行。结果见
+`compatibility-removal.json`、`concurrent-protected-additions.json`、
+`concurrent-viewer-additions.json`、`final-verification.json`。
+
+以下 LaunchAgent 当前均为 `not running`、active count 为 0；配置仍指向已移除的旧路径：
 
 - `com.harbor-agent-infra.qwen-repeat1-recovery-batch1.plist`
 - `com.harbor-agent-infra.codex-qwen-repeat1-supervisor.plist`
 
-本次未修改、加载或重启这些调度器。移除链接前须核查全部使用者，不以当前未见相关进程
-作为删除依据。历史安装环境和第三方源码保留原样，不宣称迁移后已重新安装或可独立重建。
+本次未修改、加载或重启调度器。若未来要重新加载，必须先将脚本参数及 stdout/stderr
+路径改为 `run-artifacts/temporary/` 中的新位置。用户明确授权移除兼容链接，故历史路径访问
+不再保证。历史安装环境和第三方源码保留原样，不宣称迁移后已重新安装或可独立重建。
 
 部分历史文档中的 `outputs/preinstalled/`、`outputs/gpt-two-fixes-*`、
 `outputs/openclaw-network-*`、`outputs/openclaw-resume-*` 指向其他工作树或本机不存在的
