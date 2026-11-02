@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code × DeepSeek/Qwen 已验收，Claude已结束待审核、GPT已结束待验收；Codex × DeepSeek原始轮已结束，14项HTTP 429待工程恢复审批、1项正常超时留待加时轮，尚未验收。其余11组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节及[Codex审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code 四个组合已验收。Codex × DeepSeek原始轮结束，正常超时计0，14项HTTP 429获批工程替代并通过恢复预览，实际重跑尚未启动；其余11组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节、[Claude Code验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)及[Codex审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -686,7 +686,7 @@ uv run --locked --python 3.12 hai summary \
 ## 14. 实验进度与分 track 得分台账
 
 **最后核对日期**：2026-11-02。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已登记18/48个子实验：repeat1的16个组合及repeat2的Claude Code × DeepSeek/Qwen。
+当前已验收20/48个子实验：repeat1的16个组合及repeat2的Claude Code四个组合。
 Repeat1仅展示VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -735,9 +735,9 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；0.291048 | 51 / 51；0.645125 |
 | Claude Code | Qwen | 已验收 | 19 / 19；0.301906 | 51 / 51；0.815410 |
-| Claude Code | GPT | 已结束待验收 | 19 / 19；0.726054 | 51 / 51；0.889773 |
-| Claude Code | Claude | 待审核 | 18 / 19；0.700027 | 51 / 51；0.898802 |
-| Codex | DeepSeek | 待工程恢复 | 12 / 19；0.368851 | 43 / 51；0.684737 |
+| Claude Code | GPT | 已验收 | 19 / 19；0.726054 | 51 / 51；0.889773 |
+| Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
+| Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
 | Codex | Qwen | 未启动 | — | — |
 | Codex | GPT | 未启动 | — | — |
 | Codex | Claude | 未启动 | — | — |
@@ -754,12 +754,12 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 AgentTimeoutError。普通恢复不批准替代，16个超时slot留待后续独立加时轮。
 两组整体均分分别为0.549018与0.676030；核验范围及原始清单见[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
 
-2026-11-02：Claude Code × Claude 70/70 Trial结束，1项AgentSafetyRefusalError待单独审核，
-不自动计协议零分。Claude Code × GPT 70/70结束且无执行异常，待正式验收。
-Codex × DeepSeek 70/70原始Trial结束，55项已有VGB评分；hai audit将14项ApiRateLimitError
-以0.3置信度兜底归为能力失败，逐条原生证据均为HTTP 429重试耗尽，人工复核列为
-待审批工程候选；另1项AgentTimeoutError为正常能力观测。未批准或执行普通恢复，
-详见[审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+2026-11-02用户裁定：Claude Code × GPT 70/70原生评分、无执行异常，直接验收；
+Claude Code × Claude的1项AgentSafetyRefusalError按能力错误计0，70/70计分并验收。
+两组原生Job/Trial与Verifier证据保留，见[验收记录](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)。
+Codex × DeepSeek 70/70原始Trial结束，55项原评分＋1项正常超时计0，仍有14项HTTP 429
+工程错误未评分。hai audit将429低置信度兜底归为能力失败；原生证据及用户裁定支持
+工程分类，已逐项批准替代并通过14项恢复预览，尚未启动实际重跑。详见[审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 
 ### 14.4 Repeat 3
 
