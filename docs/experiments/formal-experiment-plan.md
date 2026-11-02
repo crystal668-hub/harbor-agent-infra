@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code × DeepSeek/Qwen 已验收，Claude已结束待验收、GPT运行中；Codex × DeepSeek已获授权排队，在GPT全部70个Trial结束并正常退出后启动。其余11组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节及[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
+**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code × DeepSeek/Qwen 已验收，Claude已结束待审核、GPT已结束待验收；Codex × DeepSeek原始轮已结束，14项HTTP 429待工程恢复审批、1项正常超时留待加时轮，尚未验收。其余11组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节及[Codex审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -729,15 +729,15 @@ Repeat1仅展示VGB RC迁移视图，按70题目标清单投影为Advanced 19题
 baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见RC迁移结果入口
 （第14.7节）及 run-artifacts/formal/CURRENT.md。
 
-### 14.3 Repeat 2（2026-11-02 进度核对）
+### 14.3 Repeat 2（2026-11-02 进度与审核）
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；0.291048 | 51 / 51；0.645125 |
 | Claude Code | Qwen | 已验收 | 19 / 19；0.301906 | 51 / 51；0.815410 |
-| Claude Code | GPT | 运行中 | — | — |
-| Claude Code | Claude | 待验收 | — | — |
-| Codex | DeepSeek | 排队中 | — | — |
+| Claude Code | GPT | 已结束待验收 | 19 / 19；0.726054 | 51 / 51；0.889773 |
+| Claude Code | Claude | 待审核 | 18 / 19；0.700027 | 51 / 51；0.898802 |
+| Codex | DeepSeek | 待工程恢复 | 12 / 19；0.368851 | 43 / 51；0.684737 |
 | Codex | Qwen | 未启动 | — | — |
 | Codex | GPT | 未启动 | — | — |
 | Codex | Claude | 未启动 | — | — |
@@ -753,6 +753,13 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 前两组各70个唯一slot和70份原生Trial结果，hai audit均无工程/评分故障；全部异常为
 AgentTimeoutError。普通恢复不批准替代，16个超时slot留待后续独立加时轮。
 两组整体均分分别为0.549018与0.676030；核验范围及原始清单见[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。
+
+2026-11-02：Claude Code × Claude 70/70 Trial结束，1项AgentSafetyRefusalError待单独审核，
+不自动计协议零分。Claude Code × GPT 70/70结束且无执行异常，待正式验收。
+Codex × DeepSeek 70/70原始Trial结束，55项已有VGB评分；hai audit将14项ApiRateLimitError
+以0.3置信度兜底归为能力失败，逐条原生证据均为HTTP 429重试耗尽，人工复核列为
+待审批工程候选；另1项AgentTimeoutError为正常能力观测。未批准或执行普通恢复，
+详见[审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 
 ### 14.4 Repeat 3
 

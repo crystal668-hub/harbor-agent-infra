@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：前两个组合已于2026-11-01完成结案审核；DeepSeek/Qwen均70/70计分。2026-11-02核对：Claude已结束待验收、GPT运行中，Codex × DeepSeek已获授权排队；其余11组合和加时轮未启动。[审核记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)。下文准备检查保留原执行范围。
+状态：前两个组合已于2026-11-01完成结案审核；DeepSeek/Qwen均70/70计分。2026-11-02核对：Claude及GPT已结束，Claude安全拒答待审核；Codex × DeepSeek原始轮已结束，14项HTTP 429待工程恢复审批、1项能力超时留待加时轮，尚未验收；其余11组合和加时轮未启动。[前两组结案记录](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)及[Codex审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。下文准备检查保留原执行范围。
 
 ## 范围与配置结论
 
