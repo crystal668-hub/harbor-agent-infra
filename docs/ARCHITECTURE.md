@@ -85,8 +85,8 @@ Harbor Agent Infra 是实验控制面：校验配置、材料化任务、连接�
 不能用派生分析替换正式评分或更改 CURRENT 选择。通用可复用工具再移入 `scripts/` 或源码。
 
 2026-11-02 起不再向顶层 `reports/`、`outputs/` 创建新专题。旧内容已按用途迁入上述目录；
-兼容链接已移除，规范路径清单见迁移验收证据。两份本机 LaunchAgent 配置仍记录旧路径，
-当前均未运行；重新加载前必须更新其脚本和日志路径，详见验收记录。
+兼容链接已移除，规范路径清单见迁移验收证据。2026-11-02 已卸载并删除两份弃用的本机
+LaunchAgent 配置；对应历史控制与日志文件仍保留在迁移后的 temporary 专题中，见验收记录。
 新增的 `run-artifacts/audit/` 及其他未纳入此次范围的既有目录保持原位，后续新分析使用 `analysis/`。
 迁移范围、校验及遗留引用见[迁移验收记录](acceptance/2026-11-02-acceptance-artifact-directory-consolidation.md)。
 

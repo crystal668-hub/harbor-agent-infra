@@ -81,14 +81,18 @@ uv run --locked --python 3.12 pytest -q -m 'not integration' \
 `compatibility-removal.json`、`concurrent-protected-additions.json`、
 `concurrent-viewer-additions.json`、`final-verification.json`。
 
-以下 LaunchAgent 当前均为 `not running`、active count 为 0；配置仍指向已移除的旧路径：
+以下两个弃用的 LaunchAgent 在 2026-11-02 清理前均为 `not running`、active count 为 0，
+并分别记录退出码 0 和 1：
 
 - `com.harbor-agent-infra.qwen-repeat1-recovery-batch1.plist`
 - `com.harbor-agent-infra.codex-qwen-repeat1-supervisor.plist`
 
-本次未修改、加载或重启调度器。若未来要重新加载，必须先将脚本参数及 stdout/stderr
-路径改为 `run-artifacts/temporary/` 中的新位置。用户明确授权移除兼容链接，故历史路径访问
-不再保证。历史安装环境和第三方源码保留原样，不宣称迁移后已重新安装或可独立重建。
+按用户后续授权，已对两个 label 执行 `launchctl bootout`，然后仅删除上述两份哈希已核对的
+plist；`launchctl print` 现返回 service not found。其他 LaunchAgent 未变动。
+如需恢复任务，应先评估其已过时的恢复/续跑条件，并用新路径重新审查配置；不会自动恢复。
+对应脚本、锁、日志和运行历史仍保留在 `run-artifacts/temporary/`，不因删除调度配置而删除。
+结果见本机证据包 `launchagent-removal.json`。历史安装环境和第三方源码保留原样，
+不宣称迁移后已重新安装或可独立重建。
 
 部分历史文档中的 `outputs/preinstalled/`、`outputs/gpt-two-fixes-*`、
 `outputs/openclaw-network-*`、`outputs/openclaw-resume-*` 指向其他工作树或本机不存在的
