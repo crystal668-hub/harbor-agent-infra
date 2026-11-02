@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1 正式轮及加时补跑已完成并发布，两套 RC 迁移视图保留；性质计算 repeat2 的 Claude Code 四个组合已验收。Codex × DeepSeek原始轮结束，正常超时计0，14项HTTP 429获批工程替代并通过恢复预览，实际重跑尚未启动；其余11组合及本轮加时补跑未启动。开放生成尚未启动。范围见第14.3节、[Claude Code验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)及[Codex审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；性质计算repeat2的Claude Code四组已验收，Codex × DeepSeek待工程重跑，Codex × Claude运行中、Qwen排队中，其余9组合未启动。repeat2/3的12h合并轮均未启动，开放生成尚未启动。范围见第14节、[Claude Code验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)及[Codex审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -686,13 +686,13 @@ uv run --locked --python 3.12 hai summary \
 
 ---
 
-> Repeat1得分仅保留第14.2节的当前RC任务集视图；第14.5节保留历史执行来源，原始产物不删除。
+> Repeat1的2h正式轮与12h超时补跑合并轮分别列于第14.2节；第14.5节保留历史执行来源。
 
 ## 14. 实验进度与分 track 得分台账
 
 **最后核对日期**：2026-11-02。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
 当前已验收20/48个子实验：repeat1的16个组合及repeat2的Claude Code四个组合。
-Repeat1仅展示VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
+Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
 ### 14.1 更新与统计口径
@@ -701,40 +701,69 @@ Repeat1仅展示VGB RC迁移视图，按70题目标清单投影为Advanced 19题
 - 两个 track 独立统计。得分单元格格式为 **计分样本 / 预定数；VGB 均分**；当前RC任务集 advanced 每次19 slots、basic每次51 slots，均分保留6位小数。
 - 正常评分中的零分保留；`AgentTimeoutError` 或明确达到 7200 秒协议上限且未产生分数的记录，按可评分 `0.0` 纳入对应 track 分母。本轮 Claude Code 与 Hermes 的 Claude Advanced 安全限制拒答也按用户决定计为 `0.0`；其他安全拒答、工程失败及无评分记录不默认补零，并在备注中单独列出。`—` 表示尚无可核实的分 track 统计，不代表零分或已确认未启动。
 - 状态随执行更新为运行中、待恢复、补跑中、已合并待验收、已验收或阻塞；不能仅凭目录存在或已评分数判定完成。部分结果须在备注中记录缺失数和原因。
-- 每个原始 run 只选一个原始或 merged 快照；补跑不新增子实验，不与原始结果重复计数。变更镜像或其他冻结条件时记录条件身份，按第 5.4 节处理。
-- 每次更新同步维护第 14.5 节的来源与备注；分数由 `hai summary` 的 `run_track` 核对，不使用混合 track 均分替代。
+- 每种评价口径内，每个原始run只选一个代表快照；2h正式轮与12h超时补跑合并轮分别统计，不混算、不将补跑当作新repeat。变更镜像或其他冻结条件时记录条件身份，按第5.4节处理。
+- 每次更新保留来源与审核证据；分数由`hai summary`的`run_track`核对，不使用混合track均分替代，也不在两种评价口径之间混算。
 
-### 14.2 Repeat 1：当前 VGB 1.0.0rc1 任务集视图
+### 14.2 Repeat 1：VGB 1.0.0rc1 任务集双口径视图
 
-当前台账采用正式选择入口的 amended-12h 迁移视图：目标任务集70题（Advanced 19、Basic 51），
-分数投影自0.10.0原始评分，没有使用RC重新评分。12小时视图由原2小时代表与获选超时
-加时重跑组成，不能视为统一12小时预算实验。16个组合均为Advanced 19/19、Basic 51/51计分，
-共304/304与816/816；原始执行错误仍按证据保留。
+两表均采用RC目标任务集70题（Advanced 19、Basic 51），分数投影自0.10.0历史执行，
+没有用RC重新评分。每种口径16个组合均为Advanced 304/304、Basic 816/816计分；
+原始执行错误与全部尝试保留在来源证据中。
+
+#### 14.2.1 限时2h正式轮
+
+采用`baseline-2h/summary.json`的`run_track`，对应统一7200秒Agent预算。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 已迁移核验 | 19 / 19；0.386538 | 51 / 51；0.642258 |
-| Claude Code | Qwen | 已迁移核验 | 19 / 19；0.705505 | 51 / 51；0.861517 |
-| Claude Code | GPT | 已迁移核验 | 19 / 19；0.727798 | 51 / 51；0.885740 |
-| Claude Code | Claude | 已迁移核验 | 19 / 19；0.638808 | 51 / 51；0.859013 |
-| Codex | DeepSeek | 已迁移核验 | 19 / 19；0.289281 | 51 / 51；0.715334 |
-| Codex | Qwen | 已迁移核验 | 19 / 19；0.681420 | 51 / 51；0.907983 |
-| Codex | GPT | 已迁移核验 | 19 / 19；0.648317 | 51 / 51；0.908060 |
-| Codex | Claude | 已迁移核验 | 19 / 19；0.714562 | 51 / 51；0.886834 |
-| Hermes | DeepSeek | 已迁移核验 | 19 / 19；0.516524 | 51 / 51；0.753118 |
-| Hermes | Qwen | 已迁移核验 | 19 / 19；0.646576 | 51 / 51；0.831711 |
-| Hermes | GPT | 已迁移核验 | 19 / 19；0.642980 | 51 / 51；0.905121 |
-| Hermes | Claude | 已迁移核验 | 19 / 19；0.680417 | 51 / 51；0.869606 |
-| OpenClaw | DeepSeek | 已迁移核验 | 19 / 19；0.365373 | 51 / 51；0.611643 |
-| OpenClaw | Qwen | 已迁移核验 | 19 / 19；0.453052 | 51 / 51；0.900612 |
-| OpenClaw | GPT | 已迁移核验 | 19 / 19；0.667658 | 51 / 51；0.887851 |
-| OpenClaw | Claude | 已迁移核验 | 19 / 19；0.662200 | 51 / 51；0.914052 |
+| Claude Code | DeepSeek | 已验收 | 19 / 19；0.386538 | 51 / 51；0.626115 |
+| Claude Code | Qwen | 已验收 | 19 / 19；0.375156 | 51 / 51；0.827732 |
+| Claude Code | GPT | 已验收 | 19 / 19；0.727798 | 51 / 51；0.885740 |
+| Claude Code | Claude | 已验收 | 19 / 19；0.638808 | 51 / 51；0.859013 |
+| Codex | DeepSeek | 已验收 | 19 / 19；0.289281 | 51 / 51；0.697675 |
+| Codex | Qwen | 已验收 | 19 / 19；0.583473 | 51 / 51；0.886497 |
+| Codex | GPT | 已验收 | 19 / 19；0.648317 | 51 / 51；0.908060 |
+| Codex | Claude | 已验收 | 19 / 19；0.714562 | 51 / 51；0.886834 |
+| Hermes | DeepSeek | 已验收 | 19 / 19；0.516524 | 51 / 51；0.753118 |
+| Hermes | Qwen | 已验收 | 19 / 19；0.515868 | 51 / 51；0.797267 |
+| Hermes | GPT | 已验收 | 19 / 19；0.642980 | 51 / 51；0.905121 |
+| Hermes | Claude | 已验收 | 19 / 19；0.680417 | 51 / 51；0.869606 |
+| OpenClaw | DeepSeek | 已验收 | 19 / 19；0.365373 | 51 / 51；0.611643 |
+| OpenClaw | Qwen | 已验收 | 19 / 19；0.400502 | 51 / 51；0.900612 |
+| OpenClaw | GPT | 已验收 | 19 / 19；0.667658 | 51 / 51；0.887851 |
+| OpenClaw | Claude | 已验收 | 19 / 19；0.662200 | 51 / 51；0.914052 |
 
-当前跨组合 Advanced 均分为0.589188，Basic为0.833778。统一7200秒条件比较应使用
-baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见RC迁移结果入口
-（第14.7节）及 run-artifacts/formal/CURRENT.md。
+跨组合Advanced均分0.550966、Basic均分0.826059。
 
-### 14.3 Repeat 2（2026-11-02 进度与审核）
+#### 14.2.2 合并12h超时补跑轮
+
+采用`amended-12h/summary.json`的`run_track`；原2h尝试与获选超时slot的12h重跑合并，
+不是全部任务都执行12小时。两套结果不混算。
+
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 已验收 | 19 / 19；0.386538 | 51 / 51；0.642258 |
+| Claude Code | Qwen | 已验收 | 19 / 19；0.705505 | 51 / 51；0.861517 |
+| Claude Code | GPT | 已验收 | 19 / 19；0.727798 | 51 / 51；0.885740 |
+| Claude Code | Claude | 已验收 | 19 / 19；0.638808 | 51 / 51；0.859013 |
+| Codex | DeepSeek | 已验收 | 19 / 19；0.289281 | 51 / 51；0.715334 |
+| Codex | Qwen | 已验收 | 19 / 19；0.681420 | 51 / 51；0.907983 |
+| Codex | GPT | 已验收 | 19 / 19；0.648317 | 51 / 51；0.908060 |
+| Codex | Claude | 已验收 | 19 / 19；0.714562 | 51 / 51；0.886834 |
+| Hermes | DeepSeek | 已验收 | 19 / 19；0.516524 | 51 / 51；0.753118 |
+| Hermes | Qwen | 已验收 | 19 / 19；0.646576 | 51 / 51；0.831711 |
+| Hermes | GPT | 已验收 | 19 / 19；0.642980 | 51 / 51；0.905121 |
+| Hermes | Claude | 已验收 | 19 / 19；0.680417 | 51 / 51；0.869606 |
+| OpenClaw | DeepSeek | 已验收 | 19 / 19；0.365373 | 51 / 51；0.611643 |
+| OpenClaw | Qwen | 已验收 | 19 / 19；0.453052 | 51 / 51；0.900612 |
+| OpenClaw | GPT | 已验收 | 19 / 19；0.667658 | 51 / 51；0.887851 |
+| OpenClaw | Claude | 已验收 | 19 / 19；0.662200 | 51 / 51；0.914052 |
+
+本合并口径跨组合Advanced均分0.589188、Basic均分0.833778；两份报告入口见run-artifacts/formal/CURRENT.md。
+
+### 14.3 Repeat 2
+
+#### 14.3.1 限时2h正式轮
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
@@ -743,9 +772,9 @@ baseline-2h 视图，其跨组合均分分别为0.550966和0.826059。报告见R
 | Claude Code | GPT | 已验收 | 19 / 19；0.726054 | 51 / 51；0.889773 |
 | Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
 | Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
-| Codex | Qwen | 未启动 | — | — |
+| Codex | Qwen | 排队中 | — | — |
 | Codex | GPT | 未启动 | — | — |
-| Codex | Claude | 未启动 | — | — |
+| Codex | Claude | 运行中 | — | — |
 | Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
 | Hermes | GPT | 未启动 | — | — |
@@ -766,7 +795,57 @@ Codex × DeepSeek 70/70原始Trial结束，55项原评分＋1项正常超时计0
 工程错误未评分。hai audit将429低置信度兜底归为能力失败；原生证据及用户裁定支持
 工程分类，已逐项批准替代并通过14项恢复预览，尚未启动实际重跑。详见[审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 
+#### 14.3.2 合并12h超时补跑轮
+
+本轮加时campaign尚未启动，未发布合并视图；不从2h正式轮表复制分数。
+
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 未启动 | — | — |
+| Claude Code | Qwen | 未启动 | — | — |
+| Claude Code | GPT | 未启动 | — | — |
+| Claude Code | Claude | 未启动 | — | — |
+| Codex | DeepSeek | 未启动 | — | — |
+| Codex | Qwen | 未启动 | — | — |
+| Codex | GPT | 未启动 | — | — |
+| Codex | Claude | 未启动 | — | — |
+| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | Qwen | 未启动 | — | — |
+| Hermes | GPT | 未启动 | — | — |
+| Hermes | Claude | 未启动 | — | — |
+| OpenClaw | DeepSeek | 未启动 | — | — |
+| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | GPT | 未启动 | — | — |
+| OpenClaw | Claude | 未启动 | — | — |
+
 ### 14.4 Repeat 3
+
+#### 14.4.1 限时2h正式轮
+
+尚未启动；成绩留空。
+
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 未启动 | — | — |
+| Claude Code | Qwen | 未启动 | — | — |
+| Claude Code | GPT | 未启动 | — | — |
+| Claude Code | Claude | 未启动 | — | — |
+| Codex | DeepSeek | 未启动 | — | — |
+| Codex | Qwen | 未启动 | — | — |
+| Codex | GPT | 未启动 | — | — |
+| Codex | Claude | 未启动 | — | — |
+| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | Qwen | 未启动 | — | — |
+| Hermes | GPT | 未启动 | — | — |
+| Hermes | Claude | 未启动 | — | — |
+| OpenClaw | DeepSeek | 未启动 | — | — |
+| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | GPT | 未启动 | — | — |
+| OpenClaw | Claude | 未启动 | — | — |
+
+#### 14.4.2 合并12h超时补跑轮
+
+尚未启动；成绩留空。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
