@@ -24,7 +24,7 @@ Basic 027 的独立诊断列入实施范围，超出了这两个根因；本次�
 `meta.yielded == true` 或 `meta.livenessState == "paused"` 时同一 Trial 的原生等待与恢复。
 该实现保持原行为，作为此次补丁的回归基线；不扩大暂停判定，也不重写 SessionRun。
 
-本机原始核查材料位于忽略目录 `reports/openclaw-gpt-batch1-fix-audit-20261020/`。
+本机原始核查材料位于忽略目录 `run-artifacts/analysis/openclaw-gpt-batch1-fix-audit-20261020/`。
 测试使用合成数据，不将真实会话、provider 凭据或 VGB 私有评分数据写入跟踪文件。
 开发和验证使用 Python 3.12、locked uv 环境，默认单个 `skills_off` 组。
 

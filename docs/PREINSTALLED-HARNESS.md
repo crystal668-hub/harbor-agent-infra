@@ -26,7 +26,7 @@ version、manifest_sha256；Hermes 额外记录 source_commit。确切版本和 
 避免与实验争用；为候选使用新名称和新输出位置，不覆盖运行中的镜像和配置。
 
     uv run --locked --python 3.12 python scripts/build_preinstalled_image.py codex \
-      --reference hai-candidate-codex --output-dir outputs/preinstalled
+      --reference hai-candidate-codex --output-dir run-artifacts/temporary/preinstalled
 
 其他 harness 使用相同入口。--lock 可传入上一候选输出的锁，逐步加入其他执行镜像；
 默认读取根锁。输出含安装清单、构建元数据和候选锁，不改写根锁或自动推送 Registry。
@@ -41,8 +41,8 @@ Hermes 还固定实际依赖和 PM 环境，并通过 HERMES_DISABLE_LAZY_INSTAL
 
     LITELLM_LOCAL_MODEL_COST_MAP=True uv run --locked --python 3.12 \
       python scripts/verify_preinstalled_image.py codex \
-      --lock outputs/preinstalled/codex-runtime-lock.json \
-      --output-dir outputs/preinstalled/codex-offline --concurrent 2
+      --lock run-artifacts/temporary/preinstalled/codex-runtime-lock.json \
+      --output-dir run-artifacts/temporary/preinstalled/codex-offline --concurrent 2
 
 通过真实 Harbor install_only 创建两个新容器，Compose network_mode=none；
 healthcheck 在 setup 前确认外网不可达。每次使用新证据目录，失败记录保留。
@@ -50,7 +50,7 @@ healthcheck 在 setup 前确认外网不可达。每次使用新证据目录，�
 
     RUN_PREINSTALLED_IMAGE_GATES=1 \
     PREINSTALLED_RUNTIME_LOCK=/absolute/path/to/candidate-runtime-lock.json \
-    PREINSTALLED_GATE_OUTPUT_DIR=outputs/preinstalled/docker-gates \
+    PREINSTALLED_GATE_OUTPUT_DIR=run-artifacts/temporary/preinstalled/docker-gates \
     LITELLM_LOCAL_MODEL_COST_MAP=True \
     uv run --locked --python 3.12 pytest -m integration \
       tests/test_preinstalled_image_integration.py
@@ -67,17 +67,17 @@ experiment.agent.installation_mode 设置为 preinstalled，experiment.image 必
     uv run --locked --python 3.12 python scripts/prepare_preinstalled_run.py \
       examples/experiments/codex/vgb-gpt.config.yaml \
       --lock /absolute/path/to/candidate-runtime-lock.json \
-      --output outputs/preinstalled/codex-gpt.config.yaml \
+      --output run-artifacts/temporary/preinstalled/codex-gpt.config.yaml \
       --run-directory run-artifacts/temporary/codex-preinstalled-check
 
 先设置模板所需环境变量。生成器验证展开后的配置，但输出保留变量引用，不复制凭据；
 拒绝覆盖已有配置或运行目录。生成配置仅含 skills_off，不会启动实验。
 
     uv run --locked --python 3.12 hai materialize \
-      --config outputs/preinstalled/codex-gpt.config.yaml \
-      --output outputs/preinstalled/codex-gpt-materialized.json
+      --config run-artifacts/temporary/preinstalled/codex-gpt.config.yaml \
+      --output run-artifacts/temporary/preinstalled/codex-gpt-materialized.json
     uv run --locked --python 3.12 hai run \
-      --config outputs/preinstalled/codex-gpt.config.yaml --group skills_off
+      --config run-artifacts/temporary/preinstalled/codex-gpt.config.yaml --group skills_off
 
 最后一条会启动真实验收并可能调用 provider/VGB，候选运行不写回正式实验。
 scripts/verify_preinstalled_matrix.py 用于单独的 provider/VGB 工程验收，支持 --harness / --provider

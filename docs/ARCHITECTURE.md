@@ -69,6 +69,27 @@ Harbor Agent Infra 是实验控制面：校验配置、材料化任务、连接�
 未选中的尝试保存在 evidence/attempts/，不作为额外 Viewer 任务或新正式样本。
 原 Trial UUID、评分和真实异常保留；工程替代与正式 repeat 是不同身份。
 
+## 本地产物目录
+
+本地产物统一放在被 Git 忽略的 `run-artifacts/`；按用途和专题组织，不按文件格式拆分。
+
+| 目录 | 用途与边界 |
+| --- | --- |
+| `formal/`、`timeout-rerun/` | 正式运行、补跑及已选结果；随运行生成的 `REPORT.md`、`summary.json`、冻结配置和原始评分留在原位 |
+| `analysis/<topic>-<date>/` | 离线研究、审计、图表和报告工作包；同专题的脚本、输入清单、派生数据、验证记录一起保存，按需设 `exports/`、`evidence/` |
+| `temporary/<topic>/` | 候选构建、工程验证、调试、迁移备份及历史运行控制材料；名称不表示可自动删除，验收证据和历史缓存须按保留要求处理 |
+| `runtime-locks/` | 既有运行锁归档，不与报告或构建缓存合并 |
+
+维护说明和可纳入版本控制的审计结论按用途放入 `docs/`，引用本地证据；不得把凭据、
+私有评分数据或整包本地产物加入 Git。分析包记录输入路径、版本/截点及哈希，
+不能用派生分析替换正式评分或更改 CURRENT 选择。通用可复用工具再移入 `scripts/` 或源码。
+
+2026-11-02 起不再向顶层 `reports/`、`outputs/` 创建新专题。旧内容已按用途迁入上述目录，
+旧入口暂以逐项符号链接兼容历史清单、脚本和本机 LaunchAgent；它们不是第二份数据。
+只有在核对冻结证据引用、调度器和外部调用方后才能移除兼容入口。
+新增的 `run-artifacts/audit/` 及其他未纳入此次范围的既有目录保持原位，后续新分析使用 `analysis/`。
+迁移范围、校验及遗留引用见[迁移验收记录](acceptance/2026-11-02-acceptance-artifact-directory-consolidation.md)。
+
 ## 观测语义
 
 - 官方 evaluation 与 Harbor verifier reward 对应；未评分和有效零分不同。
@@ -79,6 +100,6 @@ Harbor Agent Infra 是实验控制面：校验配置、材料化任务、连接�
 - summary 的 selected_slot_sum 是最终代表 Trial 全生命周期时长之和，既不是墙钟跨度，
   也不是全部尝试消耗；缺失时长不补零。字段见 [CLI 参考](CLI-REFERENCE.md#最终-slot-累计运行时长)。
 
-Viewer 默认扫描 run-artifacts 下的 formal/、temporary/、timeout-rerun/ 及直接包含 jobs/ 的旧顶层运行。
+Viewer 默认扫描 run-artifacts 下的 formal/、timeout-rerun/ 及直接包含 jobs/ 的旧顶层运行；排除 temporary/。
 timeout-rerun/ 会递归发现 campaign，并以相对路径和分类显示；其他归档目录不递归扫描。
 运行路径另见 [执行手册](EXECUTION-QUICK-REF.md)。

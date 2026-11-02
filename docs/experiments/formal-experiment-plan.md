@@ -314,6 +314,11 @@ Registry digest。历史 run 及补跑仍保留其原冻结环境身份，不跨
 2. 原始运行目录为 `<harness>-<provider>-repeat<N>`。`harness` 使用 adapter 名；GPT、Claude、DeepSeek、Qwen 的 `provider` 分别写作 `openai`、`anthropic`、`deepseek`、`qwen`。`N` 从 1 起、不补零。
 3. 补跑目录为 `<原始运行名>-recovery-batch<M>`，合并快照目录为 `<原始运行名>-merged`。补跑不增加 repeat 序号，合并快照不附加 batch 号。
 
+2026-11-02 本地产物约定：原先分散于顶层 `reports/`、`outputs/` 的离线分析和报告工作包，
+统一使用 `run-artifacts/analysis/<topic>-<date>/`；候选构建与工程验证使用 `run-artifacts/temporary/<topic>/`。
+依据为已批准的目录合并，适用于新产物及本次迁移的历史专题；正式运行、补跑目录、冻结条件和评分不变。
+具体归属与兼容入口见[架构手册](../ARCHITECTURE.md#本地产物目录)。
+
 目录名须事先确定，未经用户明确批准不得更改。经用户事先批准的部分冻结条件变更可沿用原目录名，并留存批准及变更记录。
 
 产物目录结构：
@@ -802,7 +807,7 @@ Codex × DeepSeek 70/70原始Trial结束，55项原评分＋1项正常超时计0
 | K | `openclaw-anthropic-repeat1` + recovery batch1/2 | `openclaw-anthropic-repeat1-merged` | 2026-10-20 | 按已审核决定将 batch1 Advanced 004、012 判为 DNS 工程失败，选入 batch2；共 6 项恢复结果入选。batch2 新预装镜像的显式条件变更保留在快照证据中。Advanced 004 的无最终答案终态零分和原始 Advanced 014 的安全拒答零分均保留，不再补跑。合并后 audit 无失败 slot；人工决定及应用记录见 `operator-merge-decisions-20261020.json`、`operator-merge-application.json`。 |
 | L | `hermes-deepseek-repeat1` | `hermes-deepseek-repeat1` | 2026-10-21 | 用户验收；按人工评分裁定 71/71 全部计分。Advanced 008 与 Basic 030 保留执行错误并各计 0；Basic 025 采用官方 VGB 评分 0.544，并按批准从最终错误计数中移除。底层 Harbor Trial 证据保留；评分与状态裁定见 `operator-scoring-override.json`。 |
 | M | `openclaw-openai-repeat1` + recovery batch1/2 | `openclaw-openai-repeat1-merged` | 2026-10-22 | 已正式合并并验收；56 个原始结果、6 个 batch1 结果、9 个 batch2 结果构成 71 个独立 slots。Advanced 004 的 provider 超时零分按用户裁决保留；Advanced 019 从父会话提取实际终态回答（answer=null），经官方 verifier 评分为 0，并清除误报的 incomplete 错误状态；Basic 025 的真实零分保留。合并后 audit 无失败 slot，summary 错误和取消均为 0。显式镜像条件变更、24 条绑定 Trial ID/结果哈希的替换裁决及完整尝试记录保留在 merge-metadata.json 和证据目录；提取重评记录见对应 Trial 的 manual-verification.json。 |
-| N | `hermes-qwen-repeat1` | `hermes-qwen-repeat1` | 2026-10-22 | 用户人工验收当前 71/71 计分结果；62 项官方 VGB 评分 + 9 项 7200 秒协议超时按批准各计 0。Advanced 004 经离线产物校验后使用实际最后回复重评为 0；原容器已清理，历史环境最终校验超时记录保留。Advanced 016、018、Basic 030 达到 90 轮预算后仍输出总结，CLI exit 1 与已有评分并存，原分数保留。13 条执行异常保留（Advanced 10、Basic 3），不以验收状态清除错误。根评分汇总已按真实 Trial 重建，来源见 operator-scoring-override.json、Advanced 004 的 manual-verification.json 及 reports/hermes-qwen-resolution-20261022/REVIEW.md。 |
+| N | `hermes-qwen-repeat1` | `hermes-qwen-repeat1` | 2026-10-22 | 用户人工验收当前 71/71 计分结果；62 项官方 VGB 评分 + 9 项 7200 秒协议超时按批准各计 0。Advanced 004 经离线产物校验后使用实际最后回复重评为 0；原容器已清理，历史环境最终校验超时记录保留。Advanced 016、018、Basic 030 达到 90 轮预算后仍输出总结，CLI exit 1 与已有评分并存，原分数保留。13 条执行异常保留（Advanced 10、Basic 3），不以验收状态清除错误。根评分汇总已按真实 Trial 重建，来源见 operator-scoring-override.json、Advanced 004 的 manual-verification.json 及 run-artifacts/analysis/hermes-qwen-resolution-20261022/REVIEW.md。 |
 | O | `codex-anthropic-repeat1` + recovery batch1 | `codex-anthropic-repeat1-merged` | 2026-10-22 | 已按用户裁决正式合并；27 个原始结果 + 44 个恢复结果构成 71 个独立 slots。Advanced 004 达到 7200 秒，保留官方零分；Advanced 014 空输出按用户裁决视为能力失败、可评分零分，标记 operator_capability_zero，不冒充官方 verifier 评分。两项原始执行错误保留，合并后 audit 无待处理 slot，summary 为 71/71 计分、2 项执行错误。替换裁决绑定原始 Trial ID/结果哈希，见 merge-metadata.json；计零证据见对应 Trial 的 operator-scoring-disposition.json。 |
 | P | `codex-deepseek-repeat1` + recovery batch1/2 | `codex-deepseek-repeat1-merged` | 2026-10-23 | 正式合并，14 个 batch1 与 10 个 batch2 替换结果入选；恢复使用已批准的自定义 Responses provider 条件，并按 `new_condition_observation` 保留。Advanced 020 使用已评分答案 0.148854，429 不阻止选样；Advanced 002 两次恢复耗尽后按用户裁定计 0。Basic 029、030 为原始 7200 秒超时，按本台账规则计 0。71/71 计分；`hai summary` 保留 3 项执行错误；merged audit 仍列出 Basic 029/030 两个不可补跑超时槽位，错误证据保留。评分裁定见 merged `operator-scoring-override.json` 与 Trial disposition 记录。 |
 | Q | `openclaw-deepseek-repeat1` + recovery batch1 | `openclaw-deepseek-repeat1-merged` | 2026-10-23 | 正式合并，5 个经日志确认的 API 429 恢复结果入选。Advanced 004 原始 7200 秒超时按正式协议计 0，原始 Trial 错误保留。71/71 计分；`hai summary` 保留 1 项执行错误，merged audit 仍列出 Advanced 004 待复核；评分覆盖见 merged `operator-scoring-override.json`，原始结果与覆盖前快照均保留。 |
@@ -813,7 +818,7 @@ Codex × DeepSeek 70/70原始Trial结束，55项原评分＋1项正常超时计0
 与规范目录的对应关系见[恢复与目录迁移记录](../plan/2026-10-15-plan-native-recovery-concurrency-merge.md)。
 Qwen 的首轮 71 个 slot 跨两个冻结环境；本轮按用户明确授权，将来源 F 作为 advanced 的临时新条件观测纳入来源 G 的最终选择，不新增正式 repeat。来源 F 的条件 ID 为 `claude-code-qwen-repeat1-advanced-preinstalled-20261017`，通过 manifest 的显式 `condition_change` 绑定目标材料化快照与锁文件哈希；每个恢复 Job 记录 `statistical_role: new_condition_observation`。basic 仍使用来源 C 的预装结果，7 个任务的来源关联和实际尝试次数保留。
 
-条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `reports/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
+条件变更、批准清单、材料化快照及旧 71 题范围归档位于本地 `run-artifacts/analysis/qwen-repeat1-preinstalled-recovery-20261017/`；范围修订说明另存于旧 run 的 `scope-amendment.json`。旧 basic 任务文件移至归档，仅预装 basic 目录拥有实际执行结果。历史 `interrupted-assessed` 快照保留为证据，正式查阅旧 advanced 使用修复后的来源 B。
 
 本台账已收录 16/48 个 repeat1 子实验的最终验收结果。来源 H 按人工批准的临时补充与终态错误计零口径验收；来源 I、J、K、M 均经 audit 确认无失败 slot，71/71 计分结果完整；来源 K 按人工审核保留 Advanced 004、014 的零分及其未输出答案的事实。来源 L 按用户验收口径计分 71/71，其中两个保留的执行错误各计 0；Basic 025 的执行错误状态在正式评分视图中关闭，原始 Trial 失败证据仍保留。来源 M 按用户裁决保留 Advanced 004 零分，Advanced 019 提取真实回答重评为零分；两批补跑不新增 repeat，正式统计仅选取合并快照。来源 N 经用户人工验收，62 项官方评分与 9 项协议超时零分合计 71/71 计分；13 条原始执行异常继续保留，不将人工验收等同于无错误执行。来源 O 已合并并按用户裁决保留 Advanced 004、014 零分及两项执行错误；来源 P 按自定义 provider 条件变更与人工评分裁定合并，71/71 计分且保留 3 项执行错误；来源 Q 合并 5 个恢复结果并按协议将 Advanced 004 超时计零，仍保留 1 项执行错误。来源 R、S 为 Codex × Qwen 与 OpenClaw × Qwen repeat1；两组均 71/71 计分并保留各自 execution error。来源 S 的 Advanced 004 在两次补跑均失败、额度耗尽后按用户裁定计零；来源 R 的 Advanced 014 轨迹与评分文件从已验证证据恢复后纳入合并。正式统计仅使用各来源的 merged 快照，不重复计入原始 run。
 

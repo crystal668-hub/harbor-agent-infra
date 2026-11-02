@@ -100,9 +100,9 @@ manifest 从主工作区新锁读取；package_lock 路径仍指向主工作区�
 主工作区 Python 3.12 locked uv 环境已确认加载新 adapter；四组配置生成的新 AgentConfig
 均携带新镜像和 manifest 身份，全部 16 组正式配置校验通过。配置属于本机忽略文件，
 未强制加入 Git；更新前的四份配置、旧锁及切换证据保存在：
-outputs/openclaw-network-activation-wy6jxus2/。
+run-artifacts/temporary/openclaw-network-activation-wy6jxus2/。
 
-主工作区额外复验记录：outputs/openclaw-network-main-activation-gate/。
+主工作区额外复验记录：run-artifacts/temporary/openclaw-network-main-activation-gate/。
 正式实验继续由用户按既有入口新建运行；本次切换不启动付费 provider 实验，不推送远端。
 旧 manifest 与新补丁的混用仍会被 strict setup 拒绝。
 

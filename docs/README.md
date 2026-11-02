@@ -7,7 +7,7 @@
 
 | 手册 | 使用场景 |
 | --- | --- |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 理解职责边界、模块依赖、数据流与结果产物 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 理解职责边界、模块依赖、数据流与结果产物；[本地产物目录](ARCHITECTURE.md#本地产物目录) |
 | [CONFIGURATION.md](CONFIGURATION.md) | 配置 schema、资源、运行环境与材料化规则 |
 | [CLI-REFERENCE.md](CLI-REFERENCE.md) | 查询命令、参数、执行影响和返回结果 |
 | [CROSS-PROVIDER.md](CROSS-PROVIDER.md) | 配置 provider 路由、协议桥和 Codex 压缩接口 |
@@ -39,6 +39,8 @@
 - [A008 / B031 全零原因专项审计](audit/2026-11-01-audit-chemistry-zero-score-alignment.html)：32条正式代表的原题、计算协议、原子映射与轨迹复核；定位方法缺失及目标原子不一致，保留旧正式分数。
 
 ## 维护约定
+
+本地报告与工程产物的目录合并见[2026-11-02 迁移验收](acceptance/2026-11-02-acceptance-artifact-directory-consolidation.md)。
 
 接口与默认行为以当前源码、锁文件和 CLI 帮助为准。修改命令、配置或模块行为时，
 同步更新对应手册和示例；淘汰的操作从手册删除，历史证据保留在记录文档中。

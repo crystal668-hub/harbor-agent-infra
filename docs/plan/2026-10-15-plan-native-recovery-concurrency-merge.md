@@ -197,7 +197,7 @@ Viewer 的目录发现会忽略符号链接，因此仅展示新的正式目录�
 
 这是目录迁移，不修改已保存的 `run_id`、experiment_id、Job/Trial ID、slot_id、
 配置快照或原始事件；历史路径继续通过兼容链接解析。迁移审计记录与原文件校验和
-保存在本地 `reports/claude-code-deepseek-repeat1-directory-migration.json`。
+保存在本地 `run-artifacts/temporary/legacy-directory-migration-20261015/claude-code-deepseek-repeat1-directory-migration.json`。
 
 合并器需要将目录位置与历史 run 身份分开处理：
 
@@ -498,5 +498,5 @@ Repeat 1 结束且全部合并完成后，已按用户授权将旧目录前缀�
 `run-artifacts/formal/claude-code-deepseek-repeat1`。历史 manifest、日志、嵌套原生
 配置及证据引用均更新路径；run_id、Job 名、Trial UUID、评分和时间戳不变。
 兼容符号链接不再作为运行前提，旧堆叠式 merged-batch1 目录予以删除。
-本地 reports/path-migrations 保存迁移前字节备份、校验和和验证记录；此前关于
+本地 run-artifacts/temporary/path-migrations 保存迁移前字节备份、校验和和验证记录；此前关于
 持续保留该符号链接的说明仅描述迁移过程，现由本节取代。
