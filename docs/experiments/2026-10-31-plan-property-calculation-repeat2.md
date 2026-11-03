@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：Claude Code四组及Codex × Claude/Qwen均已验收；2026-11-03 Codex × GPT已启动，Codex × DeepSeek的14项HTTP 429工程替代在其后排队，余8组合及12h超时补跑轮未启动。[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。下文准备检查保留原执行范围。
+状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × GPT运行中、DeepSeek的14项工程替代执行中；Hermes × DeepSeek/Claude已排队，等待恢复批次全部结束后顺序启动。其余6组合及12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 
 ## 范围与配置结论
 

@@ -1,8 +1,8 @@
 # 正式实验方案
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
-**配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；性质计算repeat2的Claude Code四组与Codex × Claude/Qwen已验收，Codex × GPT运行中、Codex × DeepSeek工程恢复排队中，其余8组合未启动。repeat2/3的12h合并轮均未启动，开放生成尚未启动。范围见第14节、[Codex两组验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+**配置核对日期**：2026-11-03（Asia/Shanghai；开放生成时限及repeat2后续队列另有记录）
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的Claude Code四组与Codex × Claude/Qwen已验收，Codex × GPT运行中、Codex × DeepSeek工程恢复执行中；Hermes × DeepSeek/Claude已排队，须待14项恢复全部终态且控制流程成功后依序启动。其余6组合未启动，repeat2/3的12h合并轮未启动。范围见第14节及相关验收/审核记录。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -775,10 +775,10 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Codex | Qwen | 已验收 | 19 / 19；0.450988 | 51 / 51；0.894729 |
 | Codex | GPT | 运行中 | — | — |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
-| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | DeepSeek | 排队中 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
 | Hermes | GPT | 未启动 | — | — |
-| Hermes | Claude | 未启动 | — | — |
+| Hermes | Claude | 排队中 | — | — |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
 | OpenClaw | GPT | 未启动 | — | — |
@@ -805,6 +805,12 @@ Codex × DeepSeek的14项已批准HTTP 429工程替代排在其后。顺序控�
 70个Trial均终态且根结果齐全时复核锁/配置/批准清单和恢复dry-run，再启动该批恢复；
 正常超时slot不在工程清单中，12h超时补跑轮未启动。控制状态见本机
 `logs/formal-experiments/codex-repeat2-gpt-then-deepseek-recovery-20261103.state.json`。
+
+2026-11-03 23:57（上海）：Codex × DeepSeek恢复中的14个approved slot结束且控制器成功后，
+依次启动Hermes × DeepSeek、Hermes × Claude。当前独立等待器为
+`harbor-repeat2-hermes-after-codex-recovery-20261103`，初始状态`waiting_for_predecessor`；
+Codex恢复尚未结束，因此尚未派发Hermes。若恢复批次失败或未达14/14终态，等待器停止，
+后续两组保持未启动。
 
 #### 14.3.2 合并12h超时补跑轮
 
