@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；性质计算repeat2的Claude Code四组与Codex × Claude/Qwen已验收，Codex × DeepSeek待工程重跑，其余9组合未启动。repeat2/3的12h合并轮均未启动，开放生成尚未启动。范围见第14节、[Codex两组验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；性质计算repeat2的Claude Code四组与Codex × Claude/Qwen已验收，Codex × GPT运行中、Codex × DeepSeek工程恢复排队中，其余8组合未启动。repeat2/3的12h合并轮均未启动，开放生成尚未启动。范围见第14节、[Codex两组验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -773,7 +773,7 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
 | Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
 | Codex | Qwen | 已验收 | 19 / 19；0.450988 | 51 / 51；0.894729 |
-| Codex | GPT | 未启动 | — | — |
+| Codex | GPT | 运行中 | — | — |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
 | Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
@@ -799,6 +799,12 @@ Codex × DeepSeek 70/70原始Trial结束，55项原评分＋1项正常超时计0
 正常Agent超时；Claude的ATIF末条为空消息，锁定VGB对原始空回复离线评为0，按现有输出
 修复计分后70/70验收；Qwen的8项超时均有原生VGB零分证据，按正式轮协议计0后70/70验收。
 两组原生执行错误与证据保留，未重新执行Agent；见[验收记录](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)。
+
+2026-11-03 19:50（上海）：Codex × GPT 2h正式轮启动，冻结70个slot；
+Codex × DeepSeek的14项已批准HTTP 429工程替代排在其后。顺序控制仅在GPT进程返回0、
+70个Trial均终态且根结果齐全时复核锁/配置/批准清单和恢复dry-run，再启动该批恢复；
+正常超时slot不在工程清单中，12h超时补跑轮未启动。控制状态见本机
+`logs/formal-experiments/codex-repeat2-gpt-then-deepseek-recovery-20261103.state.json`。
 
 #### 14.3.2 合并12h超时补跑轮
 
