@@ -29,6 +29,7 @@
 - [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置核对、执行范围与启动入口；前两个组合已完成结案审核。
 - [Repeat2 前两组结案审核](acceptance/2026-11-01-acceptance-repeat2-first-two.md)：DeepSeek/Qwen各70/70计分，hai audit仅检出3/13项正常超时。
 - [Repeat2 Claude/GPT 验收](acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)：GPT 70项原评分；Claude安全拒答按能力错误计0，70/70验收。
+- [Repeat2 Codex × Claude/Qwen 验收](acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)：评分异常基于原始空回复离线核验为0，8项正常超时按0计，均70/70验收。
 - [Codex × DeepSeek Repeat2 审核](audit/2026-11-02-audit-codex-deepseek-repeat2.md)：14项HTTP 429工程替代已获批、待实际重跑，1项能力超时计0；原始轮未验收。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。

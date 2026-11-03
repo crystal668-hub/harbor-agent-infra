@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-01（Asia/Shanghai；开放生成 Verifier 时限变更及性质计算前两组结案审核分别记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；性质计算repeat2的Claude Code四组已验收，Codex × DeepSeek待工程重跑，Codex × Claude运行中、Qwen排队中，其余9组合未启动。repeat2/3的12h合并轮均未启动，开放生成尚未启动。范围见第14节、[Claude Code验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)及[Codex审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；性质计算repeat2的Claude Code四组与Codex × Claude/Qwen已验收，Codex × DeepSeek待工程重跑，其余9组合未启动。repeat2/3的12h合并轮均未启动，开放生成尚未启动。范围见第14节、[Codex两组验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek审核](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -690,8 +690,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-02。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收20/48个子实验：repeat1的16个组合及repeat2的Claude Code四个组合。
+**最后核对日期**：2026-11-03。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收22/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex × Claude/Qwen。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -772,9 +772,9 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Claude Code | GPT | 已验收 | 19 / 19；0.726054 | 51 / 51；0.889773 |
 | Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
 | Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
-| Codex | Qwen | 排队中 | — | — |
+| Codex | Qwen | 已验收 | 19 / 19；0.450988 | 51 / 51；0.894729 |
 | Codex | GPT | 未启动 | — | — |
-| Codex | Claude | 运行中 | — | — |
+| Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
 | Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
 | Hermes | GPT | 未启动 | — | — |
@@ -794,6 +794,11 @@ Claude Code × Claude的1项AgentSafetyRefusalError按能力错误计0，70/70�
 Codex × DeepSeek 70/70原始Trial结束，55项原评分＋1项正常超时计0，仍有14项HTTP 429
 工程错误未评分。hai audit将429低置信度兜底归为能力失败；原生证据及用户裁定支持
 工程分类，已逐项批准替代并通过14项恢复预览，尚未启动实际重跑。详见[审核记录](../audit/2026-11-02-audit-codex-deepseek-repeat2.md)。
+
+2026-11-03：Codex × Claude/Qwen各70个Trial全部结束。hai audit分别列1项评分异常与8项
+正常Agent超时；Claude的ATIF末条为空消息，锁定VGB对原始空回复离线评为0，按现有输出
+修复计分后70/70验收；Qwen的8项超时均有原生VGB零分证据，按正式轮协议计0后70/70验收。
+两组原生执行错误与证据保留，未重新执行Agent；见[验收记录](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)。
 
 #### 14.3.2 合并12h超时补跑轮
 
