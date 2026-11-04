@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from adapters.openclaw.session import SessionIdentity
+from adapters.openclaw.trajectory import write_json_atomic
 
 
 @dataclass(frozen=True)
@@ -15,9 +15,10 @@ class EvidenceManifest:
     state_dir: str
     files: dict[str, dict[str, int | str]] = field(default_factory=dict)
     failure: dict[str, str] | None = None
+    conversion: dict | None = None
 
     def write(self, path: Path) -> None:
-        path.write_text(json.dumps(asdict(self), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        write_json_atomic(path, asdict(self))
 
 
 def collect_evidence(
@@ -25,6 +26,7 @@ def collect_evidence(
     identity: SessionIdentity,
     *,
     failure: dict[str, str] | None = None,
+    conversion: dict | None = None,
 ) -> EvidenceManifest:
     files: dict[str, dict[str, int | str]] = {}
     for candidate in sorted(logs_dir.iterdir()) if logs_dir.exists() else ():
@@ -46,4 +48,5 @@ def collect_evidence(
         state_dir=identity.state_dir.as_posix(),
         files=files,
         failure=failure,
+        conversion=conversion,
     )

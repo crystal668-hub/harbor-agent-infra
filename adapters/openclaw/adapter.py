@@ -9,7 +9,7 @@ from harbor.agents.installed.base import NonZeroAgentExitCodeError, with_prompt_
 from harbor.agents.installed.openclaw import OpenClaw as HarborOpenClaw
 from harbor.agents.installed.openclaw import OpenClawOptions as HarborOpenClawOptions
 from harbor.environments.base import BaseEnvironment
-from harbor.models.agent.context import AgentContext
+from harbor.models.agent.context import AgentContext, ModelUsage
 
 from adapters.openclaw.config import project_agents_entries
 from adapters.openclaw.evidence import collect_evidence
@@ -20,6 +20,7 @@ from adapters.openclaw.session import (
     session_inventory_command,
     trajectory_export_command,
 )
+from adapters.openclaw.trajectory import failure_state, recover_failed_trajectory
 from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import (
     openclaw_adaptive_patch_command,
@@ -268,17 +269,15 @@ class OpenClawAgent(HarborOpenClaw):
         context: AgentContext,
     ) -> None:
         identity = self.session_identity()
+        self._run_failure = None
+        self._conversion = None
         self._extra_env.update(identity.environment())
         try:
             await run_gateway(self, instruction, environment)
         except BaseException as exc:
             code, details = classify_failure(exc)
             self._run_failure = {"code": code.value, **details}
-            collect_evidence(
-                self.logs_dir,
-                identity,
-                failure=self._run_failure,
-            ).write(self.logs_dir / "openclaw-evidence.json")
+            self._write_evidence(identity)
             raise
 
     @override
@@ -304,10 +303,47 @@ class OpenClawAgent(HarborOpenClaw):
 
     @override
     def populate_context_post_run(self, context: AgentContext) -> None:
-        super().populate_context_post_run(context)
+        failure = getattr(self, "_run_failure", None)
+        if failure_state(self.logs_dir, failure) is None:
+            super().populate_context_post_run(context)
+        elif self.session_id:
+            trajectory, self._conversion = recover_failed_trajectory(
+                self.logs_dir, self.session_identity(), failure,
+                self.version() or "unknown", self.model_name or "unknown",
+            )
+            # Do not let Harbor backfill usage from an existing file we rejected.
+            context.model_usage = {}
+            context.metadata = {**(context.metadata or {}), "openclaw_conversion": self._conversion}
+            if trajectory is not None and trajectory.final_metrics is not None:
+                metrics = trajectory.final_metrics
+                context.n_input_tokens = metrics.total_prompt_tokens
+                context.n_output_tokens = metrics.total_completion_tokens
+                context.n_cache_tokens = metrics.total_cached_tokens
+                # Harbor's generic backfill coerces unknown step usage to zero.
+                # Publish a per-model total only when every token component is known.
+                complete_usage = all(value is not None for value in (
+                    context.n_input_tokens, context.n_output_tokens, context.n_cache_tokens,
+                ))
+                context.model_usage = {
+                    self.model_name or "unknown": ModelUsage(
+                        n_input_tokens=context.n_input_tokens,
+                        n_output_tokens=context.n_output_tokens,
+                        n_cache_tokens=context.n_cache_tokens,
+                    )
+                } if complete_usage else {}
+                context.metadata = {**(context.metadata or {}),
+                                    "openclaw_capture": trajectory.extra["openclaw_capture"],
+                                    "model_usage_status": "recorded" if complete_usage
+                                    else "unavailable_incomplete_recorded_usage"}
         if not self.session_id:
             return
-        identity = self.session_identity()
-        collect_evidence(
-            self.logs_dir, identity, failure=getattr(self, "_run_failure", None)
-        ).write(self.logs_dir / "openclaw-evidence.json")
+        self._write_evidence(self.session_identity())
+
+    def _write_evidence(self, identity: SessionIdentity) -> None:
+        try:
+            collect_evidence(
+                self.logs_dir, identity, failure=getattr(self, "_run_failure", None),
+                conversion=getattr(self, "_conversion", None),
+            ).write(self.logs_dir / "openclaw-evidence.json")
+        except Exception as exc:
+            self.logger.warning("OpenClaw evidence write failed (%s)", type(exc).__name__)

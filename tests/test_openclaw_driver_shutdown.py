@@ -34,6 +34,10 @@ def test_driver_keeps_interrupted_when_sdk_stop_rejects_request(tmp_path, signum
     entry = runtime / "openclaw.mjs"
     entry.write_text("setInterval(() => {}, 1000);\n")
     pending = tmp_path / "pending"
+    sessions = tmp_path / "state/agents/openclaw/sessions"
+    sessions.mkdir(parents=True)
+    native = '{"type":"session","id":"fixture"}\n'
+    (sessions / "fixture.jsonl").write_text(native)
     (sdk / "gateway-runtime.js").write_text(
         "import fs from 'node:fs';\n"
         "export class GatewayClient {\n"
@@ -62,6 +66,8 @@ def test_driver_keeps_interrupted_when_sdk_stop_rejects_request(tmp_path, signum
         assert status["state"] == "interrupted"
         assert "error" not in status
         assert not (logs / "openclaw-driver.pid").exists()
+        assert (logs / "openclaw.session.jsonl").read_text() == native
+        assert not (logs / "openclaw.txt").exists()
     finally:
         if process.poll() is None:
             process.terminate()

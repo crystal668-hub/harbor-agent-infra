@@ -36,6 +36,8 @@
 - [Hermes × Claude repeat2 A007诊断](audit/2026-11-04-audit-hermes-claude-repeat2-a007.md)：取消路径跳过oneshot导出导致ATIF缺失；确认2小时Agent预算到期，内部耗时根因证据不足。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：隔离修复、取消链路与证据保全验收；未合入或部署正式实验。
+- [OpenClaw失败轨迹修复详细设计](plan/2026-11-04-plan-openclaw-failure-trajectory.md)：四类harness的ATIF文件依赖、失败测试、函数改动与验收边界；方案已审批并在隔离分支实施。
+- [OpenClaw失败轨迹离线验收](acceptance/2026-11-04-acceptance-openclaw-failure-trajectory.md)：失败会话转换、身份门禁与评分隔离；207项离线回归通过，未合入或部署，历史回补受脱敏身份限制。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
