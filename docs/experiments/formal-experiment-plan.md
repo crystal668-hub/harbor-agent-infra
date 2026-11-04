@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-03（Asia/Shanghai；开放生成时限及repeat2后续队列另有记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的Claude Code四组与Codex × Claude/Qwen已验收，Codex × GPT运行中、Codex × DeepSeek工程恢复执行中；Hermes × DeepSeek/Claude已排队，须待14项恢复全部终态且控制流程成功后依序启动。其余6组合未启动，repeat2/3的12h合并轮未启动。范围见第14节及相关验收/审核记录。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2已验收7组，Codex／Hermes × GPT均已审核待验收，Codex × DeepSeek仍有4项HTTP 429工程缺口。Hermes × DeepSeek旧队列阻塞，其余6组合未启动；repeat2/3的12h合并轮未启动。2026-11-04进度证据见第14节及相关验收/审核记录。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -696,7 +696,7 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-04（本次更新Hermes × Claude及已确认运行状态）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+**最后核对日期**：2026-11-04（本次更新Hermes × Claude及Codex／Hermes × GPT的已确认状态）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
 当前已验收23/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex × Claude/Qwen、Hermes × Claude。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
@@ -779,11 +779,11 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
 | Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
 | Codex | Qwen | 已验收 | 19 / 19；0.450988 | 51 / 51；0.894729 |
-| Codex | GPT | 已结束待审核 | — | — |
+| Codex | GPT | 已审核待验收 | 19 / 19；0.573417 | 51 / 51；0.889270 |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
 | Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
-| Hermes | GPT | 运行中 | — | — |
+| Hermes | GPT | 已审核待验收 | 19 / 19；0.695054 | 51 / 51；0.888275 |
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
@@ -824,6 +824,11 @@ Advanced 013安全拒答均计0且本轮不补跑，Advanced 018保留已有完�
 原生四项执行异常保留；该正式轮已验收，见[验收记录](../acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)。
 Hermes × GPT已按Claude→GPT顺序启动；Codex × GPT原运行已结束但尚未完成本节验收核对，
 因此其成绩仍留空。Hermes × DeepSeek的旧等待队列未恢复。
+
+2026-11-04 23:36（上海）：Hermes × GPT于23:32:45结束，Claude→GPT队列完成；
+与此前结束的Codex × GPT分别有70个唯一Trial、70条已评分根结果，`hai audit`均为0项失败。
+`hai summary`分轨成绩已核对并暂列上表，两组仍待正式验收，已验收总数不增加。
+来源与范围见[进度审核](../audit/2026-11-04-audit-repeat2-gpt-progress.md)。
 
 #### 14.3.2 合并12h超时补跑轮
 

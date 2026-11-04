@@ -36,6 +36,7 @@
 - [Hermes × Claude repeat2 A007诊断](audit/2026-11-04-audit-hermes-claude-repeat2-a007.md)：取消路径跳过oneshot导出导致ATIF缺失；确认2小时Agent预算到期，内部耗时根因证据不足。
 - [Hermes × Claude repeat2审核](audit/2026-11-04-audit-hermes-claude-repeat2.md)：70条终态记录、4项原生异常、后续人工裁定及GPT串行队列续派记录。
 - [Hermes × Claude repeat2验收](acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)：三项能力失败计0、Advanced 018沿用已有评分，正式轮70/70计分。
+- [Repeat2 Codex／Hermes × GPT进度审核](audit/2026-11-04-audit-repeat2-gpt-progress.md)：两组70/70评分、hai audit零失败，待正式验收。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
