@@ -26,7 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
-- [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置、执行顺序与Codex × DeepSeek恢复batch2撤回状态。
+- [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置、Codex × DeepSeek batch2撤回状态与Hermes Claude→GPT启动顺序。
 - [Repeat2 前两组结案审核](acceptance/2026-11-01-acceptance-repeat2-first-two.md)：DeepSeek/Qwen各70/70计分，hai audit仅检出3/13项正常超时。
 - [Repeat2 Claude/GPT 验收](acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)：GPT 70项原评分；Claude安全拒答按能力错误计0，70/70验收。
 - [Repeat2 Codex × Claude/Qwen 验收](acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)：评分异常基于原始空回复离线核验为0，8项正常超时按0计，均70/70验收。

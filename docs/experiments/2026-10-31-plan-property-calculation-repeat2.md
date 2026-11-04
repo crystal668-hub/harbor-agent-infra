@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek恢复batch2于2026-11-04启动后因上游持续HTTP 429按用户要求撤回，4项工程候选均保持已用1/2次，原始轮尚未合并验收。Hermes × DeepSeek/Claude等待队列仍阻塞；12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[batch2撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)。
+状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek的batch2已因持续HTTP 429撤回，4项工程候选各保持已用1/2次，原始轮尚未合并验收。Hermes × Claude已启动，Hermes × GPT依次等待；旧Hermes × DeepSeek/Claude队列仍阻塞。12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[batch2撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)。
 
 ## 范围与配置结论
 
@@ -177,3 +177,21 @@ deepseek-responses路由及预装不可变镜像。已核对配置、包任务�
 工具的0.3置信度待复核分类不替代先前的原生429人工工程分类。
 本次启动后的原计划第3步不适用于已撤回批次；未来仅在上游限流恢复并重新批准后，
 以新清单和全新目录安排恢复。详见[撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)。
+
+## 2026-11-04 Hermes × Claude → GPT 启动顺序
+
+用户明确指定下一批为Hermes × Claude、Hermes × GPT，覆盖此前仅排队但因Codex × DeepSeek
+恢复失败而阻塞的Hermes × DeepSeek→Claude顺序；旧队列不恢复，也不派发Hermes × DeepSeek。
+两组仍分别使用70题、repeat2、skills_off、7200/120秒预算、单次attempt、Harbor内部重试0，
+以及原冻结模型配置、VGB运行锁和Hermes镜像摘要。
+
+启动前正式矩阵dry-run与`hai doctor`通过；Claude/GPT配置及运行锁已核哈希，
+本地镜像ID与固定摘要一致，凭据仅核对存在性。两个正式输出目录及日志在派发前均不存在。
+新顺序由独立tmux会话`harbor-repeat2-hermes-claude-gpt-20261104`托管，控制状态与冻结哈希位于
+`logs/formal-experiments/hermes-repeat2-claude-then-gpt-20261104.state.json`和同名前缀的
+`.launch.json`。`hermes-anthropic-repeat2`已启动，输出至
+`run-artifacts/formal/hermes-anthropic-repeat2/`，日志为
+`logs/formal-experiments/hermes-anthropic-repeat2.log`；
+`hermes-openai-repeat2`保持排队，目标使用同格式的`hermes-openai-repeat2`目录及日志。
+Claude进程退出0且根结果包含70个唯一终态任务后才启动GPT；非零退出或结果不完整则停止队列核对，
+不自动改写、恢复或覆盖任何组合。
