@@ -151,13 +151,8 @@ def test_hermes_compatible_provider_export_prefers_oneshot_sessions(
         install_branch="main",
         reasoning="high",
     )
-    execute = AsyncMock(
-        side_effect=[
-            SimpleNamespace(stdout=""),
-            SimpleNamespace(stdout=""),
-            SimpleNamespace(stdout=""),
-        ]
-    )
+    execute = AsyncMock(return_value=SimpleNamespace(stdout=""))
+    monkeypatch.setattr(agent, "_prepare_session_evidence", AsyncMock())
     monkeypatch.setattr(agent, "exec_as_agent", execute)
 
     asyncio.run(agent.run("reply with marker", None, None))
@@ -173,8 +168,7 @@ def test_hermes_compatible_provider_export_prefers_oneshot_sessions(
         execute.await_args_list[1].kwargs["env"]["OPENAI_BASE_URL"] == "https://selected.example/v1"
     )
     export_command = execute.await_args_list[-1].kwargs["command"]
-    assert "--source oneshot" in export_command
-    assert "--source cli" in export_command
+    assert " collect /tmp/hermes /logs/agent" in export_command
 
 
 @pytest.mark.parametrize(
@@ -208,17 +202,26 @@ def test_hermes_current_model_config_pins_protocol(
 @pytest.mark.parametrize("preinstalled", [False, True])
 @pytest.mark.parametrize("provider", ["openai", "anthropic"])
 def test_preinstalled_native_routes_export_oneshot_session(
-    tmp_path, monkeypatch, provider, preinstalled,
+    tmp_path,
+    monkeypatch,
+    provider,
+    preinstalled,
 ):
     from adapters.preinstalled import PreinstalledIdentity
 
     agent = _agent(tmp_path)
     agent.model_name = provider + "/fixture-model"
     if preinstalled:
-        agent.options = agent.options.model_copy(update={"preinstalled": PreinstalledIdentity(
-            manifest_sha256="a" * 64, image="test@sha256:" + "b" * 64,
-            parent_image="base@sha256:" + "c" * 64, platform="linux/arm64",
-        )})
+        agent.options = agent.options.model_copy(
+            update={
+                "preinstalled": PreinstalledIdentity(
+                    manifest_sha256="a" * 64,
+                    image="test@sha256:" + "b" * 64,
+                    parent_image="base@sha256:" + "c" * 64,
+                    platform="linux/arm64",
+                )
+            }
+        )
     native = AsyncMock()
     monkeypatch.setattr("adapters.hermes.adapter.HarborHermes.run", native)
     monkeypatch.setattr("adapters.preinstalled.check_preinstalled", AsyncMock())
@@ -226,11 +229,38 @@ def test_preinstalled_native_routes_export_oneshot_session(
     monkeypatch.setattr(agent, "exec_as_agent", execute)
     asyncio.run(agent.run("fixture instruction", None, None))
     native.assert_awaited_once()
-    assert execute.await_count == (2 if preinstalled else 1)
-    if preinstalled:
-        command = execute.await_args.kwargs["command"]
-        assert "--source oneshot" in command
-        assert "--source cli" in command
+    assert execute.await_count == 3
+    assert " prepare /tmp/hermes /logs/agent" in execute.await_args_list[0].kwargs["command"]
+    assert " collect /tmp/hermes /logs/agent" in execute.await_args.kwargs["command"]
+
+
+@pytest.mark.parametrize("provider", ["openai", "anthropic", "qwen", "deepseek"])
+@pytest.mark.parametrize("outcome", ["normal", "cancel", "error"])
+def test_session_collection_runs_on_every_exit(tmp_path, monkeypatch, provider, outcome):
+    agent = _agent(tmp_path)
+    agent.model_name = provider + "/fixture-model"
+    monkeypatch.setenv(f"{provider.upper()}_API_KEY", "fixture-key")
+    monkeypatch.setenv(f"{provider.upper()}_BASE_URL", "https://fixture.invalid")
+    failure = {"normal": None, "cancel": asyncio.CancelledError(), "error": RuntimeError("run")}
+    cause = failure[outcome]
+    collect = AsyncMock()
+    monkeypatch.setattr(agent, "_export_oneshot_session", collect)
+    monkeypatch.setattr(agent, "_prepare_session_evidence", AsyncMock(), raising=False)
+    monkeypatch.setattr("adapters.hermes.adapter.HarborHermes.run", AsyncMock(side_effect=cause))
+
+    async def execute(environment, command, **kwargs):
+        if "hermes --yolo chat" in command and cause is not None:
+            raise cause
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(agent, "exec_as_agent", execute)
+    if cause is None:
+        asyncio.run(agent.run("fixture", None, AgentContext()))
+    else:
+        with pytest.raises(type(cause)) as caught:
+            asyncio.run(agent.run("fixture", None, AgentContext()))
+        assert caught.value is cause
+    collect.assert_awaited_once_with(None)
 
 
 def test_hermes_rejects_non_commit_source(tmp_path: Path) -> None:
