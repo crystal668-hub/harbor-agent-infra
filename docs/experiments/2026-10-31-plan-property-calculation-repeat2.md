@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek工程恢复batch1已结束并审核，4项HTTP 429待batch2，原始轮尚未合并验收。Hermes × DeepSeek/Claude等待队列因前序失败而阻塞；12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek恢复审核](../audit/2026-11-04-audit-codex-deepseek-recovery-batch1.md)。
+状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek工程恢复batch2已于2026-11-04启动，4项工程错误进入本批、结果待审，原始轮尚未合并验收。Hermes × DeepSeek/Claude等待队列因前序失败而阻塞；12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek恢复审核](../audit/2026-11-04-audit-codex-deepseek-recovery-batch1.md)。
 
 ## 范围与配置结论
 
@@ -134,26 +134,32 @@ deepseek-responses路由及预装不可变镜像。已核对配置、包任务�
 .launch.json、.state.json、.sequence.py和.controller.log；组合日志为codex-deepseek-repeat2.log。
 排队时尚未创建实验输出目录及组合日志，不启动其他组合。
 
-## 2026-11-04 Codex × DeepSeek 恢复 batch2 计划（未启动）
+## 2026-11-04 Codex × DeepSeek 恢复 batch2 计划与启动
 
 [batch1审核](../audit/2026-11-04-audit-codex-deepseek-recovery-batch1.md)确认14项均已终态：
 9项获得有效评分、1项正常Agent超时按协议计0、4项HTTP 429重试耗尽仍属工程无效。
 原始正式轮尚未合并或验收。下一轮仅对Advanced 007、019及Basic 014、039这4个slot作第二次替代；
-其余10项不重派。候选清单位于
+其余10项不重派。原待批候选清单位于
 `run-artifacts/audit/repeat2-codex-deepseek-recovery-20261104/codex-deepseek-repeat2-batch2-candidate.json`，
-目前4项均未批准、累计各用1/2次替代，batch2尚未启动。
+当时4项均未批准、累计各用1/2次替代。2026-11-04用户明确批准这4项的第二次替代，
+批准清单另存同目录`codex-deepseek-repeat2-batch2-approved.json`，不改写原候选。
 
 执行条件沿用Codex × DeepSeek原冻结Job：repeat2、skills_off、high、64000输出token、
 7200/120秒、preinstalled和锁定Codex镜像、`deepseek-responses`路由；
-单次attempt、Harbor内部重试0，恢复Job并发2。目标输出目录为
+单次attempt、Harbor内部重试0。2026-11-04本批恢复Job并发由原计划2改为1，
+依据用户为避免HTTP 429限流的明确要求，仅适用于batch2；其余冻结条件不变。
+目标输出目录为
 `run-artifacts/formal/codex-deepseek-repeat2-recovery-batch2/`，组合日志为
 `logs/formal-experiments/codex-deepseek-repeat2-recovery-batch2.log`，均须在派发前确认不存在。
 
-1. 复核4项429原生证据与累计预算，明确批准当前候选；确认provider限流窗口已解除、
-   路由健康、配置与运行锁无漂移，且无活跃的同slot执行。
-2. 用`configs/experiments/property-calculation/codex/vgb-deepseek.config.yaml`及获批清单，
-   对新目标目录执行`hai recover --dry-run`，核对仅4项、序号2/2、并发2、
-   输出及日志路径无冲突，然后按批准范围派发。本文档只规定门禁，未执行派发。
+1. 已复核4项429原生证据与累计预算，批准范围仅这4项；配置及运行锁哈希与原始启动相同。
+   `hai doctor`通过；锁定Codex镜像从容器内访问协议桥`/health`返回HTTP 200。
+   此健康检查不证明上游provider配额已恢复。
+2. 已用`configs/experiments/property-calculation/codex/vgb-deepseek.config.yaml`及获批清单，
+   对新目标目录执行`hai recover --dry-run`：仅4项、各已用1/2次、有效并发1，
+   新目录与日志无冲突。12:11:13（上海）通过独立tmux会话
+   `harbor-repeat2-codex-deepseek-batch2-20261104`启动；
+   `logs/formal-experiments/codex-deepseek-repeat2-recovery-batch2.state.json`记录控制进程及后续终态。
 3. batch2结束后重新运行`hai audit`并逐项复核原生证据，择取有效替代结果，
    预览并执行合并，再核对70个唯一slot的评分与异常。若某slot第二次替代仍工程无效，
    依正式方案标记`BLOCKED`并保留有效性缺口，不自行计0或进行第三次替代；
