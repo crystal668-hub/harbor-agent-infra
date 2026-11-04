@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek工程恢复batch2已于2026-11-04启动，4项工程错误进入本批、结果待审，原始轮尚未合并验收。Hermes × DeepSeek/Claude等待队列因前序失败而阻塞；12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[Codex DeepSeek恢复审核](../audit/2026-11-04-audit-codex-deepseek-recovery-batch1.md)。
+状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek恢复batch2于2026-11-04启动后因上游持续HTTP 429按用户要求撤回，4项工程候选均保持已用1/2次，原始轮尚未合并验收。Hermes × DeepSeek/Claude等待队列仍阻塞；12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)及[batch2撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)。
 
 ## 范围与配置结论
 
@@ -134,7 +134,7 @@ deepseek-responses路由及预装不可变镜像。已核对配置、包任务�
 .launch.json、.state.json、.sequence.py和.controller.log；组合日志为codex-deepseek-repeat2.log。
 排队时尚未创建实验输出目录及组合日志，不启动其他组合。
 
-## 2026-11-04 Codex × DeepSeek 恢复 batch2 计划与启动
+## 2026-11-04 Codex × DeepSeek 恢复 batch2 计划、启动与撤回
 
 [batch1审核](../audit/2026-11-04-audit-codex-deepseek-recovery-batch1.md)确认14项均已终态：
 9项获得有效评分、1项正常Agent超时按协议计0、4项HTTP 429重试耗尽仍属工程无效。
@@ -142,7 +142,8 @@ deepseek-responses路由及预装不可变镜像。已核对配置、包任务�
 其余10项不重派。原待批候选清单位于
 `run-artifacts/audit/repeat2-codex-deepseek-recovery-20261104/codex-deepseek-repeat2-batch2-candidate.json`，
 当时4项均未批准、累计各用1/2次替代。2026-11-04用户明确批准这4项的第二次替代，
-批准清单另存同目录`codex-deepseek-repeat2-batch2-approved.json`，不改写原候选。
+批准清单当时另存同目录`codex-deepseek-repeat2-batch2-approved.json`，不改写原候选；
+撤回后该批准文件改名归档为`codex-deepseek-repeat2-batch2-approved-withdrawn.json`。
 
 执行条件沿用Codex × DeepSeek原冻结Job：repeat2、skills_off、high、64000输出token、
 7200/120秒、preinstalled和锁定Codex镜像、`deepseek-responses`路由；
@@ -166,3 +167,13 @@ deepseek-responses路由及预装不可变镜像。已核对配置、包任务�
    能力超时继续按已确认规则计0。
 4. Hermes × DeepSeek/Claude原等待队列现为`blocked_by_predecessor`，不会自动恢复；
    Codex × DeepSeek结案后重新核对前序及配置，再显式安排后续两组。
+
+2026-11-04 12:23:59（上海）按用户要求撤回本批：Advanced 007、019再次出现
+`ApiRateLimitError`及HTTP 429重试耗尽；Basic 014执行中被停止，Basic 039尚未启动。
+控制进程及残留容器均已停止，原生证据移至
+`run-artifacts/audit/repeat2-codex-deepseek-recovery-20261104/withdrawn-batch2-run/`；
+正式目录已移除，本批结果不入选评分或合并。用户明确裁定此次上游持续限流的整批撤回
+不额外消耗工程替代预算，四项仍各为已用1/2次。重新`hai audit` batch1后四项计次均为1/2；
+工具的0.3置信度待复核分类不替代先前的原生429人工工程分类。
+本次启动后的原计划第3步不适用于已撤回批次；未来仅在上游限流恢复并重新批准后，
+以新清单和全新目录安排恢复。详见[撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)。
