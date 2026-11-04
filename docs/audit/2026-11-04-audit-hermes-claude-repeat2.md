@@ -2,7 +2,7 @@
 
 日期：2026-11-04（Asia/Shanghai）
 类型：audit（正式实验终态与失败分类）
-状态：Claude运行已结束，已执行hai audit并复核原生异常；67条根结果标记已评分，3项尚未计分，正式轮待人工裁定与验收。Hermes × GPT已启动，审核范围不含GPT。
+状态：原始审核检出4项执行异常；2026-11-04用户逐项裁定后，三项协议计0、Advanced 018保留已有评分，正式轮70/70已验收。Hermes × GPT不在本审核范围。
 
 ## 完成性与自动审核
 
@@ -38,3 +38,10 @@ GPT配置与运行锁哈希不变后，20:43:13（上海）以独立恢复控制
 `logs/formal-experiments/hermes-repeat2-claude-then-gpt-20261104.state.json`，
 原错误及续派记录见同名前缀的`.controller.log`与`.resume-gpt.py`。
 GPT的完成性和审计须另行核对，不纳入本报告。
+
+## 2026-11-04 后续裁定
+
+用户确认Advanced 007、009正常超时计0且本轮不补跑，Advanced 013安全拒答为能力失败计0、
+Advanced 018完整回答及现有评分有效；四项均通过人工审核。原生异常与原始`hai audit`保持不变，
+三条未评分记录通过绑定证据的协议零分处置纳入70题分母。最终成绩与验收范围见
+[正式轮验收](../acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)。

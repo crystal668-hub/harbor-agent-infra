@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：Claude Code四组及Codex × Claude/Qwen均已验收；Codex × DeepSeek的batch2已因持续HTTP 429撤回，4项工程候选各保持已用1/2次，原始轮尚未合并验收。Hermes × Claude已结束并执行hai audit、待人工裁定；Hermes × GPT已启动。旧Hermes × DeepSeek/Claude队列仍阻塞，12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)、[batch2撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)及[Hermes Claude审核](../audit/2026-11-04-audit-hermes-claude-repeat2.md)。
+状态：Claude Code四组、Codex × Claude/Qwen及Hermes × Claude均已验收；Codex × DeepSeek的batch2因持续HTTP 429撤回，4项工程候选各保持已用1/2次，原始轮尚未合并验收。Hermes × GPT已启动；旧Hermes × DeepSeek/Claude队列仍阻塞，12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)、[batch2撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)及[Hermes Claude验收](../acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)。
 
 ## 范围与配置结论
 
@@ -200,3 +200,7 @@ Claude进程退出0且根结果包含70个唯一终态任务后才启动GPT；�
 `hai audit`检出4项原生异常，67条标记已评分，尚未验收。原控制器误以为每条记录都有
 `task_id`，在4条异常记录处触发KeyError；核对终态与冻结哈希后，
 20:43:13仅续派Hermes × GPT，Claude未重复运行。详情见[Claude审核](../audit/2026-11-04-audit-hermes-claude-repeat2.md)。
+
+2026-11-04用户进一步确认Advanced 007、009正常超时、Advanced 013安全拒答均属能力失败并计0，
+本轮不补跑；Advanced 018沿用已有完整回答的评分。三条协议零分处置后Hermes × Claude
+70/70计分并验收，原Trial异常及评分产物保留。成绩与证据见[验收记录](../acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)。

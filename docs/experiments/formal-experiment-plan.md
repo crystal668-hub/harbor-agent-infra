@@ -696,8 +696,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-03。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收22/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex × Claude/Qwen。
+**最后核对日期**：2026-11-04（本次更新Hermes × Claude及已确认运行状态）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收23/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex × Claude/Qwen、Hermes × Claude。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -779,12 +779,12 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
 | Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
 | Codex | Qwen | 已验收 | 19 / 19；0.450988 | 51 / 51；0.894729 |
-| Codex | GPT | 运行中 | — | — |
+| Codex | GPT | 已结束待审核 | — | — |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
-| Hermes | DeepSeek | 排队中 | — | — |
+| Hermes | DeepSeek | 未启动 | — | — |
 | Hermes | Qwen | 未启动 | — | — |
-| Hermes | GPT | 未启动 | — | — |
-| Hermes | Claude | 排队中 | — | — |
+| Hermes | GPT | 运行中 | — | — |
+| Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
 | OpenClaw | GPT | 未启动 | — | — |
@@ -817,6 +817,13 @@ Codex × DeepSeek的14项已批准HTTP 429工程替代排在其后。顺序控�
 `harbor-repeat2-hermes-after-codex-recovery-20261103`，初始状态`waiting_for_predecessor`；
 Codex恢复尚未结束，因此尚未派发Hermes。若恢复批次失败或未达14/14终态，等待器停止，
 后续两组保持未启动。
+
+2026-11-04：Hermes × Claude原根视图67项标记已评分；用户裁定Advanced 007、009正常超时及
+Advanced 013安全拒答均计0且本轮不补跑，Advanced 018保留已有完整答案评分。
+授权零分处置后经`hai summary`核对Advanced 19/19、Basic 51/51、整体70/70，
+原生四项执行异常保留；该正式轮已验收，见[验收记录](../acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)。
+Hermes × GPT已按Claude→GPT顺序启动；Codex × GPT原运行已结束但尚未完成本节验收核对，
+因此其成绩仍留空。Hermes × DeepSeek的旧等待队列未恢复。
 
 #### 14.3.2 合并12h超时补跑轮
 
