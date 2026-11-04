@@ -39,6 +39,12 @@
 - [Repeat2 Codex／Hermes × GPT进度审核](audit/2026-11-04-audit-repeat2-gpt-progress.md)：两组70/70评分、hai audit零失败及后续验收衔接。
 - [Repeat2 Codex／Hermes × GPT验收](acceptance/2026-11-04-acceptance-repeat2-codex-hermes-gpt.md)：两组原生评分完整、一致性逐项核对，正式轮均已验收。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
+- [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：取消链路与证据保全验收；后续已于11月5日接入本地主工作区。
+- [OpenClaw失败轨迹修复详细设计](plan/2026-11-04-plan-openclaw-failure-trajectory.md)：四类harness的ATIF文件依赖、失败测试、函数改动与验收边界；方案已审批并在隔离分支实施。
+- [OpenClaw失败轨迹离线验收](acceptance/2026-11-04-acceptance-openclaw-failure-trajectory.md)：失败会话转换、身份门禁与评分隔离；207项离线回归通过，后续部署及历史回填另有记录。
+- [OpenClaw历史失败轨迹受控回放](audit/2026-11-04-audit-openclaw-sessionkey-replay.md)：用户授权在独立副本推导已脱敏的sessionKey，12/12生成有效部分ATIF；144项产物检查通过，生产检查与历史原件未改。
+- [OpenClaw历史部分轨迹回填](audit/2026-11-04-audit-openclaw-trajectory-backfill.md)：用户后续授权向Qwen／DeepSeek repeat1各六个原始Trial补入缺失ATIF及来源说明；156项复核通过，原失败和评分不变。
+- [失败轨迹修复主分支部署](acceptance/2026-11-05-acceptance-trajectory-deployment.md)：Hermes／OpenClaw本地主工作区部署；831项非集成测试、16份配置路由及锁定Hermes镜像断网导出通过。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。

@@ -25,6 +25,29 @@ def _verifier(tmp_path: Path) -> VgbVerifier:
     )
 
 
+@pytest.mark.parametrize("state", ["failed", "interrupted", "missing"])
+def test_failed_atif_is_never_scored_as_openclaw_answer(tmp_path, monkeypatch, state):
+    from adapters.openclaw.failure import OpenClawAgentIncompleteError
+
+    verifier = _verifier(tmp_path)
+    agent = tmp_path / "agent"
+    (agent / "openclaw.txt").unlink()
+    (agent / "trajectory.json").write_text(json.dumps({
+        "steps": [{"source": "agent", "message": "intermediate answer must not be scored"}]
+    }))
+    if state != "missing":
+        (agent / "openclaw-status.json").write_text(json.dumps({"state": state}))
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Failure trajectory must never reach provider/scoring runtime")
+
+    monkeypatch.setattr("adapters.vgb_verifier.VgbRuntime.from_environment", forbidden)
+    monkeypatch.setattr("adapters.vgb_verifier.evaluate_final_response", forbidden)
+    expected = VgbVerifierError if state == "missing" else OpenClawAgentIncompleteError
+    with pytest.raises(expected):
+        asyncio.run(verifier.verify())
+
+
 def test_vgb_verifier_preserves_zero_score_and_artifact(monkeypatch, tmp_path: Path) -> None:
     class Runtime:
         def metadata(self):

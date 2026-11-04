@@ -14,8 +14,11 @@ from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext, ModelUsage
 from pydantic import Field
 
+from adapters.hermes.evidence import evidence_command, record_conversion
 from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import hermes_output_patch_command
+
+EVIDENCE_TIMEOUT_SEC = 30
 
 
 class HermesOptions(PreinstalledOptions, HarborHermesOptions):
@@ -148,6 +151,15 @@ class HermesAgent(HarborHermes):
         environment: BaseEnvironment,
         context: AgentContext,
     ) -> None:
+        try:
+            await self._prepare_session_evidence(environment)
+            await self._run_hermes(instruction, environment, context)
+        finally:
+            await self._export_oneshot_session(environment)
+
+    async def _run_hermes(
+        self, instruction: str, environment: BaseEnvironment, context: AgentContext
+    ) -> None:
         provider, separator, model = (self.model_name or "").partition("/")
         if provider not in {"qwen", "deepseek"} or not separator:
             await self.exec_as_agent(
@@ -157,8 +169,6 @@ class HermesAgent(HarborHermes):
                 timeout_sec=10,
             )
             await super().run(instruction, environment, context)
-            if self.options.preinstalled is not None:
-                await self._export_oneshot_session(environment)
             return
 
         prefix = provider.upper()
@@ -222,32 +232,61 @@ class HermesAgent(HarborHermes):
             f"{cli_parts[0]} && {' '.join(cli_parts[1:])} "
             "2>&1 | stdbuf -oL tee /logs/agent/hermes.txt"
         )
+        await self.exec_as_agent(environment, command=run_command, env=env)
+
+    async def _prepare_session_evidence(self, environment: BaseEnvironment) -> None:
+        # Capture the resume identity before the parent's CLI-only export can change it.
+        self._evidence_session_id = (
+            getattr(self, "_native_session_id", None) if self._resume else None
+        )
+        await self._run_evidence(environment, "prepare", 10)
+
+    async def _run_evidence(self, environment: BaseEnvironment, phase: str, timeout: int):
         try:
-            await self.exec_as_agent(environment, command=run_command, env=env)
-        finally:
-            await self._export_oneshot_session(environment)
+            # Per-run provider env is not necessarily inherited by a later exec.
+            secrets = [
+                value
+                for key in (
+                    "ANTHROPIC_API_KEY",
+                    "ANTHROPIC_TOKEN",
+                    "OPENAI_API_KEY",
+                    "OPENROUTER_API_KEY",
+                    "QWEN_API_KEY",
+                    "DEEPSEEK_API_KEY",
+                )
+                if (value := self._get_env(key))
+            ]
+            async with asyncio.timeout(timeout):
+                return await self.exec_as_agent(
+                    environment,
+                    command=evidence_command(phase, getattr(self, "_evidence_session_id", None)),
+                    env={
+                        "HERMES_HOME": "/tmp/hermes",
+                        "HAI_HERMES_SECRET_VALUES": json.dumps(secrets),
+                    },
+                    timeout_sec=timeout - 1,
+                )
+        except Exception as exc:
+            # Never log exception text here: transport errors can contain credentials.
+            self.logger.warning("Hermes evidence %s failed (%s)", phase, type(exc).__name__)
+            try:
+                self.logs_dir.mkdir(parents=True, exist_ok=True)
+                # A separate host marker survives later downloads from unmounted logs.
+                report_path = self.logs_dir / f"hermes-evidence-{phase}-error.json"
+                report = {"phase": phase, "error": type(exc).__name__}
+                report_path.write_text(json.dumps(report, indent=2) + "\n")
+                report_path.chmod(0o600)
+            except Exception:
+                self.logger.warning("Could not write Hermes evidence failure marker")
+            return None
 
     async def _export_oneshot_session(self, environment: BaseEnvironment) -> None:
-        try:
-            export_result = await self.exec_as_agent(
-                environment,
-                command=(
-                    'export PATH="$HOME/.local/bin:$PATH" && '
-                    "(hermes sessions export /logs/agent/hermes-session.jsonl "
-                    "--source oneshot 2>/dev/null; "
-                    "[ -s /logs/agent/hermes-session.jsonl ] || "
-                    "hermes sessions export /logs/agent/hermes-session.jsonl "
-                    "--source cli 2>/dev/null) && "
-                    "head -n 1 /logs/agent/hermes-session.jsonl || true"
-                ),
-                env={"HERMES_HOME": "/tmp/hermes"},
-                timeout_sec=30,
-            )
+        export_result = await self._run_evidence(environment, "collect", EVIDENCE_TIMEOUT_SEC)
+        self._native_session_id = getattr(self, "_evidence_session_id", None)
+        if export_result is not None:
             native_session_id = self._extract_native_session_id(export_result.stdout)
             if native_session_id:
                 self._native_session_id = native_session_id
-        except Exception:
-            pass
 
     @staticmethod
     def _session_usage(jsonl_text: str) -> dict[str, int | float | str | None] | None:
@@ -314,7 +353,12 @@ class HermesAgent(HarborHermes):
 
     @override
     def _convert_hermes_session_to_atif(self, jsonl_text: str, session_id: str):
-        trajectory = super()._convert_hermes_session_to_atif(jsonl_text, session_id)
+        try:
+            trajectory = super()._convert_hermes_session_to_atif(jsonl_text, session_id)
+        except Exception as exc:
+            record_conversion(self.logs_dir, "failed", type(exc).__name__)
+            raise
+        record_conversion(self.logs_dir, "converted" if trajectory else "no_convertible_messages")
         usage = self._session_usage(jsonl_text)
         if trajectory is None or usage is None or trajectory.final_metrics is None:
             return trajectory
@@ -341,7 +385,13 @@ class HermesAgent(HarborHermes):
 
     @override
     def populate_context_post_run(self, context: AgentContext) -> None:
-        super().populate_context_post_run(context)
+        if not (self.logs_dir / "hermes-session.jsonl").is_file():
+            record_conversion(self.logs_dir, "missing_session")
+        try:
+            super().populate_context_post_run(context)
+        except Exception as exc:
+            record_conversion(self.logs_dir, "failed", type(exc).__name__)
+            return
         session_path = self.logs_dir / "hermes-session.jsonl"
         if not session_path.is_file():
             return
