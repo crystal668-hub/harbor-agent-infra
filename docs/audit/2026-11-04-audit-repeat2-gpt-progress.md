@@ -2,7 +2,7 @@
 
 日期：2026-11-04（Asia/Shanghai）
 类型：audit（正式轮完成性与待验收状态）
-状态：两组原始正式运行均已结束，70/70原生Trial和评分齐全，hai audit各检出0项失败；本记录不替代人工验收。
+状态：23:36进度核对时两组均已审核待验收；2026-11-04后续按用户要求正式验收，见文末更新。
 
 | 组合 | 完成性 | hai audit | Advanced 19题均分 | Basic 51题均分 | 整体均分 | 进度 |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
@@ -18,3 +18,9 @@ Hermes的Claude→GPT串行控制状态为`completed`，没有运行中的tmux�
 7组已验收、2组已审核待验收、Codex × DeepSeek仍有4项HTTP 429工程缺口；余6组未启动。
 Codex × DeepSeek撤回的batch2不计入新恢复次数，Hermes × DeepSeek旧等待队列仍阻塞。
 这些待验收与工程缺口不因本次进度检查自动结案或派发新实验。
+
+## 2026-11-04 后续验收
+
+用户随后要求完成两组GPT验收。逐项核对70份原生Trial的Verifier reward、评分artifact与
+根结果分数一致，保留原始根结果和审计清单；两组现均已验收，正式进度由23/48增至25/48。
+验收证据与范围见[验收记录](../acceptance/2026-11-04-acceptance-repeat2-codex-hermes-gpt.md)。
