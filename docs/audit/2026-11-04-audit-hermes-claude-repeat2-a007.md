@@ -43,7 +43,7 @@ Claude走[本仓库Hermes适配器](../../adapters/hermes/adapter.py)的上游�
 
 Harbor的`asyncio.wait_for`在7200秒Agent预算到期后取消CLI执行，主异常为AgentTimeoutError。
 超时发生于Agent阶段，早于Verifier读取轨迹的失败；ATIF缺失不能倒推为触发本次Agent超时的原因。
-异常栈中的`process.communicate/read<BT>是宿主机等待docker-compose执行结束的位置，
+异常栈中的`process.communicate/read`是宿主机等待docker-compose执行结束的位置，
 不是Hermes内部正在等待API响应的证据。
 
 Hermes以`-Q`运行，该模式关闭工具开始、完成、推理及流式文本回调，通常只输出最终回答。
