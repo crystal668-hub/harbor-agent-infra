@@ -90,8 +90,7 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
             or decision.get("max_substitutions") != 2
             or decision.get("is_substitutable") is not False
             or decision.get("further_reruns_allowed") is not False
-            or decision.get("trial_result_sha256")
-            != hashlib.sha256(path.read_bytes()).hexdigest()
+            or decision.get("evidence_sha256") != scoring_evidence_sha256(trial)
             or not artifact_path.is_file()
             or decision.get("verifier_artifact_sha256")
             != hashlib.sha256(artifact_path.read_bytes()).hexdigest()

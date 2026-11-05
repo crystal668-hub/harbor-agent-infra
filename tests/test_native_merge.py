@@ -907,7 +907,7 @@ def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp
 def test_final_rate_limit_zero_requires_bound_exhausted_decision(native_runs):
     import hashlib
 
-    from harbor_agent_infra.recovery.native_plan import assessment
+    from harbor_agent_infra.recovery.native_plan import assessment, scoring_evidence_sha256
 
     _, recovery = native_runs
     path = next(recovery.glob("jobs/*/*/result.json"))
@@ -922,11 +922,12 @@ def test_final_rate_limit_zero_requires_bound_exhausted_decision(native_runs):
         "task_name": trial["task_name"], "substitution_count": 2, "max_substitutions": 2,
         "is_substitutable": False, "further_reruns_allowed": False,
         "trial_result_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "evidence_sha256": scoring_evidence_sha256(trial),
         "verifier_artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
     }
     decision_path = path.parent / "operator-final-capability-zero.json"
     for key, value in [("score", 1), ("score", False), ("authorization", ""),
-                       ("trial_id", "wrong"), ("trial_result_sha256", "stale"),
+                       ("trial_id", "wrong"), ("evidence_sha256", "stale"),
                        ("verifier_artifact_sha256", "stale"), ("approved_by_user", False),
                        ("substitution_count", 1), ("further_reruns_allowed", True)]:
         write(decision_path, {**decision, key: value})
@@ -938,3 +939,12 @@ def test_final_rate_limit_zero_requires_bound_exhausted_decision(native_runs):
     assert domain["scores"]["score"] == 0
     assert domain["scoring_source"] == "operator_final_capability_zero"
     assert json.loads(path.read_text()) == trial
+    relocated = copy.deepcopy(trial)
+    relocated["config"]["trials_dir"] = "/relocated/jobs"
+    relocated["trial_uri"] = "file:///relocated/trial"
+    write(path, relocated)
+    assert assessment(path, relocated)[0] == "valid"
+    relocated["exception_info"]["exception_message"] = "changed failure evidence"
+    write(path, relocated)
+    with pytest.raises(ValueError, match="Invalid final capability-zero"):
+        assessment(path, relocated)
