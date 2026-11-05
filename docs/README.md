@@ -53,6 +53,7 @@
 - [VGB RC接入验收](acceptance/2026-10-30-acceptance-vgb-rc-upgrade.md)：包来源、repeat1迁移、开放生成准备及验证边界。
 - [通用Agent化学任务研究（VGB RC1）](audit/2026-10-31-audit-general-agent-chemistry-vgb-rc.html)：基于 CURRENT 的 70 题、1120 个slot互动报告；0.10.0历史评分未重评。2026-10-29 的71题报告保留为历史口径。
 - [A008 / B031 全零原因专项审计](audit/2026-11-01-audit-chemistry-zero-score-alignment.html)：32条正式代表的原题、计算协议、原子映射与轨迹复核；定位方法缺失及目标原子不一致，保留旧正式分数。
+- [通用大模型与Harness的化学科研能力边界](audit/2026-11-05-audit-general-agent-chemistry-insights.html)：按任务类型归纳的文章可用分析；第一轮完整矩阵的质量、用时与token比较，以及第二轮11个已验收组合的配对复核。
 
 ## 维护约定
 
