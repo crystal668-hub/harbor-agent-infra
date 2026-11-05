@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收11/16组；Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收。两项第二次恢复429按用户裁定能力计0、不再重跑；其余5组未启动，12h加时轮未启动。最新结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw四组未启动，12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -230,3 +230,18 @@ Hermes × DeepSeek于02:10:45启动、08:07:46退出0；70项终态、1项Basic 
 用户批准`hai merge`后发布`codex-deepseek-repeat2-merged`，70项代表中56项来自原始轮、
 10项来自batch1、4项来自batch2；未按分数择优。两组均已完成验收、各70/70计分，
 原始错误及全部尝试证据保留。数据及验收范围见[验收记录](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+
+## 2026-11-05 Hermes × Qwen 启动
+
+用户指定启动Hermes × Qwen性质计算repeat2，仅运行skills_off；没有派发其他组合。
+11:48:27（上海）由tmux会话`harbor-repeat2-hermes-qwen-20261105`启动，
+控制状态与冻结信息分别保存在`logs/formal-experiments/hermes-qwen-repeat2.state.json`、
+`hermes-qwen-repeat2.launch.json`；组合日志为`hermes-qwen-repeat2.log`，
+正式输出为`run-artifacts/formal/hermes-qwen-repeat2/`。启动后已创建Job并开始Trial执行，
+本条记录不代表70题完成、计分或验收。
+
+启动前目标与日志均不存在，工作区无未提交改动；正式矩阵dry-run和`hai doctor`通过。
+本地Hermes镜像ID与配置摘要一致，Qwen所需环境变量及skills根目录仅核对存在性。
+配置SHA-256为`f7c7252a2458c478a19efd56648d46ba66e2ad2a73ffe7ff65c35bc1c16025b2`，
+运行锁SHA-256为`3ff201b8dcb8a8a3179b3f6727b5c1b9918b19f8f78c057babd16287a32174b6`。
+仍采用70题、high、64000单次响应输出上限、7200/120秒、并发2、单次attempt与内部重试0。
