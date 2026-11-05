@@ -71,38 +71,6 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
     kind = exception.get("exception_type")
     setup = trial.get("agent_setup") or {}
     execution = trial.get("agent_execution") or {}
-    final_decision_path = path.parent / "operator-final-capability-zero.json"
-    if final_decision_path.is_file():
-        decision = read_json(final_decision_path)
-        artifact_path = path.parent / "verifier" / "vgb-evaluation.json"
-        if (
-            decision.get("schema_version") != "operator-final-capability-zero.v1"
-            or decision.get("approved_by_user") is not True
-            or not isinstance(decision.get("authorization"), str)
-            or not decision["authorization"].strip()
-            or decision.get("category") != "capability"
-            or type(decision.get("score")) not in (int, float)
-            or decision["score"] != 0
-            or decision.get("trial_id") != trial.get("id")
-            or decision.get("task_name") != trial.get("task_name")
-            or kind != "ApiRateLimitError"
-            or decision.get("substitution_count") != 2
-            or decision.get("max_substitutions") != 2
-            or decision.get("is_substitutable") is not False
-            or decision.get("further_reruns_allowed") is not False
-            or decision.get("evidence_sha256") != scoring_evidence_sha256(trial)
-            or not artifact_path.is_file()
-            or decision.get("verifier_artifact_sha256")
-            != hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        ):
-            raise ValueError("Invalid final capability-zero scoring disposition")
-        track, task_id = trial["task_name"].split("__", 1)
-        return "valid", {
-            "status": "scored", "track": track, "task_id": task_id,
-            "scores": {"score": 0.0},
-            "scoring_source": "operator_final_capability_zero",
-            "operator_disposition": decision,
-        }
     decision_path = path.parent / "operator-scoring-disposition.json"
     if decision_path.is_file():
         decision = read_json(decision_path)
@@ -561,8 +529,6 @@ def _add_recovery(
             ordinal = meta.get("substitution_attempt")
             if ordinal != approved_slot.substitution_count + 1 or ordinal not in (1, 2):
                 raise ValueError("Recovery attempt ordinal/budget mismatch")
-            if (path.parent / "operator-final-capability-zero.json").is_file() and ordinal != 2:
-                raise ValueError("Final capability zero requires the second replacement attempt")
             validity, domain = assessment(path, trial)
             matches.append(Candidate(root, path, trial, ordinal, validity, domain))
         if len(matches) != 1:

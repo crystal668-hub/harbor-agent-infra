@@ -30,9 +30,9 @@ Advanced 019、Basic 039仍报ApiRateLimitError。用户明确裁定两次额外
 输出全新`run-artifacts/formal/codex-deepseek-repeat2-merged/`。
 保留56项原始结果，选入batch1的10项和batch2的4项；按有效性及顺序选取，不按最高分选择。
 四项batch1的429以原生Trial ID及文件哈希绑定工程无效裁定，允许进入第二次替代。
-两项最终零分逐项绑定Trial ID、任务、评分相关证据哈希、verifier artifact哈希和用户授权；
-仅在第二次替代时接纳，拒绝错任务、缺少授权、可再重跑或变更过的评分证据。
-合并器使用不含可迁移路径的评分证据哈希，确保整合Job后的路径变化不使裁定失效。
+合并发布时，两项最终零分通过临时专用分支接纳，逐项绑定Trial ID、任务、评分相关证据哈希、
+verifier artifact哈希和用户授权，并限制为第二次替代。该分支及专用测试随后按用户要求删除，
+当前合并器不再读取`operator-final-capability-zero.json`；原有通用裁定逻辑保持不变。
 原始四项派发清单恢复保全；最终禁止重跑清单单独存档，不以事后两项审核清单覆盖历史批准范围。
 
 Advanced 006（batch1）和Basic 029（原始轮）的正常AgentTimeoutError继续计0。
@@ -63,3 +63,16 @@ Codex仍保留4项原生生命周期错误，audit条目数不等同于异常总
 合并器、恢复执行器、恢复合并与正式汇总回归153项通过（1条既有Starlette弃用警告）；
 77项文档链接和`git diff --check`通过。Ruff与修改前对比无新增问题，既有7项不属于本次改动。
 验收范围不含新增provider端到端、镜像构建或新模型调用，也不宣称所有API调用成功。
+
+## 2026-11-05 移除特例专用代码
+
+按用户要求删除本次增加的`operator-final-capability-zero.json`读取分支、第二次替代的专用门禁，
+以及`test_final_rate_limit_zero_requires_bound_exhausted_decision`测试。
+`assessment()`原有的`operator-scoring-disposition.json`校验、`scoring_evidence_sha256()`、
+`replacement_adjudications`和通用恢复次数检查均保留，代码及测试恢复到特例补丁前的内容。
+
+上述153项通过是发布时的历史验证记录；移除专用测试后，合并、恢复执行器和正式汇总
+相关回归152项通过，1条既有Starlette弃用警告；文档链接和`git diff --check`通过。
+已发布合并快照、原始实验结果、人工零分裁定和验收结论均保留，本次未重新合并或评分。
+若后续重新构建该历史合并视图，当前代码不会自动采纳这些专用文件；应参考发布时的
+`f52edde`／`d261d0d`代码版本及合并证据，不将历史专用裁定视为当前通用接口。
