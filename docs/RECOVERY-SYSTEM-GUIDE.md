@@ -75,6 +75,12 @@ Codex provider 转换格式见 [跨 provider 手册](CROSS-PROVIDER.md#冻结-jo
 
 传入完整所需恢复链，核对预览后移除 --dry-run 发布。只有一批时删除第二个恢复路径。
 已授权的受支持条件变化还须显式 --allow-runtime-condition-change；该标志不是任意跳过校验的开关。
+2026-11-05清理：当前合并仅保留声明式Codex自定义Responses provider转换校验；
+移除旧OpenClaw repeat1镜像变更及Claude Code × Qwen预装迁移的历史条件ID白名单。
+其他执行条件差异继续拒绝，不因移除白名单放宽校验。恢复执行器的通用预装条件声明
+仍保留，但不代表当前合并器支持该类差异。历史已发布快照与来源证据不变；
+重建这些历史特殊合并需使用当时支持该条件的代码版本。
+
 
 合并必须能核对每个获批 slot 的最终 outcome、原生 Trial、任务/配置身份及 VGB artifact/reward 一致性。
 选择较早的有效代表，不按最高分选择；待审证据会阻止跳到后来的成功尝试。

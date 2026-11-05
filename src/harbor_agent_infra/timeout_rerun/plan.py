@@ -124,22 +124,7 @@ def timeout_evidence(trial: dict, task: Path) -> dict | None:
             "effective_timeout_sec": effective,
             "agent_duration_sec": duration,
         }
-    # The accepted repeat1 orphan reconstruction is explicit, not a generic text match.
-    if (
-        trial["task_name"]
-        == (
-            "property_calculation_advanced__"
-            "property_calculation_advanced_020_azulene_internal_conversion_rate"
-        )
-        and "no final answer at the 7200 second protocol limit" in ex.get("exception_message", "")
-        and "Reconstructed from orphan container evidence" in ex.get("exception_traceback", "")
-    ):
-        return {
-            "kind": "accepted_orphan_timeout_disposition",
-            "effective_timeout_sec": effective,
-            "authorization": "Included in the user-approved repeat1 12h rerun plan",
-        }
-    raise ValueError("Agent timeout without clock or accepted disposition needs review")
+    raise ValueError("Agent timeout without execution clock needs review")
 
 
 def inventory(snapshots: list[Path]) -> tuple[list[dict], list[dict]]:

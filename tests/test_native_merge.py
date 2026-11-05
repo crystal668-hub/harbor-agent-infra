@@ -188,121 +188,27 @@ def test_native_selection_covers_matrix(tmp_path, harness, provider, repeat):
     assert all(s.selected is None for s in plan.slots[1:])
 
 
-def test_qwen_preinstalled_condition_override_is_explicit_and_narrow(tmp_path):
-    from harbor_agent_infra.recovery.native_plan import _is_authorized_condition_change
-
-    original_task = tmp_path / "original-task"
-    candidate_task = tmp_path / "candidate-task"
-    for task_dir, image in (
-        (original_task, "base@sha256:base"),
-        (candidate_task, "claude-code@sha256:preinstalled"),
-    ):
-        task_dir.mkdir()
-        (task_dir / "instruction.md").write_text("same task")
-        (task_dir / "task.toml").write_text(
-            f'[environment]\ndocker_image = "{image}"\nos = "linux"\n'
-        )
-    original = {
-        "task_checksum": "runtime-checksum",
-        "config": {
-            "task": {"path": str(original_task)},
-            "agent": {
-                "name": "claude-code",
-                "import_path": None,
-                "kwargs": {"version": "2.1.296"},
-            },
-        },
+def test_condition_change_flag_does_not_accept_unsupported_image_changes(native_runs):
+    original, recovery = native_runs
+    path = next(recovery.glob("jobs/*/*/result.json"))
+    trial = json.loads(path.read_text())
+    trial["config"]["agent"].setdefault("kwargs", {})["preinstalled"] = {
+        "image": "changed@sha256:image"
     }
-    candidate = {
-        "task_checksum": "preinstalled-checksum",
-        "config": {
-            "task": {"path": str(candidate_task)},
-            "agent": {
-                "name": None,
-                "import_path": "adapters.preinstalled:ClaudeCodeAgent",
-                "kwargs": {"version": "2.1.296", "preinstalled": {"image": "locked"}},
-            },
-        },
-    }
-    change = {
+    trial["task_checksum"] = "changed-checksum"
+    write(path, trial)
+    manifest_path = recovery / "recovery-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["metadata"] = {"condition_change": {
         "schema_version": "preinstalled-condition-change.v1",
-        "condition_id": "claude-code-qwen-repeat1-advanced-preinstalled-20261017",
-        "authorization": "approved",
-        "task_names": ["track__task-0"],
-        "previous_condition": {"installation_mode": "runtime_install", "image": "base@sha256:base"},
-        "target_condition": {"installation_mode": "preinstalled", "image": "claude-code@sha256:preinstalled"},
+        "condition_id": "fixture-image-transition",
+        "authorization": "fixture approval",
+        "task_names": [trial["task_name"]],
         "statistical_role": "new_condition_observation",
-    }
-
-    assert _is_authorized_condition_change(original, candidate, "track__task-0", change)
-    assert not _is_authorized_condition_change(
-        original, candidate, "track__task-1", change
-    )
-    change["condition_id"] = "another-condition"
-    assert not _is_authorized_condition_change(
-        original, candidate, "track__task-0", change
-    )
-
-
-@pytest.mark.parametrize(
-    ("condition_id", "model_name"),
-    [
-        ("openclaw-anthropic-repeat1-network-retry-image-20261020",
-         "anthropic/claude-opus-5.5"),
-        ("openclaw-openai-repeat1-network-retry-image-20261020",
-         "openai/gpt-6.1-sol"),
-        ("openclaw-openai-repeat1-gpt-two-fixes-20261021",
-         "openai/gpt-6.1-sol"),
-    ],
-)
-def test_openclaw_preinstalled_image_change_is_explicit_and_narrow(
-    tmp_path, condition_id, model_name
-):
-    from harbor_agent_infra.recovery.native_plan import _is_authorized_condition_change
-
-    old_image = "openclaw@sha256:old"
-    new_image = "openclaw@sha256:new"
-    before = tmp_path / "before"
-    after = tmp_path / "after"
-    for directory, image in ((before, old_image), (after, new_image)):
-        directory.mkdir()
-        (directory / "instruction.md").write_text("same instruction")
-        (directory / "task.toml").write_text(
-            f'[environment]\ndocker_image = "{image}"\nos = "linux"\n'
-        )
-    agent = {
-        "name": None,
-        "import_path": "adapters.openclaw.adapter:OpenClawAgent",
-        "model_name": model_name,
-        "kwargs": {"version": "2026.6.34", "preinstalled": {"image": old_image}},
-    }
-    original = {
-        "task_checksum": "old-checksum",
-        "config": {"task": {"path": str(before)}, "agent": agent},
-    }
-    candidate = copy.deepcopy(original)
-    candidate["task_checksum"] = "new-checksum"
-    candidate["config"]["task"]["path"] = str(after)
-    candidate["config"]["agent"]["kwargs"]["preinstalled"]["image"] = new_image
-    change = {
-        "schema_version": "preinstalled-condition-change.v1",
-        "condition_id": condition_id,
-        "authorization": "user approved",
-        "task_names": ["track__task-0"],
-        "previous_condition": {"installation_mode": "preinstalled", "image": old_image},
-        "target_condition": {"installation_mode": "preinstalled", "image": new_image},
-        "statistical_role": "new_condition_observation",
-    }
-    assert _is_authorized_condition_change(original, candidate, "track__task-0", change)
-    assert not _is_authorized_condition_change(original, candidate, "track__other", change)
-    changed = copy.deepcopy(change)
-    changed["target_condition"]["image"] = "openclaw@sha256:other"
-    assert not _is_authorized_condition_change(original, candidate, "track__task-0", changed)
-    changed = copy.deepcopy(candidate)
-    changed["config"]["agent"]["model_name"] = "other-model"
-    assert not _is_authorized_condition_change(original, changed, "track__task-0", change)
-    (after / "instruction.md").write_text("different instruction")
-    assert not _is_authorized_condition_change(original, candidate, "track__task-0", change)
+    }}
+    write(manifest_path, manifest)
+    plan = plan_native_merge(original, [recovery], allow_condition_change=True)
+    assert any("Frozen trial execution conditions" in conflict for conflict in plan.conflicts)
 
 
 def test_native_plan_handles_renamed_run(native_runs):

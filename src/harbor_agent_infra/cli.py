@@ -190,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     merge.add_argument(
         "--allow-runtime-condition-change",
         action="store_true",
-        help="allow the explicit Claude Code runtime_install -> preinstalled transition",
+        help="allow an explicitly authorized Codex custom Responses provider transition",
     )
 
     analyze = subparsers.add_parser(

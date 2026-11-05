@@ -74,7 +74,7 @@ def test_timeout_requires_two_hour_budget_and_terminal_clock(tmp_path):
     assert timeout_evidence(trial, task) is None
     trial["config"]["agent"].pop("override_timeout_sec")
     trial["agent_execution"] = None
-    with pytest.raises(ValueError, match="disposition"):
+    with pytest.raises(ValueError, match="execution clock"):
         timeout_evidence(trial, task)
 
 

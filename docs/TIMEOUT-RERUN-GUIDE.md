@@ -65,6 +65,10 @@ timeout-scoring-repair.json，原始执行异常与计时保留。
 再次超时、能力失败、第三次工程尝试仍失败或评分修复耗尽均计协议零分，
 保留具体原因，不能表述为官方 verifier 成功评分。
 
+2026-11-05清理：新建加时计划不再通过旧Advanced 020 Azulene的任务名及固定异常文本
+接纳缺少时钟的孤儿容器记录。7200秒预算的AgentTimeoutError必须具有原生执行起止时钟，
+缺失时保持待审；已有冻结计划、评分和历史产物不改写。
+
 ## 4. 范围冻结与退休
 
 范围控制由 [scope.py](../src/harbor_agent_infra/timeout_rerun/scope.py) 验证；

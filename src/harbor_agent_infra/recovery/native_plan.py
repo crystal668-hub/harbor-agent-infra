@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -211,43 +210,9 @@ def fingerprint_inputs(roots: list[Path]) -> dict[str, str]:
     }
 
 
-def _task_content_equal(original: dict, candidate: dict, change: dict) -> bool:
-    """Allow materialized task paths to differ only when their files match."""
-    original_path = Path(str((original.get("config") or {}).get("task", {}).get("path", "")))
-    candidate_path = Path(str((candidate.get("config") or {}).get("task", {}).get("path", "")))
-    if not original_path.is_dir() or not candidate_path.is_dir():
-        return False
-    original_files = {p.relative_to(original_path): p for p in original_path.rglob("*") if p.is_file()}
-    candidate_files = {p.relative_to(candidate_path): p for p in candidate_path.rglob("*") if p.is_file()}
-    if set(original_files) != set(candidate_files):
-        return False
-    for relative in original_files:
-        original_bytes = original_files[relative].read_bytes()
-        candidate_bytes = candidate_files[relative].read_bytes()
-        if original_bytes == candidate_bytes:
-            continue
-        if relative.as_posix() != "task.toml":
-            return False
-        try:
-            original_toml = tomllib.loads(original_bytes.decode("utf-8"))
-            candidate_toml = tomllib.loads(candidate_bytes.decode("utf-8"))
-        except (UnicodeDecodeError, tomllib.TOMLDecodeError):
-            return False
-        original_image = original_toml.get("environment", {}).get("docker_image")
-        candidate_image = candidate_toml.get("environment", {}).get("docker_image")
-        if (
-            original_image != (change.get("previous_condition") or {}).get("image")
-            or candidate_image != (change.get("target_condition") or {}).get("image")
-        ):
-            return False
-        original_toml["environment"].pop("docker_image", None)
-        candidate_toml["environment"].pop("docker_image", None)
-        if original_toml != candidate_toml:
-            return False
-    return True
-
-
-def _is_authorized_condition_change(original: dict, candidate: dict, task_name: str, change: dict) -> bool:
+def _is_authorized_condition_change(
+    original: dict, candidate: dict, task_name: str, change: dict
+) -> bool:
     """Recognize only the explicitly approved formal condition transitions."""
     from harbor_agent_infra.recovery.codex_provider import SCHEMA, validate_transition
 
@@ -261,92 +226,7 @@ def _is_authorized_condition_change(original: dict, candidate: dict, task_name: 
         except (ValueError, KeyError, TypeError):
             return False
         return before == after
-    openclaw_model = {
-        "openclaw-anthropic-repeat1-network-retry-image-20261020": "anthropic/claude-opus-5.5",
-        "openclaw-openai-repeat1-network-retry-image-20261020": "openai/gpt-6.1-sol",
-        "openclaw-openai-repeat1-gpt-two-fixes-20261021": "openai/gpt-6.1-sol",
-    }.get(change.get("condition_id"))
-    if openclaw_model:
-        return _is_authorized_openclaw_image_change(
-            original, candidate, task_name, change, openclaw_model
-        )
-    if (
-        change.get("schema_version") != "preinstalled-condition-change.v1"
-        or change.get("condition_id")
-        != "claude-code-qwen-repeat1-advanced-preinstalled-20261017"
-        or not change.get("authorization")
-        or task_name not in change.get("task_names", [])
-        or (change.get("previous_condition") or {}).get("installation_mode") != "runtime_install"
-        or (change.get("target_condition") or {}).get("installation_mode") != "preinstalled"
-        or change.get("statistical_role") != "new_condition_observation"
-    ):
-        return False
-    original_identity = execution_identity(original)
-    candidate_identity = execution_identity(candidate)
-    if not _task_content_equal(original, candidate, change):
-        return False
-    if original_identity["task_checksum"] == candidate_identity["task_checksum"]:
-        return False
-    original_agent = original_identity["agent"]
-    candidate_agent = candidate_identity["agent"]
-    if (
-        original_agent.get("name") != "claude-code"
-        or candidate_agent.get("import_path") != "adapters.preinstalled:ClaudeCodeAgent"
-        or "preinstalled" not in (candidate_agent.get("kwargs") or {})
-    ):
-        return False
-    original_identity.pop("task_checksum", None)
-    candidate_identity.pop("task_checksum", None)
-    original_agent = dict(original_identity["agent"])
-    candidate_agent = dict(candidate_identity["agent"])
-    candidate_kwargs = dict(candidate_agent.get("kwargs") or {})
-    candidate_kwargs.pop("preinstalled", None)
-    candidate_agent["kwargs"] = candidate_kwargs
-    candidate_agent["name"] = original_agent.get("name")
-    candidate_agent["import_path"] = original_agent.get("import_path")
-    original_identity["agent"] = original_agent
-    candidate_identity["agent"] = candidate_agent
-    return original_identity == candidate_identity
-
-
-def _is_authorized_openclaw_image_change(
-    original: dict, candidate: dict, task_name: str, change: dict, expected_model: str
-) -> bool:
-    previous = change.get("previous_condition") or {}
-    target = change.get("target_condition") or {}
-    if (
-        change.get("schema_version") != "preinstalled-condition-change.v1"
-        or not change.get("authorization")
-        or task_name not in change.get("task_names", [])
-        or previous.get("installation_mode") != "preinstalled"
-        or target.get("installation_mode") != "preinstalled"
-        or change.get("statistical_role") != "new_condition_observation"
-        or not _task_content_equal(original, candidate, change)
-    ):
-        return False
-    original_task = Path(str((original.get("config") or {}).get("task", {}).get("path", "")))
-    if tomllib.loads((original_task / "task.toml").read_text())["environment"].get(
-        "docker_image"
-    ) != previous.get("image"):
-        return False
-    old = execution_identity(original)
-    new = execution_identity(candidate)
-    if old["task_checksum"] == new["task_checksum"]:
-        return False
-    for identity, expected_image in ((old, previous.get("image")), (new, target.get("image"))):
-        agent = dict(identity["agent"])
-        kwargs = dict(agent.get("kwargs") or {})
-        preinstalled = kwargs.pop("preinstalled", None)
-        if (agent.get("name") is not None
-                or agent.get("import_path") != "adapters.openclaw.adapter:OpenClawAgent"
-                or agent.get("model_name") != expected_model
-                or not isinstance(preinstalled, dict)
-                or preinstalled.get("image") != expected_image):
-            return False
-        agent["kwargs"] = kwargs
-        identity["agent"] = agent
-        identity.pop("task_checksum")
-    return previous.get("image") != target.get("image") and old == new
+    return False
 
 
 def plan_native_merge(
@@ -524,7 +404,7 @@ def _add_recovery(
                 ):
                     raise ValueError("Frozen trial execution conditions or task checksum changed")
                 plan.condition_change_overrides.append(
-                    f"{approved_slot.task_id}: runtime_install -> preinstalled"
+                    f"{approved_slot.task_id}: Codex custom Responses provider transition"
                 )
             ordinal = meta.get("substitution_attempt")
             if ordinal != approved_slot.substitution_count + 1 or ordinal not in (1, 2):
