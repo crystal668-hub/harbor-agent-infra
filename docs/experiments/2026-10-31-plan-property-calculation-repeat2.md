@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：Claude Code四组、Codex × Claude/Qwen/GPT及Hermes × Claude/GPT均已验收；Codex × DeepSeek的batch2因持续HTTP 429撤回，4项工程候选各保持已用1/2次，原始轮尚未合并验收。旧Hermes × DeepSeek/Claude队列仍阻塞，12h超时补跑轮未启动。详见[前两组结案](../acceptance/2026-11-01-acceptance-repeat2-first-two.md)、[Claude/GPT验收](../acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)、[Codex Claude/Qwen验收](../acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)、[batch2撤回审核](../audit/2026-11-04-audit-codex-deepseek-batch2-withdrawal.md)、[Hermes Claude验收](../acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)及[两组GPT验收](../acceptance/2026-11-04-acceptance-repeat2-codex-hermes-gpt.md)。
+状态：repeat2已验收11/16组；Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收。两项第二次恢复429按用户裁定能力计0、不再重跑；其余5组未启动，12h加时轮未启动。最新结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -212,3 +212,21 @@ Codex × GPT也已结束。两组各70/70原生Trial、70/70已评分，`hai aud
 2026-11-04后续授权：用户要求完成这两组GPT实验的验收。两组各70/70项原生评分、
 `hai audit`零失败，并逐项核对Verifier reward、artifact和根结果一致后正式验收；
 未执行恢复或重评，结果详见[验收记录](../acceptance/2026-11-04-acceptance-repeat2-codex-hermes-gpt.md)。
+
+## 2026-11-05 DeepSeek两组启动、合并与验收
+
+本次重新批准4项Codex batch2，使用全新清单及目录，沿用并发1和其余冻结条件；
+2026-11-04撤回批次继续保留为不入选、不计次的独立历史证据。
+batch2于00:22启动、约02:10结束，Advanced 007与Basic 014正常完成；
+Advanced 019与Basic 039仍为ApiRateLimitError，恢复次数各2/2，用户最终裁定能力计0、不给新重跑机会。
+按用户后续指示，恢复进程退出即启动Hermes，不再要求恢复全部成功。
+Hermes × DeepSeek于02:10:45启动、08:07:46退出0；70项终态、1项Basic 029正常超时计0。
+
+本次按冻结主工作区代码启动，随后会话保全修复部署情况另见其验收，不改写这两组启动条件。
+批次目录已由`codex-deepseek-repeat2-recovery-batch2-relaunch`更名为
+`codex-deepseek-repeat2-recovery-batch2`，退出后完成路径迁移并移除临时软链接；更名记录保留。
+旧队列脚本已按用户授权清理，没有重复派发Hermes × Claude。
+
+用户批准`hai merge`后发布`codex-deepseek-repeat2-merged`，70项代表中56项来自原始轮、
+10项来自batch1、4项来自batch2；未按分数择优。两组均已完成验收、各70/70计分，
+原始错误及全部尝试证据保留。数据及验收范围见[验收记录](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。

@@ -26,7 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
-- [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置、Codex × DeepSeek batch2撤回状态与Hermes Claude→GPT启动顺序。
+- [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置与历史启动顺序、Codex × DeepSeek恢复合并及两组DeepSeek验收。
 - [Repeat2 前两组结案审核](acceptance/2026-11-01-acceptance-repeat2-first-two.md)：DeepSeek/Qwen各70/70计分，hai audit仅检出3/13项正常超时。
 - [Repeat2 Claude/GPT 验收](acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)：GPT 70项原评分；Claude安全拒答按能力错误计0，70/70验收。
 - [Repeat2 Codex × Claude/Qwen 验收](acceptance/2026-11-03-acceptance-repeat2-codex-claude-qwen.md)：评分异常基于原始空回复离线核验为0，8项正常超时按0计，均70/70验收。
@@ -38,6 +38,7 @@
 - [Hermes × Claude repeat2验收](acceptance/2026-11-04-acceptance-repeat2-hermes-claude.md)：三项能力失败计0、Advanced 018沿用已有评分，正式轮70/70计分。
 - [Repeat2 Codex／Hermes × GPT进度审核](audit/2026-11-04-audit-repeat2-gpt-progress.md)：两组70/70评分、hai audit零失败及后续验收衔接。
 - [Repeat2 Codex／Hermes × GPT验收](acceptance/2026-11-04-acceptance-repeat2-codex-hermes-gpt.md)：两组原生评分完整、一致性逐项核对，正式轮均已验收。
+- [Repeat2 Codex／Hermes × DeepSeek验收](acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)：Codex原始轮及batch1/2合并，耗尽恢复429按能力计0；Hermes正常超时计0，两组各70/70计分。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：取消链路与证据保全验收；后续已于11月5日接入本地主工作区。
 - [OpenClaw失败轨迹修复详细设计](plan/2026-11-04-plan-openclaw-failure-trajectory.md)：四类harness的ATIF文件依赖、失败测试、函数改动与验收边界；方案已审批并在隔离分支实施。

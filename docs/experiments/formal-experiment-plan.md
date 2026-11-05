@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-03（Asia/Shanghai；开放生成时限及repeat2后续队列另有记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2已验收9组，Codex × DeepSeek仍有4项HTTP 429工程缺口。Hermes × DeepSeek旧队列阻塞，其余6组合未启动；repeat2/3的12h合并轮未启动。2026-11-04进度证据见第14节及相关验收/审核记录。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2已验收11/16组，包含Codex × DeepSeek恢复合并轮与Hermes × DeepSeek。其余5组合未启动；repeat2/3的12h合并轮未启动。2026-11-05验收证据见第14节及相关验收记录。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -696,8 +696,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-04（本次验收Codex／Hermes × GPT）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收25/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex × Claude/Qwen/GPT、Hermes × Claude/GPT。
+**最后核对日期**：2026-11-05（本次验收Codex／Hermes × DeepSeek）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收27/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex四组、Hermes × Claude/GPT/DeepSeek。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -777,11 +777,11 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Claude Code | Qwen | 已验收 | 19 / 19；0.301906 | 51 / 51；0.815410 |
 | Claude Code | GPT | 已验收 | 19 / 19；0.726054 | 51 / 51；0.889773 |
 | Claude Code | Claude | 已验收 | 19 / 19；0.663184 | 51 / 51；0.898802 |
-| Codex | DeepSeek | 待工程重跑 | 12 / 19；0.368851 | 44 / 51；0.669175 |
+| Codex | DeepSeek | 已验收（恢复合并） | 19 / 19；0.301694 | 51 / 51；0.668025 |
 | Codex | Qwen | 已验收 | 19 / 19；0.450988 | 51 / 51；0.894729 |
 | Codex | GPT | 已验收 | 19 / 19；0.573417 | 51 / 51；0.889270 |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
-| Hermes | DeepSeek | 未启动 | — | — |
+| Hermes | DeepSeek | 已验收 | 19 / 19；0.641796 | 51 / 51；0.733761 |
 | Hermes | Qwen | 未启动 | — | — |
 | Hermes | GPT | 已验收 | 19 / 19；0.695054 | 51 / 51；0.888275 |
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
@@ -834,6 +834,15 @@ Hermes × GPT已按Claude→GPT顺序启动；Codex × GPT原运行已结束但�
 70/70项评分与原生Verifier产物一致，`hai audit`均检出0项失败。
 无需恢复或人工零分；分轨成绩保持上表值，总验收进度由23/48变为25/48。
 具体证据和验收范围见[验收记录](../acceptance/2026-11-04-acceptance-repeat2-codex-hermes-gpt.md)。
+
+2026-11-05按用户授权完成Codex × DeepSeek原始轮＋恢复batch1/batch2的`hai merge`，
+代表快照为`codex-deepseek-repeat2-merged`：保留56项原始结果，选入batch1的10项及batch2的4项。
+Advanced 019、Basic 039第二次恢复仍报ApiRateLimitError，按用户最终裁定由待审工程缺口
+改为能力失败、各计0且不再重跑；原始异常保留，不将该裁定追溯为前次429的技术根因。
+Advanced 006、Basic 029正常Agent超时沿用协议零分；70/70计分，整体均分0.568592。
+Hermes × DeepSeek于08:07退出0，70项均终态；Basic 029正常超时计0，70/70计分，整体均分0.708799。
+两组均已验收，repeat2由9/16更新为11/16，总进度由25/48更新为27/48；原始执行异常不清除。
+本次未启动Agent或重评，也未启动12h加时轮；详见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
 
 #### 14.3.2 合并12h超时补跑轮
 
