@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw × Claude→GPT队列已恢复等待其结束，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+状态：repeat2已验收12/16组；OpenClaw × Claude已按用户裁定验收，GPT Advanced 015工程恢复已启动、尚未验收，Hermes × Qwen原始轮已结束待审，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × Claude验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)。
 
 ## 范围与配置结论
 
@@ -276,3 +276,21 @@ Hermes日志中既有Docker连接失败记录保留，不据当前Docker可用�
 控制状态恢复为`waiting_for_predecessor`；核对时Hermes × Qwen仍在运行，两组OpenClaw仍为queued，
 输出目录及组合日志均不存在。后续按原授权在Hermes × Qwen退出后依次派发Claude、GPT，
 失败项留待用户人工处理。
+
+## 2026-11-06 OpenClaw人工裁定与GPT单题恢复
+
+原串行队列已完成：Hermes × Qwen于12:42:41退出0，OpenClaw × Claude于12:42:42启动、
+16:56:19退出0，OpenClaw × GPT紧接启动、19:30:18退出0（上海）。三组各70个原生Trial终态，
+不以退出0推定全部任务有效；Hermes × Qwen未纳入本次验收范围。
+
+两组OpenClaw的`hai audit`原清单位于`run-artifacts/audit/repeat2-openclaw-20261106/`。
+用户裁定Claude可直接验收：Advanced 006正常7200秒超时按原协议计0，其他69项评分逐项一致，
+70/70计分并验收；[验收记录](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)保留证据范围。
+
+GPT Advanced 015原始`OpenClawAgentIncompleteError`由audit以0.3置信度兜底归为capability，
+用户明确裁定为工程失败并允许复跑。原始audit不改写，审核版另存同目录
+`openclaw-openai-repeat2-reviewed-approved.json`，仅批准这一slot，原Trial身份及已用替代次数0/2保留。
+带原YAML的`hai recover --dry-run`通过，确认1个单题Job后启动恢复，
+输出为`run-artifacts/formal/openclaw-openai-repeat2-recovery-batch1/`；
+`recovery-state.json`已记录running。沿用冻结Job、skills_off、high、64000单响应输出token及7200/120秒预算，
+不改模型、镜像、适配器或题目。该首次替代尚未结束，不声明恢复成功、合并或GPT验收。

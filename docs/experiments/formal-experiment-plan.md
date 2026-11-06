@@ -782,13 +782,13 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Codex | GPT | 已验收 | 19 / 19；0.573417 | 51 / 51；0.889270 |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
 | Hermes | DeepSeek | 已验收 | 19 / 19；0.641796 | 51 / 51；0.733761 |
-| Hermes | Qwen | 未启动 | — | — |
+| Hermes | Qwen | 原始轮已结束待审 | — | — |
 | Hermes | GPT | 已验收 | 19 / 19；0.695054 | 51 / 51；0.888275 |
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
-| OpenClaw | GPT | 未启动 | — | — |
-| OpenClaw | Claude | 未启动 | — | — |
+| OpenClaw | GPT | Advanced 015工程恢复中 | — | — |
+| OpenClaw | Claude | 已验收 | 19 / 19；0.612409 | 51 / 51；0.895606 |
 
 前两组各70个唯一slot和70份原生Trial结果，hai audit均无工程/评分故障；全部异常为
 AgentTimeoutError。普通恢复不批准替代，16个超时slot留待后续独立加时轮。
@@ -843,6 +843,14 @@ Advanced 006、Basic 029正常Agent超时沿用协议零分；70/70计分，整�
 Hermes × DeepSeek于08:07退出0，70项均终态；Basic 029正常超时计0，70/70计分，整体均分0.708799。
 两组均已验收，repeat2由9/16更新为11/16，总进度由25/48更新为27/48；原始执行异常不清除。
 本次未启动Agent或重评，也未启动12h加时轮；详见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+
+2026-11-06用户裁定OpenClaw × Claude直接验收：69项原评分与原生Verifier产物逐项一致，
+Advanced 006正常7200秒超时按既定协议计0，70/70计分，整体均分0.818738；原生异常保留。
+repeat2已验收由11/16变为12/16，总进度由27/48变为28/48；
+详见[验收记录](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)。
+OpenClaw × GPT原始轮70项终态，Advanced 015收尾检测错误按用户裁定为工程失败；
+仅该题的首次恢复已通过带配置dry-run并启动，尚未合并或验收。
+Hermes × Qwen原始轮也已结束，但不属于本次验收；12h加时轮仍未启动。
 
 #### 14.3.2 合并12h超时补跑轮
 
