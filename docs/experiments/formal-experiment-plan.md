@@ -782,11 +782,11 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Codex | GPT | 已验收 | 19 / 19；0.573417 | 51 / 51；0.889270 |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
 | Hermes | DeepSeek | 已验收 | 19 / 19；0.641796 | 51 / 51；0.733761 |
-| Hermes | Qwen | 原始轮已结束待审 | — | — |
+| Hermes | Qwen | 12项工程恢复中 | — | — |
 | Hermes | GPT | 已验收 | 19 / 19；0.695054 | 51 / 51；0.888275 |
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
-| OpenClaw | DeepSeek | 未启动 | — | — |
-| OpenClaw | Qwen | 未启动 | — | — |
+| OpenClaw | DeepSeek | 已排队（Hermes × Qwen恢复后） | — | — |
+| OpenClaw | Qwen | 已排队（OpenClaw × DeepSeek后） | — | — |
 | OpenClaw | GPT | 已验收（恢复合并） | 19 / 19；0.647516 | 51 / 51；0.903586 |
 | OpenClaw | Claude | 已验收 | 19 / 19；0.612409 | 51 / 51；0.895606 |
 
@@ -857,6 +857,12 @@ Hermes × Qwen原始轮也已结束，但不属于本次验收；12h加时轮仍
 70/70计分，整体均分0.834081；发布后audit零失败，70项入选评分与原生Verifier产物逐项一致。
 原始/恢复共71份尝试保留，源文件哈希不变，首次工程替代已用1/2；
 repeat2已验收13/16，总进度29/48。详见[验收记录](../acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)。
+
+2026-11-07 00:12（上海）按用户指示排队本repeat最后两组：当前Hermes × Qwen工程恢复批次
+退出后直接启动OpenClaw × DeepSeek，随后OpenClaw × Qwen，仅skills_off、各70题、原2h正式条件。
+独立tmux控制状态为waiting_for_predecessor，两组queued；进程结束即接续、不等待前序合并验收，
+失败留后续人工审核。配置/锁、镜像与目标冲突预检通过；详见[repeat2执行计划](2026-10-31-plan-property-calculation-repeat2.md#2026-11-07-最后两组串行队列)。
+本次尚未派发两组，不增加13/16已验收数量，也未启动repeat3或12h加时轮。
 
 #### 14.3.2 合并12h超时补跑轮
 

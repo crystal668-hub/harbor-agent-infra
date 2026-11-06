@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收13/16组；OpenClaw × Claude已验收，GPT Advanced 015首次工程恢复成功、合并快照已发布并验收，Hermes × Qwen原始轮已结束，12项工程恢复批次执行中、未验收，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × GPT恢复合并验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)。
+状态：repeat2已验收13/16组；OpenClaw × Claude已验收，GPT Advanced 015首次工程恢复成功、合并快照已发布并验收，Hermes × Qwen的12项工程恢复批次执行中、未验收，OpenClaw × DeepSeek→Qwen已排队等待该批次结束，12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × GPT恢复合并验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)。
 
 ## 范围与配置结论
 
@@ -316,3 +316,27 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 正式恢复输出为`run-artifacts/formal/hermes-qwen-repeat2-recovery-batch1/`，控制状态位于
 `logs/formal-experiments/hermes-qwen-repeat2-recovery-batch1.state.json`；首次核对为running、两个Trial容器已启动。
 本次尚未核对恢复结果、合并、重评或验收；启动与冻结哈希见本机忽略目录下的`execution-start-20261106.json`。
+
+## 2026-11-07 最后两组串行队列
+
+用户指定当前Hermes × Qwen repeat2恢复结束后直接启动本repeat最后两组正式实验。
+按既有矩阵顺序安排OpenClaw × DeepSeek → OpenClaw × Qwen，不等待Hermes合并验收；
+沿用本会话串行策略，前序进程退出后继续下一组，失败项留待后续人工审核，不自动恢复或重评。
+
+00:12:13（上海）独立tmux会话`harbor-repeat2-openclaw-deepseek-qwen-20261107`进入
+`waiting_for_predecessor`，两组均为queued，尚未实际启动。等待输入是当前恢复控制状态
+`logs/formal-experiments/hermes-qwen-repeat2-recovery-batch1.state.json`；必须终态且控制/运行进程退出
+才派发，不因恢复中某个Trial先完成而提前启动。
+队列控制文件位于`logs/formal-experiments/openclaw-repeat2-deepseek-then-qwen-20261107`前缀的
+`.launch.json`、`.controller.py`、`.state.json`及`.controller.log`。
+
+两组均使用原配置、70题（Advanced 19、Basic 51）、skills_off、high、64000单响应输出token、
+7200/120秒预算、Job并发2、单次attempt及内部重试0；不涉及repeat3或开放生成。
+输出依次为`run-artifacts/formal/openclaw-deepseek-repeat2/`、
+`run-artifacts/formal/openclaw-qwen-repeat2/`，组合日志为`logs/formal-experiments/`下同名`.log`。
+预检时目标及日志均不存在，配置与运行锁冻结哈希记录在launch清单，控制脚本也绑定哈希；
+正式矩阵dry-run、`hai doctor`和Docker连接通过，OpenClaw镜像ID与固定摘要一致，
+凭据和skills目录仅核对存在性，未运行provider探测。
+派发前重新核对哈希、目标冲突和Docker可用性；异常时记录控制错误并停止派发。
+控制脚本编译及两项隔离模拟通过：活跃前序不派发，失败前序与失败DeepSeek后仍按序执行Qwen并保留退出码。
+本次仅排队，不增加已验收数量。
