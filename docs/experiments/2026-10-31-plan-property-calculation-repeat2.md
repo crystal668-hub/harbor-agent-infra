@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw × Claude→GPT队列已按用户要求暂停，等待Hermes × Qwen结束后人工审核，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw × Claude→GPT队列已恢复等待其结束，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -271,3 +271,8 @@ Hermes日志中既有Docker连接失败记录保留，不据当前Docker可用�
 2026-11-06 用户随后要求暂停该串行队列，先审核当前Hermes × Qwen实验。已对等待控制进程
 发送SIGSTOP并确认进程为T状态，控制状态记录为`paused_by_user`；两组OpenClaw输出目录
 均未创建。Hermes × Qwen继续运行，其退出不再触发自动派发；须用户明确要求后才恢复队列。
+
+2026-11-06 11:31（上海）用户明确要求恢复串行队列。已向原等待控制进程发送SIGCONT并确认其恢复运行，
+控制状态恢复为`waiting_for_predecessor`；核对时Hermes × Qwen仍在运行，两组OpenClaw仍为queued，
+输出目录及组合日志均不存在。后续按原授权在Hermes × Qwen退出后依次派发Claude、GPT，
+失败项留待用户人工处理。
