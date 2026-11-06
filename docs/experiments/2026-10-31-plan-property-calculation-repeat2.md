@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw × Claude→GPT已排队等待其结束，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw × Claude→GPT队列已按用户要求暂停，等待Hermes × Qwen结束后人工审核，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -267,3 +267,7 @@ OpenClaw本地镜像ID与冻结摘要一致，凭据及skills目录仅核对存�
 Hermes日志中既有Docker连接失败记录保留，不据当前Docker可用推定这些失败已恢复。
 控制脚本编译及隔离模拟通过：失败前序后仍执行Claude、Claude非零退出后仍执行GPT，且保留两组退出码。
 该模拟不构成正式实验或provider端到端验收。
+
+2026-11-06 用户随后要求暂停该串行队列，先审核当前Hermes × Qwen实验。已对等待控制进程
+发送SIGSTOP并确认进程为T状态，控制状态记录为`paused_by_user`；两组OpenClaw输出目录
+均未创建。Hermes × Qwen继续运行，其退出不再触发自动派发；须用户明确要求后才恢复队列。
