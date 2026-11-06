@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收12/16组；OpenClaw × Claude已按用户裁定验收，GPT Advanced 015工程恢复已启动、尚未验收，Hermes × Qwen原始轮已结束待审，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × Claude验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)。
+状态：repeat2已验收12/16组；OpenClaw × Claude已按用户裁定验收，GPT Advanced 015工程恢复已启动、尚未验收，Hermes × Qwen原始轮已结束，12项工程恢复批次执行中、未验收，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × Claude验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)。
 
 ## 范围与配置结论
 
@@ -294,3 +294,19 @@ GPT Advanced 015原始`OpenClawAgentIncompleteError`由audit以0.3置信度兜�
 输出为`run-artifacts/formal/openclaw-openai-repeat2-recovery-batch1/`；
 `recovery-state.json`已记录running。沿用冻结Job、skills_off、high、64000单响应输出token及7200/120秒预算，
 不改模型、镜像、适配器或题目。该首次替代尚未结束，不声明恢复成功、合并或GPT验收。
+
+## 2026-11-06 Hermes × Qwen 审核与恢复
+
+原始轮12:42:41退出0、70个Trial终态，但正式汇总当前仅45/70计分，不据退出码结案。
+无自动批准地执行`hai audit`，原始清单25项失败：9项正常7200秒AgentTimeoutError按原协议计零、留待独立12h加时轮；
+4项Hermes达到90轮上限后退出码1，用户裁定按能力失败保留原VGB零分、不恢复；
+Basic 010–021共12项Docker中断（2项退出码255、10项环境设置RuntimeError），用户裁定按工程失败准备替代。
+原始audit及逐Trial证据保存在`run-artifacts/audit/repeat2-hermes-qwen-20261106/`。
+
+审核版清单仅批准上述12项、各已用工程替代0/2；用户将批次并发由初始准备值1改回冻结值2，
+仅影响本批调度，不改变每Trial的4 CPU／6144 MB、7200／120秒、模型、镜像、任务或重试条件。
+带原YAML的`hai recover --dry-run`核对12个单题Job均可重建；并发1版本保留为历史文件，当前执行清单及预览均为并发2。
+用户随后要求立即启动。23:46:07（上海）由tmux会话`harbor-repeat2-hermes-qwen-recovery-batch1-20261106`派发，
+正式恢复输出为`run-artifacts/formal/hermes-qwen-repeat2-recovery-batch1/`，控制状态位于
+`logs/formal-experiments/hermes-qwen-repeat2-recovery-batch1.state.json`；首次核对为running、两个Trial容器已启动。
+本次尚未核对恢复结果、合并、重评或验收；启动与冻结哈希见本机忽略目录下的`execution-start-20261106.json`。
