@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw四组未启动，12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
+状态：repeat2已验收11/16组；Hermes × Qwen已启动执行、尚未验收，OpenClaw × Claude→GPT已排队等待其结束，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[DeepSeek两组验收](../acceptance/2026-11-05-acceptance-repeat2-codex-hermes-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -245,3 +245,25 @@ Hermes × DeepSeek于02:10:45启动、08:07:46退出0；70项终态、1项Basic 
 配置SHA-256为`f7c7252a2458c478a19efd56648d46ba66e2ad2a73ffe7ff65c35bc1c16025b2`，
 运行锁SHA-256为`3ff201b8dcb8a8a3179b3f6727b5c1b9918b19f8f78c057babd16287a32174b6`。
 仍采用70题、high、64000单次响应输出上限、7200/120秒、并发2、单次attempt与内部重试0。
+
+## 2026-11-06 OpenClaw × Claude → GPT 排队
+
+用户指定Hermes × Qwen本轮退出后，依次启动OpenClaw × Claude、OpenClaw × GPT性质计算
+repeat2；前序轮及Claude轮非零退出均不阻塞下一轮，失败项保留供用户后续人工处理，不自动恢复或重评。
+此授权覆盖原计划遇到非零退出停止的规则，仅适用于本队列。两组沿用冻结配置：各70题、
+skills_off、7200/120秒预算、Job并发2、单次attempt、Harbor内部重试0。
+
+10:43:35（上海）独立tmux会话`harbor-repeat2-openclaw-claude-gpt-20261106`开始等待，
+核对时Hermes × Qwen仍在运行，两组OpenClaw均为queued，尚未实际启动或验收。
+控制文件位于`logs/formal-experiments/openclaw-repeat2-claude-then-gpt-20261106`前缀下的
+`.launch.json`、`.controller.py`、`.state.json`和`.controller.log`；启动清单记录配置及运行锁哈希。
+等待前序控制状态进入终态且控制/运行进程退出后才派发，防止组合重叠；配置漂移、目标路径冲突、
+Docker不可用或前序进程异常消失而无终态时停止派发并记录控制错误。
+
+目标目录依次为`run-artifacts/formal/openclaw-anthropic-repeat2/`、
+`run-artifacts/formal/openclaw-openai-repeat2/`，组合日志位于`logs/formal-experiments/`下同名`.log`。
+排队前两组目标及日志均不存在；正式矩阵dry-run、`hai doctor`通过，Docker daemon可访问，
+OpenClaw本地镜像ID与冻结摘要一致，凭据及skills目录仅核对存在性，未调用provider探测。
+Hermes日志中既有Docker连接失败记录保留，不据当前Docker可用推定这些失败已恢复。
+控制脚本编译及隔离模拟通过：失败前序后仍执行Claude、Claude非零退出后仍执行GPT，且保留两组退出码。
+该模拟不构成正式实验或provider端到端验收。
