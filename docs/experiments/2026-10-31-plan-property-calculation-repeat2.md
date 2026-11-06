@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收12/16组；OpenClaw × Claude已按用户裁定验收，GPT Advanced 015工程恢复已启动、尚未验收，Hermes × Qwen原始轮已结束，12项工程恢复批次执行中、未验收，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × Claude验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)。
+状态：repeat2已验收13/16组；OpenClaw × Claude已验收，GPT Advanced 015首次工程恢复成功、合并快照已发布并验收，Hermes × Qwen原始轮已结束，12项工程恢复批次执行中、未验收，OpenClaw另两组及12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × GPT恢复合并验收](../acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)。
 
 ## 范围与配置结论
 
@@ -293,7 +293,13 @@ GPT Advanced 015原始`OpenClawAgentIncompleteError`由audit以0.3置信度兜�
 带原YAML的`hai recover --dry-run`通过，确认1个单题Job后启动恢复，
 输出为`run-artifacts/formal/openclaw-openai-repeat2-recovery-batch1/`；
 `recovery-state.json`已记录running。沿用冻结Job、skills_off、high、64000单响应输出token及7200/120秒预算，
-不改模型、镜像、适配器或题目。该首次替代尚未结束，不声明恢复成功、合并或GPT验收。
+不改模型、镜像、适配器或题目。启动时尚未核对恢复结果。
+
+23:33:16（上海）首次替代完成，Advanced 015正常评分1.0，恢复audit零失败；合并dry-run通过、
+无冲突。用户授权后发布`run-artifacts/formal/openclaw-openai-repeat2-merged/`，保留69项原始结果、
+替换1项，23:57:35标记验收。发布后audit零失败，70项评分与原生reward及artifact逐项一致，
+`hai summary`确认70/70计分，整体均分0.834081。71份源Trial证据及哈希不变，工程替代已用1/2，
+原始失败不清除；见[验收记录](../acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)。
 
 ## 2026-11-06 Hermes × Qwen 审核与恢复
 

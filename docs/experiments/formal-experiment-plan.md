@@ -787,7 +787,7 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
 | OpenClaw | DeepSeek | 未启动 | — | — |
 | OpenClaw | Qwen | 未启动 | — | — |
-| OpenClaw | GPT | Advanced 015工程恢复中 | — | — |
+| OpenClaw | GPT | 已验收（恢复合并） | 19 / 19；0.647516 | 51 / 51；0.903586 |
 | OpenClaw | Claude | 已验收 | 19 / 19；0.612409 | 51 / 51；0.895606 |
 
 前两组各70个唯一slot和70份原生Trial结果，hai audit均无工程/评分故障；全部异常为
@@ -849,8 +849,14 @@ Advanced 006正常7200秒超时按既定协议计0，70/70计分，整体均分0
 repeat2已验收由11/16变为12/16，总进度由27/48变为28/48；
 详见[验收记录](../acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)。
 OpenClaw × GPT原始轮70项终态，Advanced 015收尾检测错误按用户裁定为工程失败；
-仅该题的首次恢复已通过带配置dry-run并启动，尚未合并或验收。
+仅该题的首次恢复通过带配置dry-run后启动，后续完成情况见下述合并验收记录。
 Hermes × Qwen原始轮也已结束，但不属于本次验收；12h加时轮仍未启动。
+
+2026-11-06 23:57（上海）按用户授权发布OpenClaw × GPT恢复合并快照
+`openclaw-openai-repeat2-merged`并标记验收：保留69项原始结果、替换Advanced 015一项（复跑1.0），
+70/70计分，整体均分0.834081；发布后audit零失败，70项入选评分与原生Verifier产物逐项一致。
+原始/恢复共71份尝试保留，源文件哈希不变，首次工程替代已用1/2；
+repeat2已验收13/16，总进度29/48。详见[验收记录](../acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)。
 
 #### 14.3.2 合并12h超时补跑轮
 
