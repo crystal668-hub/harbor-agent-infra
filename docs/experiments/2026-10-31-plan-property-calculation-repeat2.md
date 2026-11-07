@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收13/16组；OpenClaw × Claude已验收，GPT Advanced 015首次工程恢复成功、合并快照已发布并验收，Hermes × Qwen的12项工程恢复已结束、具备合并验收条件但尚未发布或验收，OpenClaw × DeepSeek的6项工程恢复已批准但尚未派发，OpenClaw × Qwen仍在运行，12h加时轮未启动。Codex × DeepSeek原始轮及恢复batch1/batch2已合并验收，Hermes × DeepSeek也已验收；两项第二次恢复429按用户裁定能力计0、不再重跑。最近结案结果见[OpenClaw × DeepSeek失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
+状态：repeat2已验收14/16组；Hermes × Qwen的12项工程恢复已合并发布并验收，OpenClaw × Claude/GPT也已验收；其余OpenClaw × DeepSeek/Qwen尚未验收，执行及恢复状态见后文，12h加时轮未启动。最近结案见[Hermes × Qwen验收](../acceptance/2026-11-07-acceptance-repeat2-hermes-qwen.md)。
 
 ## 范围与配置结论
 
@@ -348,3 +348,8 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 本次支持进入合并验收，但未执行正式合并、改分或验收；范围与证据见[恢复后审核](../audit/2026-11-07-audit-hermes-qwen-repeat2-postrecovery.md)。
 
 2026-11-07 OpenClaw × DeepSeek正式轮`hai audit`检出6项provider工程错误：3项网络连接失败、3项429配额超限，均无Verifier评分产物。用户裁定6项均为工程失败并批准首次恢复；原始audit保留，审核版清单及带配置dry-run通过，6项各0/2、并发2。恢复尚未派发，当前OpenClaw × Qwen仍运行；详见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
+
+## 2026-11-07 Hermes × Qwen 正式合并验收
+
+用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
+14项原生生命周期异常及82份来源Trial保留；发布后audit的13项能力失败建议沿用既定裁定，无工程或评分缺口。12:18:31（上海）完成验收，repeat2为14/16、总进度30/48；见[验收记录](../acceptance/2026-11-07-acceptance-repeat2-hermes-qwen.md)。

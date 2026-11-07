@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-03（Asia/Shanghai；开放生成时限及repeat2后续队列另有记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2已验收11/16组，包含Codex × DeepSeek恢复合并轮与Hermes × DeepSeek。其余5组合未启动；repeat2/3的12h合并轮未启动。2026-11-05验收证据见第14节及相关验收记录。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2已验收14/16组，包含Hermes × Qwen恢复合并快照，其余两组尚未验收；repeat2/3的12h合并轮未启动。2026-11-07验收证据见第14节及相关验收记录。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -696,8 +696,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-05（本次验收Codex／Hermes × DeepSeek）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收27/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex四组、Hermes × Claude/GPT/DeepSeek。
+**最后核对日期**：2026-11-07（本次验收Hermes × Qwen恢复合并轮）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收30/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex四组、Hermes四组、OpenClaw × Claude/GPT。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -782,11 +782,11 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Codex | GPT | 已验收 | 19 / 19；0.573417 | 51 / 51；0.889270 |
 | Codex | Claude | 已验收 | 19 / 19；0.706392 | 51 / 51；0.852950 |
 | Hermes | DeepSeek | 已验收 | 19 / 19；0.641796 | 51 / 51；0.733761 |
-| Hermes | Qwen | 12项工程恢复中 | — | — |
+| Hermes | Qwen | 已验收（恢复合并） | 19 / 19；0.501352 | 51 / 51；0.718445 |
 | Hermes | GPT | 已验收 | 19 / 19；0.695054 | 51 / 51；0.888275 |
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
-| OpenClaw | DeepSeek | 已排队（Hermes × Qwen恢复后） | — | — |
-| OpenClaw | Qwen | 已排队（OpenClaw × DeepSeek后） | — | — |
+| OpenClaw | DeepSeek | 原始轮结束、未验收 | — | — |
+| OpenClaw | Qwen | 运行中、未验收 | — | — |
 | OpenClaw | GPT | 已验收（恢复合并） | 19 / 19；0.647516 | 51 / 51；0.903586 |
 | OpenClaw | Claude | 已验收 | 19 / 19；0.612409 | 51 / 51；0.895606 |
 
@@ -863,6 +863,8 @@ repeat2已验收13/16，总进度29/48。详见[验收记录](../acceptance/2026
 独立tmux控制状态为waiting_for_predecessor，两组queued；进程结束即接续、不等待前序合并验收，
 失败留后续人工审核。配置/锁、镜像与目标冲突预检通过；详见[repeat2执行计划](2026-10-31-plan-property-calculation-repeat2.md#2026-11-07-最后两组串行队列)。
 本次尚未派发两组，不增加13/16已验收数量，也未启动repeat3或12h加时轮。
+
+2026-11-07 12:18（上海）按用户授权发布`hermes-qwen-repeat2-merged`并验收：58项原始代表＋12项恢复代表，69项原生评分及Advanced 006一项正常超时协议零分，共70/70计分，整体均分0.659520。14项原生生命周期异常保留，发布后13项audit能力建议均沿用既有裁定；无新增工程／评分缺口。repeat2由13/16更新为14/16，总进度30/48。详见[验收记录](../acceptance/2026-11-07-acceptance-repeat2-hermes-qwen.md)。
 
 #### 14.3.2 合并12h超时补跑轮
 

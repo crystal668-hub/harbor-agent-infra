@@ -39,3 +39,7 @@
 12项来源身份和授权承接`run-artifacts/audit/repeat2-hermes-qwen-20261106/`；原始及恢复结果均保留。
 本次范围不含正式merge、协议计分写入、provider探测、镜像构建或新增实验。
 流程见[恢复与合并手册](../RECOVERY-SYSTEM-GUIDE.md)；执行背景见[repeat2计划](../experiments/2026-10-31-plan-property-calculation-repeat2.md)。
+
+## 2026-11-07 后续发布与验收
+
+用户随后授权正式merge与验收，已发布合并快照、投影Advanced 006协议零分并完成70/70核验。以上“未发布”表述限定本审核阶段；后续状态与成绩见[正式验收记录](../acceptance/2026-11-07-acceptance-repeat2-hermes-qwen.md)。
