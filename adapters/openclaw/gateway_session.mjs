@@ -2,6 +2,25 @@
 // This uses the public GatewayClient SDK shipped with the pinned OpenClaw package.
 export const isPaused = (meta) => meta?.yielded === true || meta?.livenessState === "paused";
 
+function terminalFailure(meta) {
+  if (meta.error != null) return "meta_error";
+  if (meta.aborted !== false) return "aborted";
+  if (meta.livenessState !== "working") return "liveness_not_working";
+  if (meta.stopReason !== "stop") return "stop_reason_not_stop";
+  if (meta.completion?.stopReason !== "stop" || meta.completion?.finishReason !== "stop")
+    return "completion_not_stop";
+  if (typeof meta.finalAssistantVisibleText !== "string" || !meta.finalAssistantVisibleText.trim())
+    return "final_text_missing";
+  return null;
+}
+
+function requireTerminal(envelope) {
+  const failure = terminalFailure(envelope.meta);
+  if (failure)
+    throw new Error(`OpenClaw parent ended without a valid terminal response: ${failure}`);
+  return envelope;
+}
+
 export class SessionRun {
   constructor(input, record) {
     this.input = input;
@@ -45,7 +64,7 @@ export class SessionRun {
     let envelope = initial.result;
     if (!envelope?.meta) throw new Error("OpenClaw initial run did not return a result");
     this.record("turn", {runId: initial.runId, result: envelope});
-    if (!isPaused(envelope.meta)) return envelope;
+    if (!isPaused(envelope.meta)) return requireTerminal(envelope);
     this.paused = true;
     // Native completion announcements resume the parent; never resubmit the task.
     for (;;) {
@@ -81,27 +100,29 @@ export class SessionRun {
         const {messages} = await client.request("sessions.get", {key: this.input.sessionKey, limit: 10});
         const last = messages?.at(-1);
         this.record("parent_response", {runId: event.runId ?? null, message: last});
-        const text = last?.role === "assistant" ? (last.content ?? [])
-          .filter((part) => part.type === "text").map((part) => part.text).join("\n") : "";
         // This is the resumed parent's terminal message, not a child announcement,
         // old assistant text or a tool-call preamble. No benchmark answer heuristic.
         const startedAt = wait.startedAt ?? this.started.get(event.runId) ?? event.data?.startedAt;
-        if (!text?.trim() || !["stop", "end_turn", "completed"].includes(last.stopReason) ||
-            !(last.timestamp >= startedAt)) {
+        if (last?.role !== "assistant" || !(last.timestamp >= startedAt)) {
           if (event.reconcile) continue;
           throw new Error("OpenClaw resumed parent ended without a terminal response");
         }
+        const text = (last.content ?? [])
+          .filter((part) => part.type === "text").map((part) => part.text).join("\n");
         envelope = {
           payloads: [{text}],
           meta: {
             ...envelope.meta, yielded: false, livenessState: "working",
-            stopReason: last.stopReason, finalAssistantVisibleText: text,
+            stopReason: last.stopReason,
+            completion: {stopReason: last.stopReason, finishReason: last.stopReason},
+            aborted: false, error: null, finalAssistantVisibleText: text,
             agentMeta: {...envelope.meta.agentMeta},
           },
         };
         // The initial turn's error/trace/usage must not describe the resumed turn.
-        for (const key of ["error", "executionTrace", "toolSummary", "completion", "finalAssistantRawText"])
+        for (const key of ["executionTrace", "toolSummary", "finalAssistantRawText"])
           delete envelope.meta[key];
+        envelope = requireTerminal(envelope);
         this.record("completed", {runId: event.runId ?? null, reconciled: !!event.reconcile, result: wait});
         return envelope;
       } catch (error) {

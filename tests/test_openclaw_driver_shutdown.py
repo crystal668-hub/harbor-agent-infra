@@ -13,6 +13,102 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.parametrize(
+    ("envelope", "reason"),
+    [
+        (
+            {
+                "payloads": [{"text": "intermediate output"}],
+                "meta": {
+                    "aborted": False,
+                    "completion": {
+                        "stopReason": "length",
+                        "finishReason": "length",
+                    },
+                    "error": None,
+                    "finalAssistantVisibleText": "",
+                    "livenessState": "working",
+                    "stopReason": "length",
+                },
+            },
+            "stop_reason_not_stop",
+        ),
+        (
+            {
+                "payloads": [{"text": "Agent couldn't generate a response."}],
+                "meta": {
+                    "aborted": False,
+                    "error": {"kind": "incomplete_turn"},
+                    "livenessState": "abandoned",
+                },
+            },
+            "meta_error",
+        ),
+    ],
+)
+def test_driver_rejects_invalid_terminal_envelope(tmp_path, envelope, reason):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "openclaw-run.json").write_text(
+        json.dumps(
+            {
+                "sessionId": "fixture",
+                "sessionKey": "agent:openclaw:fixture",
+                "agentId": "openclaw",
+                "idempotencyKey": "fixture",
+                "message": "test",
+            }
+        )
+    )
+    source = Path("adapters/openclaw")
+    driver = (source / "gateway_driver.mjs").read_text().replace(
+        'const logs = "/logs/agent";', "const logs = " + json.dumps(str(logs)) + ";"
+    )
+    (logs / "gateway_driver.mjs").write_text(driver)
+    shutil.copyfile(source / "gateway_session.mjs", logs / "gateway_session.mjs")
+    runtime = tmp_path / "runtime"
+    sdk = runtime / "dist/plugin-sdk"
+    sdk.mkdir(parents=True)
+    (runtime / "package.json").write_text('{"type":"module"}')
+    entry = runtime / "openclaw.mjs"
+    entry.write_text("setInterval(() => {}, 1000);\n")
+    sessions = tmp_path / "state/agents/openclaw/sessions"
+    sessions.mkdir(parents=True)
+    native = '{"type":"session","id":"fixture"}\n'
+    (sessions / "fixture.jsonl").write_text(native)
+    (sdk / "gateway-runtime.js").write_text(
+        "export class GatewayClient {\n"
+        "  constructor(options) {this.options = options;}\n"
+        "  start() {queueMicrotask(() => this.options.onHelloOk());}\n"
+        "  request(method) {\n"
+        "    if (method !== 'agent') throw new Error(method);\n"
+        "    return Promise.resolve({runId: 'fixture', result: "
+        + json.dumps(envelope)
+        + "});\n"
+        "  }\n"
+        "  stop() {}\n"
+        "}\n"
+    )
+    result = subprocess.run(
+        ["node", str(logs / "gateway_driver.mjs"), str(entry)],
+        env={**os.environ, "OPENCLAW_STATE_DIR": str(tmp_path / "state")},
+        capture_output=True,
+        text=True,
+        timeout=6,
+        check=False,
+    )
+    assert result.returncode == 1, (result.stdout, result.stderr)
+    status = json.loads((logs / "openclaw-status.json").read_text())
+    assert status == {
+        "state": "failed",
+        "paused": False,
+        "error": "OpenClaw parent ended without a valid terminal response: " + reason,
+    }
+    assert (logs / "openclaw.session.jsonl").read_text() == native
+    assert not (logs / "openclaw.txt").exists()
+    assert not (logs / "openclaw-driver.pid").exists()
+
+
 @pytest.mark.parametrize("signum", [signal.SIGTERM, signal.SIGINT])
 def test_driver_keeps_interrupted_when_sdk_stop_rejects_request(tmp_path, signum):
     logs = tmp_path / "logs"
