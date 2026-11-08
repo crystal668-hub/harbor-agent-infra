@@ -129,3 +129,15 @@ OpenClaw `2026.6.34` 压缩修复镜像通过离线门禁及真实 Gateway integ
 `sha256:d744a3474f60e123a86f4c9dcb314c12810104e290eb982ac556ecff32c4255c`。
 未执行全局prune，历史验收中的旧digest继续作为执行证据保留，但本机不再支持从该镜像恢复。
 修复范围与门禁证据见[验收记录](acceptance/2026-11-08-acceptance-openclaw-compaction-backport.md)。
+
+### 2026-11-08 OpenClaw length 续写修复部署
+
+OpenClaw `2026.6.34` 的 length 压缩后终答续写修复通过 provider-free、离线镜像和真实本地
+Gateway fixture 验收后，经明确授权将 `hai-openclaw-latest` 与唯一
+[runtime-lock.json](../runtime-lock.json) 切换至
+`sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093`；manifest SHA-256 为
+`e218627efd6369363e03142bd759f1983aff2dc579c8766264e221928725fba6`，包版本未升级。
+
+切换前确认没有引用旧或候选 OpenClaw 镜像的活动/停止容器。旧 `70cdb8c…` 镜像未删除，
+未执行全局 prune，历史运行仍保留原冻结身份。本次未调用真实 provider、未启动正式恢复，
+修复与验收边界见[验收记录](acceptance/2026-11-08-acceptance-openclaw-length-continuation.md)。

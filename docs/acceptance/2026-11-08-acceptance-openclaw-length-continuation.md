@@ -4,7 +4,7 @@
 
 类型：acceptance
 
-状态：候选修复已离线验收，未部署、未正式复跑
+状态：候选修复已离线验收并部署，未正式复跑
 
 ## 验收对象
 
@@ -16,8 +16,27 @@
 - 父镜像：`hai-base-env@sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936`。
 - 候选产物目录：`run-artifacts/analysis/openclaw-length-continuation-candidate-20261108/`。
 
-候选使用独立名称和锁文件。未覆盖 `hai-openclaw-latest`、根 `runtime-lock.json`、正式输出目录、
-历史 Trial 或评分结果，未调用真实或付费 provider。
+候选验收阶段使用独立名称和锁文件，未调用真实或付费 provider。2026-11-08 获得明确授权后，
+`hai-openclaw-latest` 与根 `runtime-lock.json` 已切换至该候选身份；正式输出目录、历史 Trial 和
+评分结果未修改。
+
+## 部署记录
+
+部署前确认无活动或停止的 OpenClaw 候选/旧 canonical 容器。随后将
+`hai-openclaw-latest:latest` 从
+`sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768ec3f5974812` 切换至
+`sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093`，并将唯一根锁中的
+OpenClaw manifest 更新为 `e218627efd6369363e03142bd759f1983aff2dc579c8766264e221928725fba6`。
+更新后根 `runtime-lock.json` SHA-256 为
+`477a9d0c652526c122730678bfb1ea038ddfa758bf6e413ba247915158f38fa7`。
+
+旧 `70cdb8c…` 镜像未删除，未执行全局 prune。部署只改变后续执行的 canonical 镜像和实验锁；
+未启动真实 provider 验证、正式第二次替代、历史结果修改或恢复结果合并。
+
+部署后使用根 `runtime-lock.json` 再次执行 canonical 离线门禁，实际镜像为
+`hai-openclaw-latest@sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093`，
+2/2 Trial、零失败、`status=passed`。锁与正式配置契约测试 68 项通过；本地
+`length_continuation` Gateway fixture 复验 1 项通过。上述检查均未调用真实 provider。
 
 ## 修复范围
 
@@ -92,4 +111,4 @@ git diff --check: passed
   既有 compaction 错误与严格失败门禁测试保持通过，压缩未完成不会进入新增续写分支。
 - 工具禁用续写只能基于已压缩 transcript 和现有工作区证据生成终答；若证据不足，必须按一次上限失败，
   不会重新开放工具或重放初始任务。
-- 候选镜像尚未部署，canonical 镜像和运行锁仍保持原身份；正式恢复与合并另需用户批准。
+- canonical 镜像和运行锁已部署为本次修复身份；真实 provider 验证、正式恢复和历史结果处理未执行。

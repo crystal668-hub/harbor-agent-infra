@@ -202,12 +202,16 @@ repeat1 两套迁移视图各1120条；后续repeat2/3为RC原生运行，共224
 > 候选镜像验收后，当前运行锁和`hai-openclaw-latest`切换至`70cdb8c…`。旧`d744a347…`
 > 仅保留为历史条件证据，本地镜像已定向删除；本次变化不回写已完成实验的冻结身份。
 
+> 2026-11-08 后续更新：length 压缩后空终答续写修复通过隔离候选验收后，当前运行锁和
+> `hai-openclaw-latest` 切换至 `f6b6151…`。包版本、模型、7200秒总时限、64000单响应输出
+> 上限、context window 与压缩阈值未变；未启动真实 provider 验证或正式恢复，历史运行身份不回写。
+
 当前锁配置的正式 Trial 按 harness 选择下列不可变执行镜像；
 镜像名中的 `latest` 不参与版本选择，实际身份由 digest 固定，`pull_policy: never`。
 
 | Harness | 执行镜像 | Digest |
 | --- | --- | --- |
-| OpenClaw | `hai-openclaw-latest` | `sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768ec3f5974812` |
+| OpenClaw | `hai-openclaw-latest` | `sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093` |
 | Hermes | `hai-hermes-latest` | `sha256:6a5985d929602fee0905c2548afab5058192dc812e4538e3b8b57d93042444bb` |
 | Codex | `hai-codex-latest` | `sha256:ae908ae8e55477ef999c5c4f1a18fe017146f057ab813c8646a2d606ac8ac41e` |
 | Claude Code | `hai-claude-code-latest` | `sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16` |
