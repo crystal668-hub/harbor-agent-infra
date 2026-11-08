@@ -24,9 +24,10 @@ from adapters.openclaw.trajectory import failure_state, recover_failed_trajector
 from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import (
     openclaw_adaptive_patch_command,
-    openclaw_edit_noop_patch_command,
+    openclaw_compaction_patch_command,
     openclaw_encrypted_content_patch_command,
     openclaw_network_retry_patch_command,
+    openclaw_session_fixes_patch_command,
 )
 
 # OpenClaw's current model catalog declares this output limit for GPT-5.6 Sol.
@@ -87,7 +88,10 @@ class OpenClawAgent(HarborOpenClaw):
                     environment, command=openclaw_network_retry_patch_command(), timeout_sec=30
                 )
                 await self.exec_as_agent(
-                    environment, command=openclaw_edit_noop_patch_command(), timeout_sec=30
+                    environment, command=openclaw_session_fixes_patch_command(), timeout_sec=30
+                )
+                await self.exec_as_agent(
+                    environment, command=openclaw_compaction_patch_command(), timeout_sec=30
                 )
                 if self.model_name.startswith("openai/"):
                     await self.exec_as_agent(

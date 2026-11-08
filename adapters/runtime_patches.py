@@ -132,6 +132,16 @@ OPENCLAW_EDIT_NOOP_REPLACEMENTS = tuple(
         "The replacement produced identical content.",
     )
 )
+OPENCLAW_OVERFLOW_RETRY_REPLACEMENT = (
+    "if (sameModel && isContextOverflow(assistantMessage, contextWindow)) {",
+    'if (sameModel && (assistantMessage.stopReason === "error" || '
+    'assistantMessage.stopReason === "length") && '
+    "isContextOverflow(assistantMessage, contextWindow)) {",
+)
+OPENCLAW_SESSION_REPLACEMENTS = (
+    *OPENCLAW_EDIT_NOOP_REPLACEMENTS,
+    OPENCLAW_OVERFLOW_RETRY_REPLACEMENT,
+)
 
 
 def _openclaw_release_patch_command(
@@ -170,11 +180,45 @@ if (patched !== original) fs.writeFileSync(file, patched);
     return ". ~/.nvm/nvm.sh && nvm use 22 && node -e " + shlex.quote(script)
 
 
-def openclaw_edit_noop_patch_command() -> str:
-    """Keep both native no-op edit results from terminating the model tool loop."""
+def openclaw_session_fixes_patch_command() -> str:
+    """Backport the pinned release's no-op edit and safe overflow-retry fixes."""
     return _openclaw_release_patch_command(
-        "sessions-BFCD5uPV.js", OPENCLAW_EDIT_SHA256, OPENCLAW_EDIT_NOOP_REPLACEMENTS
+        "sessions-BFCD5uPV.js", OPENCLAW_EDIT_SHA256, OPENCLAW_SESSION_REPLACEMENTS
     )
+
+
+OPENCLAW_COMPACTION_EXPORT_SHA256 = (
+    "227e5479b5c1304a8b0d57bdd17825f5574f5d4fd6c29f98dd744efb84401d26"
+)
+OPENCLAW_COMPACTION_EXPORT_REPLACEMENTS = ((
+    'export * from "./embedded-agent-subscribe.handlers.compaction.runtime-BkkDdAqr.js";',
+    'export * from "./embedded-agent-subscribe.handlers.compaction.runtime-BkkDdAqr.js";\n'
+    'export { default } from '
+    '"./embedded-agent-subscribe.handlers.compaction.runtime-BkkDdAqr.js";',
+),)
+OPENCLAW_CLI_COMPACTION_SHA256 = (
+    "578bbfdd3743fced5bc7e494dc8f95b27e062df656c992c8188af34b18175cba"
+)
+OPENCLAW_CLI_COMPACTION_REPLACEMENTS = ((
+    'return classifyCompactionReason(reason) === "below_threshold";',
+    'return ["below_threshold", "already_compacted_recently"].includes('
+    'classifyCompactionReason(reason));',
+),)
+
+
+def openclaw_compaction_patch_command() -> str:
+    """Backport the pinned release's compaction export and benign-skip fixes."""
+    export_patch = _openclaw_release_patch_command(
+        "embedded-agent-subscribe.handlers.compaction.runtime.js",
+        OPENCLAW_COMPACTION_EXPORT_SHA256,
+        OPENCLAW_COMPACTION_EXPORT_REPLACEMENTS,
+    )
+    cli_patch = _openclaw_release_patch_command(
+        "cli-compaction-CX8Mq7Dh.js",
+        OPENCLAW_CLI_COMPACTION_SHA256,
+        OPENCLAW_CLI_COMPACTION_REPLACEMENTS,
+    )
+    return export_patch + " && " + cli_patch
 
 
 

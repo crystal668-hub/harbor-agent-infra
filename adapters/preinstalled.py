@@ -17,9 +17,10 @@ from adapters.runtime_patches import (
     hermes_model_id_patch_command,
     hermes_output_patch_command,
     openclaw_adaptive_patch_command,
-    openclaw_edit_noop_patch_command,
+    openclaw_compaction_patch_command,
     openclaw_encrypted_content_patch_command,
     openclaw_network_retry_patch_command,
+    openclaw_session_fixes_patch_command,
 )
 
 PROBE_SOURCE = Path(__file__).with_name("preinstalled_probe.py").read_text()
@@ -42,7 +43,8 @@ def selected_patches(agent) -> dict[str, str]:
     if agent.name() == "openclaw":
         patches = {
             "openclaw-network-retry": openclaw_network_retry_patch_command(),
-            "openclaw-edit-noop": openclaw_edit_noop_patch_command(),
+            "openclaw-session-fixes": openclaw_session_fixes_patch_command(),
+            "openclaw-compaction": openclaw_compaction_patch_command(),
         }
         if agent.model_name.startswith("openai/"):
             patches["openclaw-openai-encrypted-content"] = (
