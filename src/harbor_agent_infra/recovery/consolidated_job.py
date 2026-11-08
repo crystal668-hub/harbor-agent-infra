@@ -59,6 +59,23 @@ def consolidate_jobs(stage: Path, output: Path, plan, records: list[dict]) -> di
                 source_config = slot.original_path.parent.parent / "config.json"
                 config_source = read_json(source_config)
             source_result = read_json(archived_source)
+            old_preinstalled = (slot.original_trial.get("config", {}).get("agent", {})
+                                .get("kwargs", {}).get("preinstalled") or {})
+            new_preinstalled = (source_result.get("config", {}).get("agent", {})
+                                .get("kwargs", {}).get("preinstalled") or {})
+            if (slot.selected and old_preinstalled.get("image") != new_preinstalled.get("image")
+                    and old_preinstalled and new_preinstalled):
+                # The selected Trial must reference its own validated image-bearing task input.
+                from dirhash import dirhash
+
+                source_task = Path(source_result["config"]["task"]["path"]).resolve()
+                target_task = stage / "tasks" / record["task_name"]
+                archived_task = archive / "task-inputs" / record["task_name"]
+                archived_task.parent.mkdir(parents=True, exist_ok=True)
+                target_task.rename(archived_task)
+                shutil.copytree(source_task, target_task)
+                if dirhash(target_task, "sha256") != source_result["task_checksum"]:
+                    raise ValueError("Selected image-transition task changed while copying")
             trial_name = source_result["trial_name"]
             if (job / trial_name).exists():
                 trial_name += "__" + source_result["id"]

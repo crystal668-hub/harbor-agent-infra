@@ -267,6 +267,11 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
 
         consolidated = consolidate_jobs(stage, output, plan, records)
         envelope = rebase(read_json(plan.original / "results.json"), mappings)
+        if envelope.get("baseline_score_dispositions"):
+            # Validated source zeros were materialized into plan records before relocation.
+            envelope.setdefault("applied_source_score_dispositions", []).extend(
+                envelope.pop("baseline_score_dispositions")
+            )
         envelope.update(results=records, records=len(records), source_run_id=plan.run_id)
         grouped = defaultdict(list)
         tracks = defaultdict(lambda: defaultdict(list))

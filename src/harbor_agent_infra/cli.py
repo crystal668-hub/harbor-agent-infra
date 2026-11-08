@@ -190,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     merge.add_argument(
         "--allow-runtime-condition-change",
         action="store_true",
-        help="allow an explicitly authorized Codex custom Responses provider transition",
+        help="allow a validated Codex provider or OpenClaw preinstalled image transition",
     )
 
     analyze = subparsers.add_parser(

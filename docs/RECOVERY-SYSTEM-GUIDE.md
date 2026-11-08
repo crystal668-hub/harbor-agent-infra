@@ -75,11 +75,13 @@ Codex provider 转换格式见 [跨 provider 手册](CROSS-PROVIDER.md#冻结-jo
 
 传入完整所需恢复链，核对预览后移除 --dry-run 发布。只有一批时删除第二个恢复路径。
 已授权的受支持条件变化还须显式 --allow-runtime-condition-change；该标志不是任意跳过校验的开关。
-2026-11-05清理：当前合并仅保留声明式Codex自定义Responses provider转换校验；
-移除旧OpenClaw repeat1镜像变更及Claude Code × Qwen预装迁移的历史条件ID白名单。
-其他执行条件差异继续拒绝，不因移除白名单放宽校验。恢复执行器的通用预装条件声明
-仍保留，但不代表当前合并器支持该类差异。历史已发布快照与来源证据不变；
-重建这些历史特殊合并需使用当时支持该条件的代码版本。
+2026-11-08：除声明式Codex自定义Responses provider转换外，合并器新增受控OpenClaw
+preinstalled到preinstalled镜像转换。需要显式授权/精确批准scope，哈希绑定目标运行锁和
+materialized_snapshot，任务原始/目标目录checksum可复核，且除task.toml镜像身份外输入完全相同。
+目标image/manifest须匹配绑定锁，包版本、模型、资源、时限、重试、网络和Agent其他设置不变；
+每Job条件声明与批准清单一致。新快照使用入选Trial对应任务输入，并归档旧镜像任务输入。
+未声明、缺哈希或超范围变化仍拒绝；不存在按历史condition ID直接放行的白名单。
+其他harness预装迁移不因此获得支持，旧快照仍按其原始条件解释。
 
 
 合并必须能核对每个获批 slot 的最终 outcome、原生 Trial、任务/配置身份及 VGB artifact/reward 一致性。
@@ -104,6 +106,12 @@ Codex provider 转换格式见 [跨 provider 手册](CROSS-PROVIDER.md#冻结-jo
 summary 统计选定代表，analyze 用于恢复诊断。每个原始 run 只传一个选定快照；
 代表累计时长与所有尝试耗时/成本不同，字段见 [CLI 参考](CLI-REFERENCE.md#最终-slot-累计运行时长)。
 仍有恢复缺口时，对派生快照重新 audit、核对消耗并重新审查，不自动循环重跑。
+
+显式能力零分可通过Trial旁的`operator-scoring-disposition.json`记录（schema
+`capability-zero-disposition.v1`），适用于已审核的VgbVerifierError或OpenClawAgentIncompleteError，
+必须绑定Trial/task、评分相关原生证据哈希、用户授权及数值0；不覆盖已有有效Verifier评分，
+不改写原生异常或冒充VGB reward。合并只物化授权投影，既有baseline零分也先验证原记录/授权哈希，
+随后在新快照记入applied_source_score_dispositions，避免路径迁移后重复应用旧记录哈希。
 
 ## 常见阻塞
 

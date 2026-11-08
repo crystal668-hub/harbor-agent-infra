@@ -65,6 +65,8 @@ RUN 接受原始运行名称、run 目录或 Job 目录；名称默认从项目 
 - metadata.batch_concurrency 可将该恢复批次并发降到原冻结上限以内的正整数，不能更改每 Trial 资源。
 - merge 要求至少一个 recovery 输入和新的输出目录。dry-run 校验选择冲突而不发布。
   --allow-runtime-condition-change 仅启用代码已支持且有明确授权证据的条件转换，不能任意忽略身份差异。
+  当前支持声明式Codex provider转换和严格绑定新锁/快照/任务输入的OpenClaw预装镜像转换；
+  后者只允许镜像身份变化，其他冻结执行条件必须一致。
 - 三者不形成自动补跑循环。清单结构、选择顺序和合并产物见 [恢复手册](RECOVERY-SYSTEM-GUIDE.md)。
 
 ## summary 与 analyze

@@ -772,14 +772,15 @@ def test_consolidated_timeout_keeps_exception_and_zero_score(native_runs, tmp_pa
     assert row["vgb_domain_result"]["scores"]["score"] == 0
 
 
-def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp_path):
-    from harbor_agent_infra.recovery.native_plan import assessment, scoring_evidence_sha256
+@pytest.mark.parametrize("kind", ["VgbVerifierError", "OpenClawAgentIncompleteError"])
+def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp_path, kind):
     from harbor_agent_infra.recovery.merger import ResultMerger
+    from harbor_agent_infra.recovery.native_plan import assessment, scoring_evidence_sha256
     original, recovery = native_runs
     path = next(recovery.glob("jobs/*/*/result.json"))
     trial = json.loads(path.read_text())
     trial.update(verifier_result=None, exception_info={
-        "exception_type": "VgbVerifierError", "exception_message": "empty final response",
+        "exception_type": kind, "exception_message": "empty final response",
         "exception_traceback": "fixture", "occurred_at": "2026-10-15T00:01:00Z",
     })
     write(path, trial)
@@ -800,6 +801,19 @@ def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp
         with pytest.raises(ValueError, match="Invalid capability-zero"):
             assessment(path, trial)
     write(decision_path, decision)
+    for unsupported in ("NetworkConnectionError", "AgentTimeoutError"):
+        other = copy.deepcopy(trial)
+        other["exception_info"]["exception_type"] = unsupported
+        write(path, other)
+        write(decision_path, {**decision, "evidence_sha256": scoring_evidence_sha256(other)})
+        with pytest.raises(ValueError, match="Invalid capability-zero"):
+            assessment(path, other)
+    write(path, trial)
+    write(decision_path, decision)
+    write(path.parent / "verifier/vgb-evaluation.json", {"vgb_status": "scored"})
+    with pytest.raises(ValueError, match="Invalid capability-zero"):
+        assessment(path, trial)
+    write(path.parent / "verifier/vgb-evaluation.json", {"vgb_status": "error"})
     output = tmp_path / "merged-zero"
     ResultMerger(original, [recovery], output).merge()
     record = json.loads((output / "results.json").read_text())["results"][0]
@@ -808,3 +822,289 @@ def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp
     copied = Path(record["trial_result_path"])
     assert assessment(copied, json.loads(copied.read_text()))[0] == "valid"
     assert json.loads(path.read_text()) == trial
+
+
+@pytest.fixture
+def preinstalled_runs(tmp_path):
+    import hashlib
+    import shutil
+
+    from dirhash import dirhash
+
+    from harbor_agent_infra.harbor.job_config import JobConfig
+
+    original, recovery = fixture_run(tmp_path, "openclaw", "qwen", 2)
+    source_path = next(original.glob("jobs/*/trial-0/result.json"))
+    fresh_path = next(recovery.glob("jobs/*/*/result.json"))
+    source, fresh = json.loads(source_path.read_text()), json.loads(fresh_path.read_text())
+    old_dir = Path(source["config"]["task"]["path"])
+    new_dir = tmp_path / "materialized" / old_dir.name
+    lock = json.loads((Path(__file__).parents[1] / "runtime-lock.json").read_text())
+    image = lock["harness_images"]["openclaw"]
+    image.update(digest="sha256:" + "b" * 64, manifest_sha256="c" * 64)
+    parent = lock["agent_base_image"]
+    parent_image = parent["reference"] + "@" + parent["digest"]
+    old_image = "fixture-openclaw@sha256:" + "a" * 64
+    new_image = image["reference"] + "@" + image["digest"]
+    (old_dir / "instruction.md").write_text("Synthetic public task; do not call a provider.")
+    (old_dir / "task.toml").write_text(
+        f'[environment]\ndocker_image="{old_image}"\n[agent]\ntimeout_sec=7200\n'
+        "[verifier]\ntimeout_sec=120\n"
+    )
+    shutil.copytree(old_dir, new_dir)
+    (new_dir / "task.toml").write_text(
+        (old_dir / "task.toml").read_text().replace(old_image, new_image)
+    )
+    old_agent = {
+        "name": None,
+        "import_path": "adapters.openclaw.adapter:OpenClawAgent",
+        "model_name": "qwen/test",
+        "kwargs": {
+            "version": image["version"],
+            "thinking": "high",
+            "preinstalled": {
+                "image": old_image,
+                "manifest_sha256": "d" * 64,
+                "parent_image": parent_image,
+                "platform": image["platform"],
+            },
+        },
+    }
+    frozen = JobConfig.model_validate(
+        {
+            "job_name": source_path.parent.parent.name,
+            "jobs_dir": str(original / "jobs"),
+            "tasks": [{"path": str(old_dir)}],
+            "agents": [old_agent],
+            "n_concurrent_trials": 2,
+            "n_attempts": 1,
+            "retry": {"max_retries": 0},
+        }
+    )
+    target = frozen.model_dump(mode="json")
+    target["tasks"][0]["path"] = str(new_dir)
+    target["agents"][0]["kwargs"]["preinstalled"].update(
+        image=new_image, manifest_sha256=image["manifest_sha256"]
+    )
+    source["config"].update(
+        agent=frozen.agents[0].model_dump(mode="json"), task=frozen.tasks[0].model_dump(mode="json")
+    )
+    source["task_checksum"] = dirhash(old_dir, "sha256")
+    fresh["config"].update(
+        agent=copy.deepcopy(target["agents"][0]), task=copy.deepcopy(target["tasks"][0])
+    )
+    fresh["task_checksum"] = dirhash(new_dir, "sha256")
+    write(source_path, source)
+    payload = json.loads((original / "results.json").read_text())
+    payload["results"][0]["trial_result"] = source
+    write(original / "results.json", payload)
+    write(fresh_path, fresh)
+    write(source_path.parent.parent / "config.json", frozen.model_dump(mode="json"))
+    actual = copy.deepcopy(target)
+    actual.update(job_name=fresh_path.parent.parent.name, jobs_dir=str(recovery / "jobs"))
+    write(fresh_path.parent.parent / "config.json", actual)
+    lock_path = tmp_path / "target-lock.json"
+    snapshot = tmp_path / "materialized.json"
+    write(lock_path, lock)
+    write(snapshot, {"groups": {"skills_off": {"job_config": target}}})
+    change = {
+        "schema_version": "preinstalled-condition-change.v1",
+        "condition_id": "synthetic-openclaw-upgrade",
+        "authorization": "User authorized the isolated image transition for this task",
+        "task_names": [fresh["task_name"]],
+        "runtime_lock": str(lock_path),
+        "runtime_lock_sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
+        "materialized_snapshot": str(snapshot),
+        "materialized_snapshot_sha256": hashlib.sha256(snapshot.read_bytes()).hexdigest(),
+        "previous_condition": {"installation_mode": "preinstalled", "image": old_image},
+        "target_condition": {"installation_mode": "preinstalled", "image": new_image},
+    }
+    manifest_path = recovery / "recovery-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["metadata"] = {"condition_change": change}
+    write(manifest_path, manifest)
+    meta_path = fresh_path.parent.parent / "recovery-metadata.json"
+    meta = json.loads(meta_path.read_text())
+    meta.update(condition_change=change, statistical_role="new_condition_observation")
+    write(meta_path, meta)
+    return original, recovery
+
+
+def test_preinstalled_image_merge_is_explicit_and_evidence_preserving(preinstalled_runs, tmp_path):
+    import tomllib
+
+    from dirhash import dirhash
+
+    from harbor_agent_infra.recovery.merger import ResultMerger
+    from harbor_agent_infra.recovery.native_plan import fingerprint_inputs
+
+    original, recovery = preinstalled_runs
+    before = fingerprint_inputs([original, recovery])
+    assert plan_native_merge(original, [recovery]).conflicts
+    plan = plan_native_merge(original, [recovery], allow_condition_change=True)
+    assert not plan.conflicts
+    assert plan.slots[0].selected and plan.slots[0].selected.domain["scores"]["score"] == 0
+    assert "OpenClaw preinstalled image transition" in plan.condition_change_overrides[0]
+    assert fingerprint_inputs([original, recovery]) == before
+    output = tmp_path / "merged-image-transition"
+    ResultMerger(original, [recovery], output, allow_condition_change=True).merge()
+    row = json.loads((output / "results.json").read_text())["results"][0]
+    copied = json.loads(Path(row["trial_result_path"]).read_text())
+    task = Path(copied["config"]["task"]["path"])
+    assert dirhash(task, "sha256") == copied["task_checksum"]
+    assert (
+        tomllib.loads((task / "task.toml").read_text())["environment"]["docker_image"]
+        == copied["config"]["agent"]["kwargs"]["preinstalled"]["image"]
+    )
+    assert (output / "evidence/attempts/task-inputs" / row["task_name"] / "task.toml").is_file()
+    assert fingerprint_inputs([original, recovery]) == before
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "authorization",
+        "scope",
+        "lock_hash",
+        "snapshot_hash",
+        "snapshot_scope",
+        "model",
+        "resources",
+        "timeout",
+        "image",
+        "manifest",
+        "parent",
+        "platform",
+        "checksum",
+        "instruction",
+        "task_limits",
+        "job_retry",
+        "metadata",
+        "adapter",
+        "symlink",
+    ],
+)
+def test_preinstalled_merge_rejects_drift(preinstalled_runs, fault):
+    import hashlib
+
+    from dirhash import dirhash
+
+    original, recovery = preinstalled_runs
+    path = next(recovery.glob("jobs/*/*/result.json"))
+    trial = json.loads(path.read_text())
+    manifest_path = recovery / "recovery-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    change = manifest["metadata"]["condition_change"]
+    task_dir = Path(trial["config"]["task"]["path"])
+    if fault == "authorization":
+        change["authorization"] = ""
+    elif fault == "scope":
+        change["task_names"] = []
+    elif fault in ("lock_hash", "snapshot_hash"):
+        change[
+            "runtime_lock_sha256" if fault == "lock_hash" else "materialized_snapshot_sha256"
+        ] = "stale"
+    elif fault == "snapshot_scope":
+        snapshot = Path(change["materialized_snapshot"])
+        data = json.loads(snapshot.read_text())
+        data["groups"]["skills_off"]["job_config"]["tasks"] = []
+        write(snapshot, data)
+        change["materialized_snapshot_sha256"] = hashlib.sha256(snapshot.read_bytes()).hexdigest()
+    elif fault == "model":
+        trial["config"]["agent"]["model_name"] = "different-model"
+    elif fault == "resources":
+        trial["config"]["environment"]["override_cpus"] = 8
+    elif fault == "timeout":
+        trial["config"]["agent_timeout_multiplier"] = 2
+    elif fault in ("image", "manifest", "parent", "platform"):
+        key = {
+            "image": "image",
+            "manifest": "manifest_sha256",
+            "parent": "parent_image",
+            "platform": "platform",
+        }[fault]
+        trial["config"]["agent"]["kwargs"]["preinstalled"][key] = "unapproved"
+    elif fault == "checksum":
+        trial["task_checksum"] = "stale"
+    elif fault in ("instruction", "task_limits", "symlink"):
+        if fault == "instruction":
+            (task_dir / "instruction.md").write_text("Altered prompt")
+        elif fault == "task_limits":
+            p = task_dir / "task.toml"
+            p.write_text(p.read_text().replace("7200", "14400"))
+        else:
+            p = task_dir / "public.json"
+            p.unlink()
+            p.symlink_to(
+                Path(
+                    json.loads(next(original.glob("jobs/*/trial-0/result.json")).read_text())[
+                        "config"
+                    ]["task"]["path"]
+                )
+                / "public.json"
+            )
+        trial["task_checksum"] = dirhash(task_dir, "sha256")
+    elif fault == "job_retry":
+        p = path.parent.parent / "config.json"
+        data = json.loads(p.read_text())
+        data["retry"]["max_retries"] = 1
+        write(p, data)
+    elif fault == "adapter":
+        trial["config"]["agent"]["import_path"] = "unrelated:Agent"
+    write(path, trial)
+    write(manifest_path, manifest)
+    meta_path = path.parent.parent / "recovery-metadata.json"
+    meta = json.loads(meta_path.read_text())
+    meta["condition_change"] = copy.deepcopy(change)
+    if fault == "metadata":
+        meta["condition_change"]["authorization"] = "different approval"
+    write(meta_path, meta)
+    assert plan_native_merge(original, [recovery], allow_condition_change=True).conflicts
+
+
+def test_source_protocol_zero_is_materialized_once_on_merge(native_runs, tmp_path):
+    import hashlib
+
+    from harbor_agent_infra.formal import aggregate_formal_snapshots
+    from harbor_agent_infra.recovery.merger import ResultMerger
+    from harbor_agent_infra.timeout_rerun.plan import object_digest
+
+    original, recovery = native_runs
+    path = next(original.glob("jobs/*/trial-1/result.json"))
+    trial = json.loads(path.read_text())
+    trial["exception_info"]["exception_type"] = "AgentTimeoutError"
+    write(path, trial)
+    payload = json.loads((original / "results.json").read_text())
+    row = payload["results"][1]
+    row["trial_result"] = trial
+    evidence = original / "zero-authorization.json"
+    write(evidence, {"authorization": "User approved normal timeout zero"})
+    payload["baseline_score_dispositions"] = [
+        {
+            "run": payload["run_id"],
+            "task_name": row["task_name"],
+            "score": 0,
+            "source_record_sha256": object_digest(row),
+            "source_trial_id": trial["id"],
+            "authorization": "User approved normal timeout zero",
+            "reason": "Normal budget timeout",
+            "evidence_file": str(evidence),
+            "evidence_sha256": hashlib.sha256(evidence.read_bytes()).hexdigest(),
+        }
+    ]
+    write(original / "results.json", payload)
+    plan = plan_native_merge(original, [recovery])
+    assert not plan.conflicts
+    assert plan.slots[1].record["scored"]
+    output = tmp_path / "merged-protocol-zero"
+    ResultMerger(original, [recovery], output).merge()
+    merged = json.loads((output / "results.json").read_text())
+    assert (
+        "baseline_score_dispositions" not in merged
+        and len(merged["applied_source_score_dispositions"]) == 1
+    )
+    assert aggregate_formal_snapshots([output])["summary"]["scored"] == 2
+    assert json.loads(path.read_text()) == trial
+    evidence.write_text("changed authorization")
+    with pytest.raises(ValueError, match="authorization evidence changed"):
+        plan_native_merge(original, [recovery])

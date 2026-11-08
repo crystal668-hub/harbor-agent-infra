@@ -70,6 +70,7 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
     kind = exception.get("exception_type")
     setup = trial.get("agent_setup") or {}
     execution = trial.get("agent_execution") or {}
+    artifact_path = path.parent / "verifier" / "vgb-evaluation.json"
     decision_path = path.parent / "operator-scoring-disposition.json"
     if decision_path.is_file():
         decision = read_json(decision_path)
@@ -84,8 +85,9 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
             or decision.get("trial_id") != trial.get("id")
             or decision.get("task_name") != trial.get("task_name")
             or decision.get("evidence_sha256") != scoring_evidence_sha256(trial)
-            or kind != "VgbVerifierError"
+            or kind not in {"VgbVerifierError", "OpenClawAgentIncompleteError"}
             or trial.get("verifier_result") is not None
+            or (artifact_path.is_file() and read_json(artifact_path).get("vgb_status") == "scored")
         ):
             raise ValueError("Invalid capability-zero scoring disposition")
         track, task_id = trial["task_name"].split("__", 1)
@@ -95,7 +97,6 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
             "scoring_source": "operator_capability_zero",
             "operator_disposition": decision,
         }
-    artifact_path = path.parent / "verifier" / "vgb-evaluation.json"
     artifact = read_json(artifact_path) if artifact_path.is_file() else {}
     domain = artifact.get("domain_result")
     if artifact.get("vgb_status") == "scored":
@@ -211,7 +212,8 @@ def fingerprint_inputs(roots: list[Path]) -> dict[str, str]:
 
 
 def _is_authorized_condition_change(
-    original: dict, candidate: dict, task_name: str, change: dict
+    original: dict, candidate: dict, task_name: str, change: dict, *,
+    original_path: Path | None = None, candidate_path: Path | None = None, manifest=None,
 ) -> bool:
     """Recognize only the explicitly approved formal condition transitions."""
     from harbor_agent_infra.recovery.codex_provider import SCHEMA, validate_transition
@@ -226,6 +228,16 @@ def _is_authorized_condition_change(
         except (ValueError, KeyError, TypeError):
             return False
         return before == after
+    if change.get("schema_version") == "preinstalled-condition-change.v1":
+        if original_path is None or candidate_path is None or manifest is None:
+            return False
+        from harbor_agent_infra.recovery.preinstalled_merge import validate_transition
+
+        try:
+            validate_transition(original_path, candidate_path, change, manifest)
+        except (ValueError, KeyError, OSError, TypeError):
+            return False
+        return True
     return False
 
 
@@ -238,6 +250,14 @@ def plan_native_merge(
     original = original.resolve()
     recoveries = [root.resolve() for root in recoveries]
     envelope = read_json(original / "results.json")
+    if envelope.get("baseline_score_dispositions"):
+        from harbor_agent_infra.timeout_rerun.dispositions import scoring_records
+
+        for decision in envelope["baseline_score_dispositions"]:
+            evidence = Path(decision["evidence_file"])
+            if hashlib.sha256(evidence.read_bytes()).hexdigest() != decision["evidence_sha256"]:
+                raise ValueError("Source scoring authorization evidence changed")
+        envelope = {**envelope, "results": scoring_records(envelope)}
     run_id = envelope["run_id"]
     plan = NativeMergePlan(
         original,
@@ -399,12 +419,27 @@ def _add_recovery(
             if job_stats.get("n_running_trials", 0) or job_stats.get("n_pending_trials", 0):
                 raise ValueError("Recovery Job still has active or pending trials")
             if execution_identity(trial) != execution_identity(slot.original_trial):
+                is_preinstalled = (
+                    condition_change.get("schema_version") == "preinstalled-condition-change.v1"
+                )
+                if (is_preinstalled
+                        and (meta.get("condition_change") != condition_change
+                             or meta.get("statistical_role") != "new_condition_observation")):
+                    raise ValueError(
+                        "Frozen trial execution conditions: "
+                        "recovery condition metadata differs from approval"
+                    )
                 if not allow_condition_change or not _is_authorized_condition_change(
-                    slot.original_trial, trial, approved_slot.task_id, condition_change
+                    slot.original_trial, trial, approved_slot.task_id, condition_change,
+                    original_path=slot.original_path, candidate_path=path, manifest=manifest,
                 ):
                     raise ValueError("Frozen trial execution conditions or task checksum changed")
                 plan.condition_change_overrides.append(
-                    f"{approved_slot.task_id}: Codex custom Responses provider transition"
+                    f"{approved_slot.task_id}: " + (
+                        "OpenClaw preinstalled image transition"
+                        if is_preinstalled
+                        else "Codex custom Responses provider transition"
+                    )
                 )
             ordinal = meta.get("substitution_attempt")
             if ordinal != approved_slot.substitution_count + 1 or ordinal not in (1, 2):
