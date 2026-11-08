@@ -6,6 +6,11 @@
 
 ## 范围与配置结论
 
+2026-11-08新增补跑清点：2h正式轮16份最终快照共43个正常Agent超时候选（Advanced 29、
+Basic 14，23道不同题）；原7200秒条件和结果不改。
+证据、完整编号及当前OpenClaw镜像变化见[超时项清单](../audit/2026-11-08-audit-repeat2-timeout-inventory.md)。
+12h/并发2仅为待确认方案，未冻结campaign或启动补跑。
+
 本计划承接已完成的性质计算 repeat1 正式轮及超时补跑，仅准备性质计算 repeat2。
 开放生成尚未开始 repeat1，不纳入本轮 repeat2。协议以[正式方案](formal-experiment-plan.md)为准。
 
