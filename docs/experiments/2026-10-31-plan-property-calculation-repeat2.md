@@ -353,6 +353,13 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 仅修改批准清单的`metadata.batch_concurrency`并记录授权，原并发2批准版归档保留。
 6项批准及替代计数不变；带原配置再次dry-run通过，确认有效并发1、6个单题Job，尚未实际派发。
 
+2026-11-08 13:17（上海）用户明确要求启动后，由tmux会话
+`harbor-repeat2-openclaw-deepseek-recovery-batch1-20261108`派发上述6项单并发恢复。
+输出为`run-artifacts/formal/openclaw-deepseek-repeat2-recovery-batch1/`，控制状态及冻结清单哈希位于
+`logs/formal-experiments/openclaw-deepseek-repeat2-recovery-batch1`前缀的状态/启动记录。
+启动后读回running、concurrency=1，Advanced 008运行中、5项等待；原OpenClaw × Qwen正式进程已结束。
+仅启动首次恢复，尚未核验本批结果、合并或验收；详见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
+
 ## 2026-11-07 Hermes × Qwen 正式合并验收
 
 用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
