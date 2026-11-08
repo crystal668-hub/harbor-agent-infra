@@ -2,7 +2,7 @@
 
 日期：2026-11-08（Asia/Shanghai）  
 类型：audit（原始正式轮失败与恢复计划审核）  
-状态：已执行hai audit并逐项复核；用户裁定后Advanced 012、Basic 013已用原终答恢复评分，当前64/70计分。另有2项工程复跑候选、3项正常超时、1项length及2项已评分终局异常待审。没有新增Agent复跑批准、派发或正式验收。
+状态：用户已完成逐项裁定；Advanced 012、Basic 013活动错误已清除、评分保留；3项正常超时协议计0，Basic 025原零分保留。当前65/70计分，5项工程恢复获条件性授权，须harness修复验证后放行，尚未派发或正式验收。
 
 ## 完成性及审计
 
@@ -15,7 +15,7 @@ Advanced 14/19、Basic 48/51；62项已有评分与原生Verifier reward和artif
 并以`--output`写独立清单。原始audit检出8项capability建议，其中3项为置信度1.0的超时，
 另外5项为0.3的`OpenClawAgentIncompleteError`兜底，不作为最终根因或人工裁定。
 
-## 8项失败的审核建议
+## 初次8项失败的审核记录（裁定前）
 
 | Task | 原生证据 | 建议 |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ provider=qwen、model=qwen3.8-max、stopReason=stop，任务和原Trial身份可
 完整可见回答已原样另存审计目录的`preserved-final-responses/`，记录原session哈希、行号、消息ID及输出哈希；
 没有补写`openclaw.txt`，也不从缺失产物猜测终答；本次已对这两个原回答执行下述受控评分修复。
 
-## audit未列出的已评分零分
+## 初次audit未列出的已评分零分（裁定前）
 
 | Task | 已有产物与异常 | 建议 |
 | --- | --- | --- |
@@ -46,9 +46,9 @@ provider=qwen、model=qwen3.8-max、stopReason=stop，任务和原Trial身份可
 当前[终局完成判定验收](../acceptance/2026-11-08-acceptance-openclaw-terminal-completion-guard.md)要求拒绝
 length和incomplete_turn；该修复不覆盖上述显式压缩错误，也不自动改变历史评分或保证再次运行不再触发压缩失败。
 
-## 候选计划及边界
+## 初次候选计划及边界（裁定前）
 
-原audit不改写，原始运行仅执行下述经授权的评分写回；审核版`openclaw-qwen-repeat2-reviewed-pending.json`保留完整8项身份、
+原audit不改写；初次审核版`openclaw-qwen-repeat2-reviewed-pending.json`保留当时完整8项身份、
 原分类及新增证据，全部approved=false、approved_slot_ids为空。仅Advanced 015、Basic 018暂列
 engineering且可替代，均未用替代0/2；不把审核建议当作用户批准。
 
@@ -60,11 +60,13 @@ DeepSeek批次的单并发设置不自动扩展至此候选计划。
 
 本机忽略目录`run-artifacts/audit/repeat2-openclaw-qwen-20261108/`保存原audit、summary、
 审核清单、`openclaw-qwen-repeat2-review-evidence.json`及保留回答；源run全部文件哈希在核对前后不变。
-上述初次审核后，用户授权的两项评分修复现已完成；能力零分投影及额外终局异常处置仍未执行，正式轮未验收。
+上述初次审核后先完成两项评分修复，随后按下述最终裁定补入超时零分并撤回无效评分；正式轮未验收。
 恢复清单/执行器/审计分类及终局门禁相关离线回归71项通过（14条Task.checksum弃用警告）；
 四份变更文档的相对文件链接及`git diff --check`通过。上述检查不含新增provider调用或实验执行。
 
 ## 两项原终答评分恢复及答后报错原因
+
+本节记录首次评分写回时保留原错误的状态；用户随后允许清除活动错误，最新处置以下节为准。
 
 用户明确确认Advanced 012、Basic 013已完成作答回合，授权使用原回答恢复并重评分。
 使用原生Trial冻结的VGB Python及仓库共享`evaluate_final_response`评分内核，核对运行时
@@ -99,3 +101,37 @@ package/version/tracks与runtime-lock一致（VGB 1.0.0rc1），沿用120秒Veri
 写回后64项原生reward/artifact/根分数全部一致，修复两项per-record与根记录完全一致；
 原生结果除新增verifier_result外全部字段不变，原会话哈希及failed状态文件未改变。
 共享Verifier、正式汇总及audit相关离线回归40项通过，文档相对文件链接及`git diff --check`通过。
+
+## 用户最终裁定与修复后复跑门禁
+
+用户确认两项答后错误不影响正常作答及评分，并对其余任务作出明确裁定，已按下表落实。
+
+| Slot | 当前处置 |
+| --- | --- |
+| Advanced 012、Basic 013 | 保留1.0、0.9933333333333335评分；清除活动exception_info/exception.txt及结果、事件、状态文件中的失败标记，正常完成；不复跑 |
+| Advanced 001、006、019 | 依原7200秒超时协议，通过baseline_score_dispositions各计0；不作工程复跑，保留超时执行事实 |
+| Basic 025 | 保留原NO_REPLY能力零分，不复跑 |
+| Advanced 014、015、018、Basic 018、043 | 按用户裁定统一为harness压缩工程失败，待问题修复验证后复跑；各工程替代已用0/2 |
+
+Advanced 014、018的原零分来自无有效终答的产物，已从有效评分中撤回，不同时记作可评分零分及
+待替代工程缺口。旧artifact、原生结果及受影响视图先归档，再移出活动Verifier产物；
+原生reward撤回，工程失败以明确标注的OperatorAdjudicatedHarnessError和独立operator-execution-adjudication记录表达，
+不冒充原运行时曾抛出该异常。Agent时间、原始会话及真实答后压缩日志不修改。
+Advanced 012、Basic 013的原失败记录归档后从活动视图清除；历史评分修复来源和原始日志仍可追溯。
+对应原生Trial、per-record、根结果、事件和派生汇总均已同步用户裁定。
+
+当前65/70计分（62项有效VGB评分＋3项协议超时零分），Advanced 16/19、Basic 49/51；
+5项工程缺口未计分，当前已计分均分0.7888910106229847不是完整正式轮验收成绩。
+新audit为8项活动异常，身份是3项超时＋5项工程失败；已不包含Advanced 012、Basic 013。
+自动分类仍只是建议，工程分类以人工审核清单为准，暂不验收整个正式轮。
+
+原audit及初次审核清单保留，后者标记已被新裁定取代；当前清单为
+`openclaw-qwen-repeat2-reviewed-blocked-harness-fix.json`，含完整8项身份、5项工程条件性授权、
+绑定原Trial文件哈希的replacement_adjudications及修复前门禁。
+`execution_gate.harness_fix_verified=false`，全部approved=false且approved_slot_ids为空，
+在修复验证前不能作为可执行获批恢复清单派发。5项冻结单题Job均经纯准备函数校验通过，未创建Job。
+当前终局门禁修复本身不构成这5项压缩问题已经解决的证明；尚未指定新修复版本、变更冻结条件或自动排队。
+
+授权为原run的`operator-rulings-20261108.json`；同名审计子目录保留修改前结果/事件/状态/评分备份及哈希、
+撤回评分清单、65项计分核对和5项配置校验。未重新调用Agent或Verifier，未消耗替代预算。
+裁定后正式汇总、恢复清单/执行器/分类及合并相关离线回归83项通过；文档相对链接及`git diff --check`通过。

@@ -377,6 +377,13 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 没有重跑Agent或新增恢复批准，不增加已验收数量。两项分别为压缩后assistant角色续跑错误与
 重复CLI压缩Already compacted，完整时间线及证据见[审计记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#两项原终答评分恢复及答后报错原因)。
 
+2026-11-08后续裁定已落实：清除Advanced 012、Basic 013活动错误并保留恢复评分；
+Advanced 001、006、019各投影正常超时协议零分，不复跑；Basic 025保留原NO_REPLY能力零分。
+Advanced 014、015、018、Basic 018、043统一按用户裁定为工程失败，Advanced 014、018既有无效零分已撤回，
+当前65/70计分、5项工程缺口，获条件性复跑授权但须harness修复验证后才能放行。
+当前blocked清单无可执行批准slot，5项冻结配置预检通过，尚未派发、未消耗替代预算。
+原始证据归档与状态同步范围见[最终裁定](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#用户最终裁定与修复后复跑门禁)。
+
 ## 2026-11-07 Hermes × Qwen 正式合并验收
 
 用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
