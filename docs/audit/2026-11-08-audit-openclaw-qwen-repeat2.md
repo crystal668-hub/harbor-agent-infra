@@ -235,3 +235,59 @@ preinstalled-condition-change.v1镜像转换；允许标志不能绕过此校验
 未重评答案、未批准或派发第二次恢复，现有正式目录命名保持不变。
 native merge、恢复清单及失败审计相关离线回归118项通过（1条既有Starlette弃用警告）；
 原始/恢复全量源哈希、审核清单读回、合并输出未创建及文档相对文件链接均已核对，`git diff --check`通过。
+
+## Advanced 018的length路径与既有修复对照
+
+用户要求确认本次未完成是否为原补丁失效。诊断结论：本次没有重现此前三个补丁针对的fatal错误，
+证据支持“此前已存在、但未覆盖的length终止/压缩后续写路径”，不支持认定为新镜像引入的回归。
+旧Advanced 018原运行也曾以length结束，旧/新固定版本代码对本次输入的处理相同。
+
+### 已排除旧补丁未加载
+
+本轮Trial的harness-setup before/after门禁通过，三个补丁落盘哈希分别为sessions
+`00702308...`、compaction export `c31421ee...`、CLI compaction `f1a30bd8...`，
+均与新验收镜像及本地从固定包重建的补丁结果完全一致。旧Trial的sessions哈希
+`635432dc...`也与旧no-op补丁版本重建一致。
+本次日志没有reconcile is not a function、Cannot continue from message role: assistant、
+CLI transcript compaction failed或did not reduce context错误；threshold压缩于17:20:20（上海）正常完成。
+
+### 当前实际终止路径
+
+1. 原生session第188行是实际provider assistant响应，stopReason=length，input=2216、
+   cacheRead=229376、output=2441；不是零输出。局部模型contextWindow为200000。
+   231592是按本运行时口径计算的本次输入量，不是provider实际硬限制的证明。
+2. 该固定版本isContextOverflow只为length且output=0提供静默溢出识别；本次非零输出
+   不走overflow压缩重试。旧、新代码对这一输入均判false，随后走threshold压缩，willRetry=false。
+   新补丁只限制了正常stop的错误overflow重试，未增加通用length恢复策略。
+3. 压缩后已有的空回答续写入口要求payloadCount===0；实际Gateway结果包含11条非空计算进度
+   payload，finalAssistantVisibleText却为空，因此该入口不满足条件。进度文本与最终答案的判定
+   没有在此恢复条件中区分，构成此次进一步确认的续写缺口。该入口还受副作用及重试次数约束，
+   不能据此简单移除这些约束或对已执行工具盲目重放。
+4. Gateway最终仍返回stopReason/finishReason=length、无最终回答；Infra门禁正常拒绝，
+   首先报stop_reason_not_stop。原session尾部的汇总性stop记录也没有FINAL ANSWER，
+   不能据此绕过门禁评分。后续model-fetch/压缩记录本身不等于任务已恢复到有效终答。
+
+| 确定性用例 | 旧版overflow重试 | 新版overflow重试 |
+| --- | --- | --- |
+| 本次length、非零output | false | false |
+| length、零output且输入接近contextWindow | true | true |
+| 正常stop、缓存膨胀导致输入超过局部contextWindow | true | false |
+
+静态固定版本源码及确定性函数对照保存于
+`postrecovery-review/length-diagnosis-20261108/`，Node检查还确认当前终局门禁拒绝length。
+未启动Agent、未调用provider；固定镜像源码只通过隔离离线读取取得，不修改运行镜像。
+原始轮及恢复轮全部文件哈希核对不变，评分、替代计次及待审状态均未调整。
+
+### 尚不能据此断言的内容
+
+目前没有保存该请求的原始HTTP请求/完整SSE帧，不能确认provider为何发出length，
+也不能确认实际发送的max_tokens是否被中间层截断。最后一次output仅2441，不能据此宣称
+单响应64000预算耗尽。会话中还存在汇总性usage及后续压缩条目，其对预算估计的影响需另行追踪，
+不将时间相邻或累计token数相等解释为已证明的唯一根因。
+
+后续修复应针对非零输出length、压缩后的空final与进度payload并存、以及有副作用时的受控继续策略，
+保持原时限和严格终答门禁；不是将length改写为stop或放行计算进度。
+本次仅诊断，不实施新运行时补丁、不追加复跑。合并器缺少本次预装镜像转换支持是独立控制面问题，
+与上述三个运行时补丁是否生效无关。
+三个旧/新分支确定性用例和终局拒绝断言通过；runtime patch及终局门禁相关离线回归18项通过
+（14条既有Task.checksum弃用警告）。本次没有运行provider集成或新的正式Trial。
