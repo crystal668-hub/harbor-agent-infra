@@ -180,6 +180,14 @@ OpenClaw digest为`sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768e
 启动清单位于`logs/formal-experiments/openclaw-qwen-repeat2-recovery-batch1`前缀。
 首个Job配置已确认采用新image digest，恢复条件变更记录`statistical_role=new_condition_observation`。
 
+15:46（上海）进度复核：Advanced 014已完成并进入Verifier，Trial
+`8b8e4154-718f-49f2-ac25-8c11eeceda53`无执行异常、VGB reward 0.9114535504767458；
+Advanced 015也已完成，Trial`1f247a7a-2b5b-4be0-b99f-a411bbd21897`无执行异常、有效reward 0.0。
+两份落盘Job config均绑定新image digest。recovery-state仍为running，Advanced 018与Basic 018运行中，
+Basic 043 pending；本批尚未结束，因此未运行恢复后audit或merge。
+Advanced 015零分是一次有效复跑评分，不能因分低再次替代。Basic 018此前CLI压缩超时不在新镜像验收范围，
+等待本次实际结果，不预设成功或失败。
+
 范围提示：新镜像验收报告明确不覆盖Basic 018之前观察到的CLI compaction timeout。
 该slot按用户明确要求纳入本次恢复，但问题是否被新镜像解决仍以Trial结果判断；
 未知错误可能使该项再次失败。五项尚未结束，未执行恢复后audit、merge或正式验收。

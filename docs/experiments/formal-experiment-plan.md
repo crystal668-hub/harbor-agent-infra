@@ -875,6 +875,12 @@ repeat2已验收13/16，总进度29/48。详见[验收记录](../acceptance/2026
 恢复批次6/6成功后发布并验收合并快照，70/70计分、整体均分0.566482，post-merge audit零失败；
 repeat2已验收15/16、总进度31/48。见[验收记录](../acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)。
 
+2026-11-08 15:41（上海）按用户要求使用已部署的OpenClaw compaction backport镜像，
+启动Qwen五项恢复，正式输出目录保持`openclaw-qwen-repeat2-recovery-batch1`原名。
+15:46复核时Advanced 014已评分0.911454、Advanced 015已评分0.0，均无执行异常；
+Advanced 018和Basic 018运行中、Basic 043等待。恢复批次未结束，不代表Qwen轮已验收；
+进度与Basic 018覆盖边界见[恢复审计记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md)。
+
 #### 14.3.2 合并12h超时补跑轮
 
 本轮加时campaign尚未启动，未发布合并视图；不从2h正式轮表复制分数。
