@@ -383,10 +383,12 @@ repeat2由14/16更新为15/16、总进度31/48。验收范围见[正式记录](.
 
 2026-11-08后续裁定已落实：清除Advanced 012、Basic 013活动错误并保留恢复评分；
 Advanced 001、006、019各投影正常超时协议零分，不复跑；Basic 025保留原NO_REPLY能力零分。
-Advanced 014、015、018、Basic 018、043统一按用户裁定为工程失败，Advanced 014、018既有无效零分已撤回，
-当前65/70计分、5项工程缺口，获条件性复跑授权但须harness修复验证后才能放行。
-当前blocked清单无可执行批准slot，5项冻结配置预检通过，尚未派发、未消耗替代预算。
-原始证据归档与状态同步范围见[最终裁定](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#用户最终裁定与修复后复跑门禁)。
+Advanced 014、015、018、Basic 018、043统一按用户裁定为工程失败，Advanced 014、018既有无效零分已撤回。
+用户随后要求使用新镜像及锁文件复跑5项。canonical lock和Qwen配置均指向已验收部署的
+`sha256:70cdb8c...`；带五题物化快照的条件变更dry-run通过，15:41（上海）启动恢复，
+输出目录保持原名`openclaw-qwen-repeat2-recovery-batch1`。
+当前65/70计分、5项恢复运行中，尚未audit、合并或验收；Basic 018的原CLI compaction timeout
+不在新镜像验收覆盖范围内，是否解决待此次Trial确认。完整授权及证据见[恢复审核记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md)。
 
 2026-11-08按用户要求回填Advanced 012、Basic 013原生主会话usage，分别175、87条唯一响应，
 输入/缓存/输出/推理已同步Trial、per-record和根记录，Job token汇总同步更新；

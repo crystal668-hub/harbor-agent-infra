@@ -2,7 +2,7 @@
 
 日期：2026-11-08（Asia/Shanghai）  
 类型：audit（原始正式轮失败与恢复计划审核）  
-状态：用户已完成逐项裁定；Advanced 012、Basic 013活动错误已清除、评分保留；3项正常超时协议计0，Basic 025原零分保留。当前65/70计分，5项工程恢复获条件性授权，须harness修复验证后放行，尚未派发或正式验收。
+状态：用户已完成逐项裁定；Advanced 012、Basic 013活动错误已清除、评分保留；3项正常超时协议计0，Basic 025原零分保留。当前65/70计分；5项已按用户要求使用新验收镜像与配置启动复跑，尚未完成或验收。
 
 ## 完成性及审计
 
@@ -162,3 +162,24 @@ Advanced 012、Basic 013的原失败记录归档后从活动视图清除；历�
 本次未运行Agent、Verifier或生成新的OpenClaw会话。
 native observability、OpenClaw轨迹及正式汇总相关离线回归76项通过；回填字段读回、
 会话哈希、65项计分及5项恢复门禁均验证不变，文档相对链接及`git diff --check`通过。
+
+## 2026-11-08 新镜像条件变更及五项恢复启动
+
+用户要求重新核对新镜像和锁、使用新配置复跑五项，并保持原恢复目录名。
+canonical `runtime-lock.json`哈希为`cf38da28fc7072b619f83ce9288e60b49499a46d909951ab3c5080240857862a`，
+OpenClaw digest为`sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768ec3f5974812`，
+与正式Qwen配置、已验收部署报告及本地linux/arm64镜像一致。
+使用新配置执行`hai materialize`，从70题冻结Job快照中精确筛出五个获准task，
+生成带哈希绑定的预装镜像条件变更快照；条件变更清单绑定新旧image、canonical锁、物化快照和用户授权。
+带原正式配置的`hai recover --dry-run`通过，验证5个单题Job、skills_off、7200/120秒、
+单次attempt、内部重试0及原任务输入；实际输出沿用原名
+`run-artifacts/formal/openclaw-qwen-repeat2-recovery-batch1/`，没有添加后缀。
+
+15:41:33（上海）tmux会话`harbor-repeat2-openclaw-qwen-recovery-batch1-20261108`启动恢复，
+初始状态并发2、Advanced 018和014运行，015、Basic 018和043等待。
+启动清单位于`logs/formal-experiments/openclaw-qwen-repeat2-recovery-batch1`前缀。
+首个Job配置已确认采用新image digest，恢复条件变更记录`statistical_role=new_condition_observation`。
+
+范围提示：新镜像验收报告明确不覆盖Basic 018之前观察到的CLI compaction timeout。
+该slot按用户明确要求纳入本次恢复，但问题是否被新镜像解决仍以Trial结果判断；
+未知错误可能使该项再次失败。五项尚未结束，未执行恢复后audit、merge或正式验收。
