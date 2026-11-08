@@ -4,7 +4,7 @@
 
 文档类型：acceptance
 
-状态：provider-free 验收通过；真实 Gateway integration 待资源隔离后执行
+状态：已验收
 
 ## 验收范围
 
@@ -58,5 +58,15 @@ uv run --locked --python 3.12 ruff check \
 git diff --check
 ```
 
-真实 Gateway resume integration 尚未计入通过状态。检查时正式 `skills_off` Qwen 实验仍有
-两个运行中的 Docker trial；为避免共享 CPU 资源影响正式实验，本次未并行启动验收容器。
+真实 Gateway resume integration 已在正式实验资源释放后执行，四个场景全部通过：
+
+```text
+RUN_OPENCLAW_RESUME=1 PREINSTALLED_RUNTIME_LOCK=runtime-lock.json \
+uv run --locked --python 3.12 pytest -q -m integration \
+  tests/test_openclaw_resume_integration.py
+
+4 passed, 4 warnings in 142.84s
+```
+
+覆盖场景为 `resumed`、`normal`、`timeout` 和 `reconnected`。测试使用容器内的确定性
+fixture model，不调用外部 provider；显式压缩失败仍未纳入本次修复范围。
