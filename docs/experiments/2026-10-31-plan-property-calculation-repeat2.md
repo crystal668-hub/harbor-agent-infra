@@ -370,6 +370,13 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 审核清单无批准slot；两项候选通过共用纯Job配置准备函数的冻结校验，未启动Agent或评分修复，
 不建立自动队列、不增加已验收数量。证据与详细分流见[审计记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md)。
 
+2026-11-08用户确认Advanced 012、Basic 013的原作答回合有效并授权原回答评分恢复。
+锁定VGB 1.0.0rc1对保全的完整原回答评分分别为1.0、0.9933333333333335，
+同步原生reward、评分artifact、per-record及根汇总后为64/70计分（Advanced 15/19、Basic 49/51）。
+原始答后Gateway压缩错误、Agent时间及会话不变，audit仍保留8项历史错误、未评分缺口为6项；
+没有重跑Agent或新增恢复批准，不增加已验收数量。两项分别为压缩后assistant角色续跑错误与
+重复CLI压缩Already compacted，完整时间线及证据见[审计记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#两项原终答评分恢复及答后报错原因)。
+
 ## 2026-11-07 Hermes × Qwen 正式合并验收
 
 用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
