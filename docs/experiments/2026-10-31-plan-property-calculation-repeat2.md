@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收15/16组；Hermes × Qwen的12项工程恢复已合并发布并验收，OpenClaw × Claude/GPT/DeepSeek也已验收；OpenClaw × Qwen原始65/70计分，新镜像恢复4项有效、1项待裁定，合并校验暂受阻，12h加时轮未启动。最近结案见[OpenClaw × DeepSeek验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)。
+状态：repeat2的2h正式轮已验收16/16组，16个代表快照1120/1120计分；OpenClaw × Qwen首次恢复Advanced 018按用户最终裁定能力计0，受控新镜像合并快照已发布并验收。12h加时轮和repeat3未启动。最近结案见[OpenClaw × Qwen验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)。
 
 ## 范围与配置结论
 
@@ -401,6 +401,13 @@ Advanced 018进一步诊断确认三个回移补丁已加载，未重现原fatal
 实际Gateway有11条进度payload但最终文本为空，空回答续写入口要求payload为0而未触发。
 provider为何产生length仍缺原始请求/流证据；本次只诊断，未改分或追加复跑。
 证据及边界见[路径对照](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#advanced-018的length路径与既有修复对照)。
+
+2026-11-08用户最终将Advanced 018本次恢复失败视为能力失败计0，要求补齐受控镜像转换并合并验收。
+严格转换校验、源零分迁移及显式能力零分支持的回归通过，dry-run无冲突后发布
+`openclaw-qwen-repeat2-merged`，18:52:05（上海）完成验收；65项原始＋5项恢复代表，70/70计分。
+本次不再复跑Advanced 018，原始length、75次尝试及替代1/2消耗保留。
+全部16份代表汇总1120/1120计分（Advanced 304、Basic 816），repeat2结案16/16、总进度32/48；
+不启动repeat3或12h加时轮。详见[验收记录](../acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)。
 
 2026-11-08按用户要求回填Advanced 012、Basic 013原生主会话usage，分别175、87条唯一响应，
 输入/缓存/输出/推理已同步Trial、per-record和根记录，Job token汇总同步更新；

@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-03（Asia/Shanghai；开放生成时限及repeat2后续队列另有记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2已验收15/16组，包含Hermes × Qwen及OpenClaw × DeepSeek恢复合并快照；OpenClaw × Qwen仍有5项工程缺口。repeat2/3的12h合并轮未启动。验收证据见第14节及相关记录。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮已验收16/16组，代表快照1120/1120计分，含OpenClaw × Qwen受控新镜像恢复合并。repeat2/3的12h合并轮未启动。验收证据见第14节及相关记录。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -700,8 +700,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-08（本次验收OpenClaw × DeepSeek恢复合并轮）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收31/48个子实验：repeat1的16个组合及repeat2的Claude Code四组、Codex四组、Hermes四组、OpenClaw × Claude/GPT/DeepSeek。
+**最后核对日期**：2026-11-08（本次验收OpenClaw × Qwen恢复合并轮）。第一阶段共 48 个子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收32/48个子实验：repeat1和repeat2各16个组合；repeat2的16份代表快照1120/1120计分。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -790,7 +790,7 @@ Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advan
 | Hermes | GPT | 已验收 | 19 / 19；0.695054 | 51 / 51；0.888275 |
 | Hermes | Claude | 已验收 | 19 / 19；0.660310 | 51 / 51；0.899189 |
 | OpenClaw | DeepSeek | 已验收（6项恢复合并） | 19 / 19；0.395556 | 51 / 51；0.630160 |
-| OpenClaw | Qwen | 原始65/70；恢复4有效1待审，合并受阻 | — | — |
+| OpenClaw | Qwen | 已验收（5项恢复合并，含裁定零分） | 19 / 19；0.539234 | 51 / 51；0.861578 |
 | OpenClaw | GPT | 已验收（恢复合并） | 19 / 19；0.647516 | 51 / 51；0.903586 |
 | OpenClaw | Claude | 已验收 | 19 / 19；0.612409 | 51 / 51；0.895606 |
 
@@ -880,6 +880,13 @@ repeat2已验收15/16、总进度31/48。见[验收记录](../acceptance/2026-11
 15:46复核时Advanced 014已评分0.911454、Advanced 015已评分0.0，均无执行异常；
 Advanced 018和Basic 018运行中、Basic 043等待。恢复批次未结束，不代表Qwen轮已验收；
 进度与Basic 018覆盖边界见[恢复审计记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md)。
+
+2026-11-08 18:52（上海）按用户最终裁定，OpenClaw × Qwen首次恢复Advanced 018能力计0，
+补齐严格OpenClaw镜像条件转换后发布`openclaw-qwen-repeat2-merged`并验收。
+65项原始代表＋5项恢复代表，66项VGB评分、3项超时零分、1项裁定能力零分，共70/70计分，
+整体均分0.774084；原生4项生命周期异常保留，无工程/评分缺口。
+repeat2由15/16更新为16/16，16份代表实际汇总1120/1120计分，总进度32/48；
+范围见[Qwen验收记录](../acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)。
 
 #### 14.3.2 合并12h超时补跑轮
 

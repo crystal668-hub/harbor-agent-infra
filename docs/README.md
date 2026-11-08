@@ -43,7 +43,8 @@
 - [OpenClaw × GPT repeat2恢复合并验收](acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)：Advanced 015首次工程恢复有效，保留69项原始结果、替换1项，合并audit零失败，70/70计分。
 - [OpenClaw × DeepSeek repeat2失败审计](audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)：6项provider网络/配额失败经用户裁定批准首次恢复，11月8日按单并发启动，结果待核验。
 - [OpenClaw × DeepSeek repeat2恢复合并验收](acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)：6项单并发恢复有效，64项原始结果加6项恢复结果，70/70计分并通过post-merge audit。
-- [OpenClaw × Qwen repeat2审计与恢复记录](audit/2026-11-08-audit-openclaw-qwen-repeat2.md)：新镜像恢复4项有效、1项length待裁定；原始65/70计分，合并器尚不支持本次镜像条件转换，未合并验收。
+- [OpenClaw × Qwen repeat2审计与恢复记录](audit/2026-11-08-audit-openclaw-qwen-repeat2.md)：保留原始失败与诊断时间线，Advanced 018最终按用户裁定能力计0，已恢复合并验收。
+- [OpenClaw × Qwen repeat2恢复合并验收](acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)：受控镜像转换验证通过，66项VGB评分与4项协议/用户零分构成70/70；repeat2全16组已验收。
 - [OpenClaw length与压缩后续写修复交接](handoff/2026-11-08-handoff-openclaw-length-continuation.md)：供新会话修复非零length与进度payload遮挡空终答的路径，含证据、范围及验收标准。
 - [OpenClaw压缩错误受影响slots重审](audit/2026-11-08-audit-openclaw-compaction-affected-slots.md)：区分有效终答、可恢复output-limit、7200秒能力失败及独立压缩超时。
 - [OpenClaw 2026.6.34压缩修复镜像验收](acceptance/2026-11-08-acceptance-openclaw-compaction-backport.md)：三个官方最小修复精确回移，离线镜像门禁及真实Gateway压缩场景通过，已切换canonical镜像和运行锁。
