@@ -4,7 +4,7 @@
 
 类型：acceptance
 
-状态：已验收；独立分支待用户通知后合并
+状态：已验收并部署
 
 ## 验收对象
 
@@ -15,8 +15,9 @@
 - manifest SHA-256：`7696d327e7effde7245b3557cc236c3a98d4ffa99f0ad967e7a102442998000f`
 - 父镜像：`hai-base-env@sha256:f40ae2b67be7805ff7e59f47f5f9b20d8a9569c64b93c51930ef03082517f936`
 
-候选镜像使用新引用，未覆盖`hai-openclaw-latest`。构建时用户明确允许与单个正式实验容器
-并行；仅对本次命令临时绕过构建工具的零活动容器门禁，未修改门禁源码或正式容器。
+候选构建使用新引用。构建时用户明确允许与单个正式实验容器并行；仅对本次命令临时绕过
+构建工具的零活动容器门禁，未修改门禁源码或正式容器。最终部署经用户授权，在Docker空闲后
+将`hai-openclaw-latest`从旧ID `d744a347...`切换为已验收ID `70cdb8c...`，旧镜像未删除。
 
 ## 补丁证据
 
@@ -51,6 +52,10 @@ status: passed
 两条Trial均验证before/after patch manifest、安装文件全集和网络隔离。证据保存在工作树忽略目录
 `run-artifacts/analysis/openclaw-compaction-backport-candidate-20261108/offline-gate/`。
 
+切换canonical标签和运行锁后，使用未绕过零容器门禁的标准入口再次执行offline gate，
+`hai-openclaw-latest@sha256:70cdb8c...`仍为2/2 Trial、零失败、status passed；证据位于同一
+产物根目录的`offline-gate-canonical/`。
+
 真实Gateway integration使用候选镜像和容器内fixture provider，覆盖`resumed`、`normal`、
 `timeout`、`reconnected`及新增`compacted`五个场景。初次全组运行中原四场景通过；新增场景
 正常完成并评分，但测试错误地禁止benign skip日志中出现`Already compacted`文字。修正断言为
@@ -77,6 +82,6 @@ uv run --locked --python 3.12 pytest -q -m integration \
 ## 边界
 
 本验收不覆盖通用length自动续写、Basic 018观察到的CLI compaction timeout、OpenClaw包升级
-或正式provider效果。候选runtime-lock保存在工作树忽略目录的候选产物中；仓库canonical
-`runtime-lock.json`、`hai-openclaw-latest`标签和正式配置均未切换。未启动正式恢复、未改写
-历史Trial，分支保持未合并，等待用户后续通知后再执行正式tag/digest和源码哈希切换。
+或正式provider效果。候选runtime-lock保存在工作树忽略目录供审计；经用户授权后，仓库唯一
+canonical `runtime-lock.json`已同步新镜像digest、manifest及适配器源码哈希，没有创建第二份
+受版本控制的运行锁。未启动正式恢复、未改写历史Trial。

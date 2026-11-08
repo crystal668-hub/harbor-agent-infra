@@ -4,7 +4,7 @@
 
 类型：plan
 
-状态：已实施并完成候选镜像验收；独立分支待用户通知后合并
+状态：已实施、验收并部署至canonical运行锁
 
 ## 目标与边界
 
@@ -14,8 +14,8 @@
 
 全部修改、测试和候选镜像产物位于工作树
 `/Users/xutao/.codex/worktrees/openclaw-compaction-backport/harbor-agent-infra`，分支为
-`codex/openclaw-compaction-backport`。未经用户在当前实验结束后明确通知，不合并主分支、
-不替换活动runtime-lock、不启动正式恢复。
+`codex/openclaw-compaction-backport`。开发期间未替换活动runtime-lock或启动正式恢复；实验结束
+并获用户通知后，已将验收镜像切换为`hai-openclaw-latest`并同步canonical运行锁。
 
 通用 `stopReason=length` 自动续写、CLI compaction timeout、OpenClaw包升级和新compaction
 子系统不在本次范围。终局envelope门禁保持现行严格行为。

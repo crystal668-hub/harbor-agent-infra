@@ -352,8 +352,8 @@
       "version": "0.21.6"
     },
     "openclaw": {
-      "digest": "sha256:d744a3474f60e123a86f4c9dcb314c12810104e290eb982ac556ecff32c4255c",
-      "manifest_sha256": "3cc68a34341475f8f615d852ad59cf6de38a2ffcd56b5560e7a33dc89d3d9daf",
+      "digest": "sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768ec3f5974812",
+      "manifest_sha256": "7696d327e7effde7245b3557cc236c3a98d4ffa99f0ad967e7a102442998000f",
       "platform": "linux/arm64",
       "reference": "hai-openclaw-latest",
       "version": "2026.6.34"
@@ -374,12 +374,12 @@
     "adapter": "openclaw",
     "adapter_source_hashes": {
       "adapters/openclaw/__init__.py": "sha256:ebb3560cf19b28d1ecde28ea0ff38c187d7126bf441af947ccee1ec9084ca386",
-      "adapters/openclaw/adapter.py": "sha256:ba8eafc6eb8336be32d6885f0cbc1d46d8381b27751dca478e47fdff07b6f99e",
+      "adapters/openclaw/adapter.py": "sha256:c37d7fe92cbce09e7e6d8f4124280f656d0a1823471c5f9d2db13e0e04c3c2e2",
       "adapters/openclaw/config.py": "sha256:8a7fea0ca724248b087da73363775173bd2e5e87cf5f5e4134c7eb8a976fd4a9",
       "adapters/openclaw/evidence.py": "sha256:0dc0cf086165375fe41ed99ed6bbe21e4f69bd5298871632a46e8671693f9cc7",
       "adapters/openclaw/failure.py": "sha256:e3792988212daf31ce06b285f4a530f973f366d58d081133a9a681b89b37c33e",
       "adapters/openclaw/session.py": "sha256:aa8598269934d4b06e666161d98452d5d93f14bbbf4febdf20b001b58995d482",
-      "adapters/runtime_patches.py": "sha256:c516816c0896d69173d615d7cc799572880e52ea7404602a597180d6a38fa8d1"
+      "adapters/runtime_patches.py": "sha256:8f686b4ef2ff96b66bd5d56de85d802a50c68881048657e3ecfc5f31e6c83f89"
     },
     "adapter_version": "0.1.0",
     "node_engine": ">=22.19.0",
