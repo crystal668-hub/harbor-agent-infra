@@ -15,14 +15,16 @@ from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.parametrize("outcome", ["resumed", "normal", "timeout", "reconnected"])
+@pytest.mark.parametrize(
+    "outcome", ["resumed", "normal", "timeout", "reconnected", "compacted"]
+)
 def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch, outcome):
     if os.environ.get("RUN_OPENCLAW_RESUME") != "1":
         pytest.skip("set RUN_OPENCLAW_RESUME=1 for the local Docker Gateway gate")
     lock = load_runtime_lock(Path(os.environ.get(
         "PREINSTALLED_RUNTIME_LOCK", "runtime-lock.json"
     )))
-    pause = outcome != "normal"
+    pause = outcome not in {"normal", "compacted"}
     image = lock.execution_image("openclaw", "preinstalled")
     task = tmp_path / "fixture__resume"
     (task / "environment").mkdir(parents=True)
@@ -71,6 +73,7 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
             command=(
                 "nohup python3 /tmp/openclaw-model.py "
                 + ("--pause-forever " if outcome == "timeout" else "")
+                + ("--inflated-cache " if outcome == "compacted" else "")
                 + "> /logs/agent/fixture-model.log "
                 "2>&1 </dev/null &"
             )
@@ -159,6 +162,12 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     assert trial.exception_info is None, trial.exception_info
     assert len(calls) == len(verified) == 1
     assert trial.verifier_result.rewards["reward"] == 1.0
+    if outcome == "compacted":
+        gateway_log = (agent_dir / "openclaw-gateway.log").read_text()
+        assert "embedded run auto-compaction complete" in gateway_log
+        assert "reconcile is not a function" not in gateway_log
+        assert "Already compacted" not in gateway_log
+        assert "Cannot continue from message role: assistant" not in gateway_log
     events = [
         json.loads(line) for line in (agent_dir / "openclaw-turns.jsonl").read_text().splitlines()
     ]

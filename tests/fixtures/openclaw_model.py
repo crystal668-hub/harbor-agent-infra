@@ -59,6 +59,8 @@ class Handler(BaseHTTPRequestHandler):
                 }
             ]
         usage = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+        if "--inflated-cache" in sys.argv:
+            usage["prompt_tokens_details"] = {"cached_tokens": 220_000}
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
