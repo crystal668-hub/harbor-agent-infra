@@ -291,3 +291,6 @@ CLI transcript compaction failed或did not reduce context错误；threshold压�
 与上述三个运行时补丁是否生效无关。
 三个旧/新分支确定性用例和终局拒绝断言通过；runtime patch及终局门禁相关离线回归18项通过
 （14条既有Task.checksum弃用警告）。本次没有运行provider集成或新的正式Trial。
+
+用户随后要求将该路径交由全新会话修复；独立[交接文档](../handoff/2026-11-08-handoff-openclaw-length-continuation.md)
+已整理问题身份、现有证据、生产代码入口、边界及新fixture验收标准。交接不代表修复已实现或已部署。
