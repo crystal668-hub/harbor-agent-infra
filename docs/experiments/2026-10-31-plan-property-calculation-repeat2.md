@@ -360,6 +360,16 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 启动后读回running、concurrency=1，Advanced 008运行中、5项等待；原OpenClaw × Qwen正式进程已结束。
 仅启动首次恢复，尚未核验本批结果、合并或验收；详见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
 
+## 2026-11-08 OpenClaw × Qwen 审计及复跑计划审核
+
+原始轮06:37:50退出0，70个Trial均终态，根结果62/70评分、8项失败。
+`hai audit`原清单保留；3项正常7200秒超时建议按原协议零分，Advanced 012、Basic 013已有
+原生stop终答，优先审核保存回答的评分修复。Advanced 015、Basic 018明确压缩错误且无可用终答，
+列为2项工程复跑候选；Basic 043的length终止单列待裁定。
+另有Advanced 014、018已评分0但终局状态异常，暂不自动增加恢复范围；Basic 025的NO_REPLY原零分保留。
+审核清单无批准slot；两项候选通过共用纯Job配置准备函数的冻结校验，未启动Agent或评分修复，
+不建立自动队列、不增加已验收数量。证据与详细分流见[审计记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md)。
+
 ## 2026-11-07 Hermes × Qwen 正式合并验收
 
 用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
