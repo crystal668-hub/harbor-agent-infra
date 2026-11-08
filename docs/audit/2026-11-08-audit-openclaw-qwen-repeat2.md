@@ -2,7 +2,7 @@
 
 日期：2026-11-08（Asia/Shanghai）  
 类型：audit（原始正式轮失败与恢复计划审核）  
-状态：用户已完成逐项裁定；Advanced 012、Basic 013活动错误已清除、评分保留；3项正常超时协议计0，Basic 025原零分保留。当前65/70计分；5项已按用户要求使用新验收镜像与配置启动复跑，尚未完成或验收。
+状态：原始视图65/70计分；新镜像5项恢复已结束，4项有效评分、Advanced 018的length终止待裁定。恢复audit检出1项待审；合并dry-run还因当前合并器不支持该预装镜像转换而受阻，未发布合并快照或验收。
 
 ## 完成性及审计
 
@@ -191,3 +191,47 @@ Advanced 015零分是一次有效复跑评分，不能因分低再次替代。Ba
 范围提示：新镜像验收报告明确不覆盖Basic 018之前观察到的CLI compaction timeout。
 该slot按用户明确要求纳入本次恢复，但问题是否被新镜像解决仍以Trial结果判断；
 未知错误可能使该项再次失败。五项尚未结束，未执行恢复后audit、merge或正式验收。
+
+## 2026-11-08 新镜像恢复后审核
+
+17:21:21（上海）恢复控制器退出1；恢复状态finished，5项均执行、无跳过，4成功、1失败。
+按用户要求重新执行`hai audit openclaw-qwen-repeat2-recovery-batch1`，独立输出到审计目录
+`postrecovery-review/recovery-audit.json`，检出1项待审。
+
+| Slot | 新Trial终态 | Verifier score |
+| --- | --- | ---: |
+| Advanced 014 | 正常完成、有效评分 | 0.9114535504767458 |
+| Advanced 015 | 正常完成、有效零分，不因分低再跑 | 0.0 |
+| Advanced 018 | OpenClawAgentIncompleteError；Gateway最终length，stop_reason_not_stop | 未评分 |
+| Basic 018 | 正常完成、有效评分；本次未再出现原CLI压缩超时 | 0.9998716364778555 |
+| Basic 043 | 正常完成、有效评分 | 0.9966666666666674 |
+
+五项实际运行镜像均为已批准的`sha256:70cdb8c...`，分别与对应原始任务/Trial身份匹配。
+重新调用条件变更Job准备校验，确认模型、资源、时限、重试及公开任务输入按原冻结条件保持，
+仅实施已授权的预装镜像身份变更。4项正常envelope为stop/stop/stop、working、非空终答、
+无meta error，评分artifact与原生两种reward逐项一致；每项首次替代计次均为1/2。
+
+Advanced 018新Trial为`435f8af0-9aea-4c2e-b8ba-3b6904fa8b6b`，Agent执行约5970.64秒，
+不是7200秒Harbor超时。09:19:20Z自动threshold压缩开始，09:20:20Z完成、willRetry=false；
+09:21:15Z整轮仍以length终止。原生session有85条assistant记录，但没有FINAL ANSWER，
+末尾汇总性stop文本仅为计算进度，不能提升为可评分终答。
+本项未观察到旧reconcile/Cannot continue/Already compacted fatal错误，但通用length自动续写
+不在新镜像修复范围；目前不能仅凭length确定能力或工程根因，也不推定64000输出预算耗尽。
+audit给出的capability是0.3置信度兜底，审核清单保留待裁定、无新批准；不自动补零或启动第二次替代。
+
+按原名`openclaw-qwen-repeat2-merged`执行`hai merge --dry-run --allow-runtime-condition-change`，
+命令退出1。主冲突为Frozen trial execution conditions or task checksum changed：
+当前合并器的条件差异校验仅识别Codex provider转换，不识别本次已授权的
+preinstalled-condition-change.v1镜像转换；允许标志不能绕过此校验。
+其后replacement adjudication缺少下一候选的冲突，是候选导入先被拒绝造成的连带结果。
+本轮未修改合并器或冻结原始证据以绕过检查，也未创建合并输出目录。
+
+4项有效恢复若获准合入，可将计分覆盖从65/70推进至69/70；Advanced 018仍构成一个待裁定缺口。
+当前实际原始视图仍为65/70，4项成功结果保留于恢复批次，未计作已合并或已验收。
+完成验收前需处理Advanced 018终止原因/裁定，并补齐受控OpenClaw镜像转换的合并校验支持。
+
+`postrecovery-review/`保留完整audit、待审清单、merge预览及`review-evidence.json`，
+逐项绑定5项原生结果、评分、终局状态和全部源文件哈希；核对前后原始/恢复全部文件未变。
+未重评答案、未批准或派发第二次恢复，现有正式目录命名保持不变。
+native merge、恢复清单及失败审计相关离线回归118项通过（1条既有Starlette弃用警告）；
+原始/恢复全量源哈希、审核清单读回、合并输出未创建及文档相对文件链接均已核对，`git diff --check`通过。

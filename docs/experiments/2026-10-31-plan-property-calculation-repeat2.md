@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收15/16组；Hermes × Qwen的12项工程恢复已合并发布并验收，OpenClaw × Claude/GPT/DeepSeek也已验收；OpenClaw × Qwen为65/70计分，5项harness工程恢复待修复验证后执行，12h加时轮未启动。最近结案见[OpenClaw × DeepSeek验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)。
+状态：repeat2已验收15/16组；Hermes × Qwen的12项工程恢复已合并发布并验收，OpenClaw × Claude/GPT/DeepSeek也已验收；OpenClaw × Qwen原始65/70计分，新镜像恢复4项有效、1项待裁定，合并校验暂受阻，12h加时轮未启动。最近结案见[OpenClaw × DeepSeek验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -389,6 +389,12 @@ Advanced 014、015、018、Basic 018、043统一按用户裁定为工程失败�
 输出目录保持原名`openclaw-qwen-repeat2-recovery-batch1`。
 当前65/70计分、5项恢复运行中，尚未audit、合并或验收；Basic 018的原CLI compaction timeout
 不在新镜像验收覆盖范围内，是否解决待此次Trial确认。完整授权及证据见[恢复审核记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md)。
+
+17:21:21（上海）五项恢复结束，4项有效评分、Advanced 018再次length终止且无有效终答。
+重新audit检出1项待审，已用替代1/2，不继承原工程批准为第二次替代授权。
+合并dry-run即使带allow-runtime-condition-change仍拒绝本次预装镜像切换，当前合并器只识别
+Codex provider转换；未绕过校验、未发布合并或验收。4项有效恢复将来合入后可到69/70，
+现行原始计分仍65/70。结果及阻塞证据见[恢复后审核](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#2026-11-08-新镜像恢复后审核)。
 
 2026-11-08按用户要求回填Advanced 012、Basic 013原生主会话usage，分别175、87条唯一响应，
 输入/缓存/输出/推理已同步Trial、per-record和根记录，Job token汇总同步更新；
