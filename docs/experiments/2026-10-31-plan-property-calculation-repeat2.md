@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2已验收14/16组；Hermes × Qwen的12项工程恢复已合并发布并验收，OpenClaw × Claude/GPT也已验收；其余OpenClaw × DeepSeek/Qwen尚未验收，执行及恢复状态见后文，12h加时轮未启动。最近结案见[Hermes × Qwen验收](../acceptance/2026-11-07-acceptance-repeat2-hermes-qwen.md)。
+状态：repeat2已验收15/16组；Hermes × Qwen的12项工程恢复已合并发布并验收，OpenClaw × Claude/GPT/DeepSeek也已验收；OpenClaw × Qwen为65/70计分，5项harness工程恢复待修复验证后执行，12h加时轮未启动。最近结案见[OpenClaw × DeepSeek验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)。
 
 ## 范围与配置结论
 
@@ -347,18 +347,22 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 重新audit并逐Trial核对后，merge dry-run确认70项覆盖、58项原始代表及12项恢复代表，无冲突；原始Advanced 006仍需在发布时投影既定协议零分。
 本次支持进入合并验收，但未执行正式合并、改分或验收；范围与证据见[恢复后审核](../audit/2026-11-07-audit-hermes-qwen-repeat2-postrecovery.md)。
 
-2026-11-07 OpenClaw × DeepSeek正式轮`hai audit`检出6项provider工程错误：3项网络连接失败、3项429配额超限，均无Verifier评分产物。用户裁定6项均为工程失败并批准首次恢复；原始audit保留，审核版清单及带配置dry-run通过，6项各0/2、并发2。恢复尚未派发，当前OpenClaw × Qwen仍运行；详见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
+2026-11-07 OpenClaw × DeepSeek正式轮`hai audit`检出6项provider工程错误：3项网络连接失败、3项429配额超限，均无Verifier评分产物。用户裁定6项均为工程失败并批准首次恢复；原始audit保留，审核版清单及带配置dry-run通过，6项各0/2、并发初始为2。
 
 2026-11-08按用户指示将上述OpenClaw × DeepSeek恢复批次并发由2降为1，
 仅修改批准清单的`metadata.batch_concurrency`并记录授权，原并发2批准版归档保留。
-6项批准及替代计数不变；带原配置再次dry-run通过，确认有效并发1、6个单题Job，尚未实际派发。
+6项批准及替代计数不变；带原配置再次dry-run通过，确认有效并发1、6个单题Job。
 
 2026-11-08 13:17（上海）用户明确要求启动后，由tmux会话
 `harbor-repeat2-openclaw-deepseek-recovery-batch1-20261108`派发上述6项单并发恢复。
 输出为`run-artifacts/formal/openclaw-deepseek-repeat2-recovery-batch1/`，控制状态及冻结清单哈希位于
 `logs/formal-experiments/openclaw-deepseek-repeat2-recovery-batch1`前缀的状态/启动记录。
 启动后读回running、concurrency=1，Advanced 008运行中、5项等待；原OpenClaw × Qwen正式进程已结束。
-仅启动首次恢复，尚未核验本批结果、合并或验收；详见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
+14:55:22（上海）恢复批次结束，6/6成功、0失败。恢复后audit零失败，merge dry-run无冲突；
+随后发布`openclaw-deepseek-repeat2-merged`，选取64项原始结果及6项恢复结果，70/70计分、整体均分0.566482。
+发布后audit仍为零失败、summary不变并标记验收；76份源Trial哈希未变。
+repeat2由14/16更新为15/16、总进度31/48。验收范围见[正式记录](../acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)，
+原始失败审核见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
 
 ## 2026-11-08 OpenClaw × Qwen 审计及复跑计划审核
 

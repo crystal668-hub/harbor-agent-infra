@@ -42,6 +42,7 @@
 - [OpenClaw × Claude repeat2验收](acceptance/2026-11-06-acceptance-repeat2-openclaw-claude.md)：69项原评分一致，Advanced 006正常超时协议计0，70/70计分并按用户裁定验收。
 - [OpenClaw × GPT repeat2恢复合并验收](acceptance/2026-11-06-acceptance-repeat2-openclaw-gpt.md)：Advanced 015首次工程恢复有效，保留69项原始结果、替换1项，合并audit零失败，70/70计分。
 - [OpenClaw × DeepSeek repeat2失败审计](audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)：6项provider网络/配额失败经用户裁定批准首次恢复，11月8日按单并发启动，结果待核验。
+- [OpenClaw × DeepSeek repeat2恢复合并验收](acceptance/2026-11-08-acceptance-repeat2-openclaw-deepseek.md)：6项单并发恢复有效，64项原始结果加6项恢复结果，70/70计分并通过post-merge audit。
 - [OpenClaw × Qwen repeat2审计与计划审核](audit/2026-11-08-audit-openclaw-qwen-repeat2.md)：两项活动错误已清除、3项超时协议计0，65/70计分；5项工程恢复待harness修复验证后放行。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：取消链路与证据保全验收；后续已于11月5日接入本地主工作区。
