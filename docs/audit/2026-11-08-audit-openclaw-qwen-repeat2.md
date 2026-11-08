@@ -135,3 +135,30 @@ Advanced 012、Basic 013的原失败记录归档后从活动视图清除；历�
 授权为原run的`operator-rulings-20261108.json`；同名审计子目录保留修改前结果/事件/状态/评分备份及哈希、
 撤回评分清单、65项计分核对和5项配置校验。未重新调用Agent或Verifier，未消耗替代预算。
 裁定后正式汇总、恢复清单/执行器/分类及合并相关离线回归83项通过；文档相对链接及`git diff --check`通过。
+
+## 两项已恢复任务的token元数据回填
+
+按用户要求恢复Advanced 012、Basic 013的可核验token元数据，来源为各自原生主会话的
+175条、87条唯一assistant usage记录。每条input、output、cacheRead、cacheWrite、reasoningTokens
+均存在，逐条校验totalTokens关系，合计与原openclaw_capture已保留小计一致。
+
+| Slot | 输入（含缓存） | 缓存读取 | 输出 | 推理（输出子集） | 记录响应数 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Advanced 012 | 13,552,728 | 13,287,424 | 90,812 | 61,872 | 175 |
+| Basic 013 | 8,923,005 | 8,710,400 | 139,957 | 116,930 | 87 |
+
+输入沿Harbor语义为原usage.input＋cacheRead；缓存是输入子集，推理是输出子集，不重复相加。
+统计范围明确为recorded_parent_session_only，未记录的压缩模型调用、传输重试及其他session
+不补猜；费用不从原日志的零值推算，仍为unknown。cacheWrite在上述已记录响应中合计均为0。
+
+已同步两项原生agent_result及model_usage、per-record、根记录的observability/provider_usage，
+以及JobStats的token累计值。保留原ATIF捕获及partial覆盖标记，以独立token-restoration来源说明
+此次恢复的字段、scope和原会话哈希，不将部分捕获提升为完整账单证据。
+原生Trial的Agent时间、已清除错误状态及评分不变，其余68条原记录对象不变；
+65/70计分、3项超时零分和5项修复前锁定恢复均不变。
+
+原生/根/per-record/Job元数据备份和检查位于审计目录`token-metadata-restoration-20261108/`；
+原run内`token-restorations/<trial>/token-restoration.json`保存来源、字段完整性与scope，
+本次未运行Agent、Verifier或生成新的OpenClaw会话。
+native observability、OpenClaw轨迹及正式汇总相关离线回归76项通过；回填字段读回、
+会话哈希、65项计分及5项恢复门禁均验证不变，文档相对链接及`git diff --check`通过。

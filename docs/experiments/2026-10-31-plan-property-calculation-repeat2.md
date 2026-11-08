@@ -384,6 +384,11 @@ Advanced 014、015、018、Basic 018、043统一按用户裁定为工程失败�
 当前blocked清单无可执行批准slot，5项冻结配置预检通过，尚未派发、未消耗替代预算。
 原始证据归档与状态同步范围见[最终裁定](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#用户最终裁定与修复后复跑门禁)。
 
+2026-11-08按用户要求回填Advanced 012、Basic 013原生主会话usage，分别175、87条唯一响应，
+输入/缓存/输出/推理已同步Trial、per-record和根记录，Job token汇总同步更新；
+仅覆盖已记录主会话，费用及未记录调用保持未知，评分与恢复门禁不变。
+字段口径及来源见[token回填记录](../audit/2026-11-08-audit-openclaw-qwen-repeat2.md#两项已恢复任务的token元数据回填)。
+
 ## 2026-11-07 Hermes × Qwen 正式合并验收
 
 用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
