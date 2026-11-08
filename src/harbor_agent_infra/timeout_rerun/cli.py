@@ -9,15 +9,19 @@ from pathlib import Path
 
 def register(subparsers):
     parser = subparsers.add_parser(
-        "timeout-rerun", help="plan, run and merge repeat1 timeout amendments"
+        "timeout-rerun", help="plan, run and merge frozen timeout amendments for any repeat"
     )
     commands = parser.add_subparsers(dest="timeout_command", required=True)
     plan = commands.add_parser(
-        "plan", help="freeze selected final snapshots and 12h execution inputs"
+        "plan", help="freeze selected final snapshots and extended-budget execution inputs"
     )
     plan.add_argument("snapshots", type=Path, nargs="+")
     plan.add_argument("--output-dir", type=Path, required=True)
     plan.add_argument("--runtime-lock", type=Path, default=Path("runtime-lock.json"))
+    plan.add_argument("--repeat", type=int, default=1, help="formal repeat number (default: 1)")
+    plan.add_argument("--source-timeout-sec", type=int, default=7200)
+    plan.add_argument("--agent-timeout-sec", type=int, default=43200)
+    plan.add_argument("--concurrency", type=int, default=2)
     plan.add_argument(
         "--baseline-dispositions",
         type=Path,
@@ -45,6 +49,10 @@ def dispatch(args):
                 args.output_dir,
                 args.runtime_lock,
                 baseline_dispositions=args.baseline_dispositions,
+                repeat=args.repeat,
+                source_timeout_sec=args.source_timeout_sec,
+                agent_timeout_sec=args.agent_timeout_sec,
+                concurrency=args.concurrency,
             )
             result = {
                 k: plan[k]

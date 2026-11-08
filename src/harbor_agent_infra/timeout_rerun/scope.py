@@ -4,8 +4,6 @@ from pathlib import Path
 
 from harbor_agent_infra.resume.io import read_object
 
-TASK = "property_calculation_advanced__property_calculation_advanced_004_ir_top2_frequencies"
-
 
 def amendment(plan: dict) -> dict:
     from harbor_agent_infra.timeout_rerun.plan import object_digest
@@ -28,9 +26,9 @@ def amendment(plan: dict) -> dict:
     if (
         not ids
         or len(ids) != len(set(ids))
-        or any(sid not in slots or slots[sid]["task_name"] != TASK for sid in ids)
+        or any(sid not in slots for sid in ids)
     ):
-        raise ValueError("Deferral must identify unique Advanced 004 slots")
+        raise ValueError("Deferral must identify unique frozen campaign slots")
     for dispatch in Path(plan["root"]).glob("jobs/*/timeout-dispatch.json"):
         if any(s["slot_id"] in ids for s in read_object(dispatch)["slots"]):
             raise ValueError("Cannot defer an already dispatched Trial")
@@ -65,7 +63,6 @@ def terminal_deferrals(plan: dict) -> dict:
         if (
             sid not in slots
             or sid in selected
-            or slots[sid]["task_name"] != TASK
             or not decision.get("authorization")
             or not decision.get("reason")
         ):

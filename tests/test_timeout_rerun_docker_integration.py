@@ -16,14 +16,15 @@ from harbor_agent_infra.timeout_rerun.execution import run_campaign
 pytestmark = pytest.mark.integration
 
 
-def test_short_timeout_native_persistence_and_idempotent_restart(tmp_path, monkeypatch):
+@pytest.mark.parametrize("repeat", [1, 2, 3])
+def test_short_timeout_native_persistence_and_idempotent_restart(tmp_path, monkeypatch, repeat):
     if os.environ.get("RUN_HAI_TIMEOUT_RERUN") != "1":
         pytest.skip("set RUN_HAI_TIMEOUT_RERUN=1 for the synthetic Docker gate")
-    source = timeout_fixture(tmp_path)
+    source = timeout_fixture(tmp_path, repeat=repeat)
     build = planning.target_job
 
-    def synthetic_target(slot, root, lock):
-        config = build(slot, root, lock)
+    def synthetic_target(slot, root, lock, **kwargs):
+        config = build(slot, root, lock, **kwargs)
         # Production budget is tested separately; exercise the same Harbor path in seconds.
         config["agents"] = [
             {
@@ -42,7 +43,9 @@ def test_short_timeout_native_persistence_and_idempotent_restart(tmp_path, monke
 
     monkeypatch.setattr(planning, "target_job", synthetic_target)
     monkeypatch.setattr("harbor_agent_infra.timeout_rerun.execution.preflight", checked)
-    plan = planning.create_plan([source], tmp_path / "campaign", Path("runtime-lock.json"))
+    plan = planning.create_plan(
+        [source], tmp_path / "campaign", Path("runtime-lock.json"), repeat=repeat
+    )
     manifest = Path(plan["root"]) / "manifest.json"
     result = asyncio.run(run_campaign(manifest))
     assert result["complete"]

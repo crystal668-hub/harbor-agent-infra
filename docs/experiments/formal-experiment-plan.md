@@ -1059,6 +1059,12 @@ terminal-deferrals.json；后者逐项绑定授权、Trial 身份与结果哈希
 RC 迁移后的当前入口见第 14.7 节。早期 `effective-scope-state.json` 是历史快照，
 其中 pending/interrupted 数量不代表最终 campaign 状态；本轮未改写该证据。
 
+2026-11-08工程能力更新：`timeout-rerun`已由repeat1专属实现抽象为按repeat及预算冻结的通用模块，
+支持repeat2／repeat3并保持skills_off、额外工程替代和评分修复各最多两次。此变更不修改以上
+repeat1历史冻结条件，不自动批准或启动任何新campaign；repeat2／repeat3加时轮仍按各自
+批次另行冻结和派发。接口与验证见[加时手册](../TIMEOUT-RERUN-GUIDE.md)及
+[工程验收](../acceptance/2026-11-08-acceptance-generic-timeout-rerun.md)。
+
 ### 14.7 RC任务集迁移与当前正式结果（2026-10-30）
 
 旧2小时基线与已发布12小时补跑合并版均由1136条投影为1120条，删除16个旧IR题slot；

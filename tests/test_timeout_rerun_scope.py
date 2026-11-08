@@ -16,9 +16,6 @@ from harbor_agent_infra.timeout_rerun.scope import validate_implementation_trans
 def retire_failed(plan, manifest, result, monkeypatch):
     from harbor_agent_infra.timeout_rerun.plan import digest
 
-    monkeypatch.setattr(
-        "harbor_agent_infra.timeout_rerun.scope.TASK", plan["slots"][0]["task_name"]
-    )
     value = {
         "schema_version": "timeout-terminal-deferrals.v1",
         "plan_sha256": plan["plan_sha256"],
@@ -92,9 +89,6 @@ def test_timeout_retirement_requires_explicit_bound_authorization(tmp_path, monk
 
 
 def freeze(plan, manifest, monkeypatch):
-    monkeypatch.setattr(
-        "harbor_agent_infra.timeout_rerun.scope.TASK", plan["slots"][0]["task_name"]
-    )
     value = {
         "schema_version": "timeout-scope-amendment.v1",
         "plan_sha256": plan["plan_sha256"],

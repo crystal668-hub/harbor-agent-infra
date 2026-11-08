@@ -128,6 +128,10 @@ argparse 参数错误返回 2。一般命令成功返回 0，异常或操作失�
 判断全部实验任务成功。recover 有执行失败或没有实际执行时返回 1；resume 预览成功或无续跑待办
 返回 0，但已结束工程失败仍可使原运行处于 partial。
 timeout-rerun 执行/发布仍需审查或中断协调时返回 2，校验失败返回 1；成功预览返回 0。
+`timeout-rerun plan`支持`--repeat`（默认1）、`--source-timeout-sec`（7200）、
+`--agent-timeout-sec`（43200，须大于原预算）及`--concurrency`（2）。一次campaign仅含
+同repeat、同版本／子集／视图；策略及来源协议冻结于v2清单，不能靠改目录或清单绕过。
+范围控制和旧v1读取边界见[加时手册](TIMEOUT-RERUN-GUIDE.md)。
 
 常用步骤见 [执行速查](EXECUTION-QUICK-REF.md)。历史计划中的未注册接口不作为命令别名。
 

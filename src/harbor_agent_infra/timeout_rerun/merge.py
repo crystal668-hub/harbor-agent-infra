@@ -21,6 +21,7 @@ from harbor_agent_infra.resume.lifecycle import run_lock
 from harbor_agent_infra.timeout_rerun.dispositions import scoring_records
 from harbor_agent_infra.timeout_rerun.outcomes import official_domain, scan
 from harbor_agent_infra.timeout_rerun.plan import digest, files, load_plan, object_digest
+from harbor_agent_infra.timeout_rerun.policy import timeout_label
 from harbor_agent_infra.timing import summarize_slot_timing
 
 
@@ -65,7 +66,9 @@ def before_rows(plan: dict, source: dict) -> list[dict]:
                 scored=True,
                 evaluable=True,
                 vgb_domain_result=zero_domain(
-                    row["task_name"], "original_7200_second_limit", "original_protocol_zero"
+                    row["task_name"],
+                    f"original_{plan['policy']['source_timeout_sec']}_second_limit",
+                    "original_protocol_zero",
                 ),
             )
     if score_summary(rows)["scored"] != len(rows):
@@ -248,7 +251,9 @@ def merge_campaign(
         comparisons, selected, all_after = {}, [], []
         try:
             for source in plan["sources"]:
-                name = source["run"] + "-timeout12h-merged"
+                name = source["run"] + (
+                    f"-timeout{timeout_label(plan['policy']['agent_timeout_sec'])}-merged"
+                )
                 target, final = stage / name, output / name
                 shutil.copytree(source["snapshot"], target)
                 payload = read_object(target / "results.json")
@@ -312,7 +317,7 @@ def merge_campaign(
                                 "source_record_sha256": object_digest(row),
                                 "authorization": disposition["authorization"],
                                 "reason": (
-                                    "Carry original 2h protocol zero; frozen without replacement"
+                                    "Carry original protocol zero; frozen without replacement"
                                 ),
                                 "evidence_file": str(evidence_file),
                                 "evidence_sha256": digest(evidence_file),
@@ -373,7 +378,9 @@ def merge_campaign(
                 "rerun_usage": attempt_usage(state),
                 "outcomes": dict(Counter(s["status"] for s in state["slots"].values())),
                 "protocol": (
-                    "Original 2h attempts followed by selected 12h reruns "
+                    f"Repeat {plan['policy']['repeat']}: original "
+                    f"{timeout_label(plan['policy']['source_timeout_sec'])} attempts followed by "
+                    f"selected {timeout_label(plan['policy']['agent_timeout_sec'])} reruns "
                     "in the frozen current environment"
                 ),
                 "published_at": datetime.now(UTC).isoformat(),
@@ -403,7 +410,8 @@ def merge_campaign(
             if scope_change:
                 write_object(stage / "scope-amendment.json", scope_change)
             lines = [
-                "# Repeat1 12h timeout amendment",
+                f"# Repeat {plan['policy']['repeat']} "
+                f"{timeout_label(plan['policy']['agent_timeout_sec'])} timeout amendment",
                 "",
                 report["protocol"],
                 "",
@@ -425,7 +433,7 @@ def merge_campaign(
                     "Official VGB scores and protocol failure zeros retain separate provenance.",
                     (
                         "All original attempts remain preserved; "
-                        "this is not a uniform single-attempt 12h experiment."
+                        "this is not a uniform single-attempt extended-budget experiment."
                     ),
                     "Failure counts and all-attempt time/cost usage: amendment-report.json.",
                 ]

@@ -21,9 +21,13 @@ from harbor_agent_infra.timeout_rerun.plan import (
 )
 
 
-def timeout_fixture(tmp_path, harness="claude-code", provider="deepseek"):
-    original, _ = fixture_run(tmp_path, harness=harness, provider=provider)
+def timeout_fixture(tmp_path, harness="claude-code", provider="deepseek", repeat=1):
+    original, _ = fixture_run(tmp_path, harness=harness, provider=provider, repeat=repeat)
     envelope = read_object(original / "results.json")
+    if repeat != 1:
+        envelope["benchmark_identity"] = {
+            "version": "fixture", "subset": "property-calculation", "view": "native",
+        }
     for i, row in enumerate(envelope["results"]):
         trial = row["trial_result"]
         task = Path(trial["config"]["task"]["path"])

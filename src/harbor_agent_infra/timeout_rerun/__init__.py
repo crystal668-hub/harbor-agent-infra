@@ -1,1 +1,1 @@
-"""Explicit repeat1 timeout protocol amendments, separate from engineering recovery."""
+"""Frozen timeout protocol amendments across repeats, separate from engineering recovery."""

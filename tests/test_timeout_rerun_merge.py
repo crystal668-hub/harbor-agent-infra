@@ -15,8 +15,8 @@ from harbor_agent_infra.timeout_rerun.merge import merge_campaign
 from harbor_agent_infra.timeout_rerun.plan import create_plan, digest, files, object_digest
 
 
-def merge_fixture(tmp_path, *, baseline_zero=False):
-    source = timeout_fixture(tmp_path)
+def merge_fixture(tmp_path, *, baseline_zero=False, repeat=1, **policy):
+    source = timeout_fixture(tmp_path, repeat=repeat)
     payload = read_object(source / "results.json")
     for row in payload["results"][1:]:
         row.update(
@@ -57,6 +57,8 @@ def merge_fixture(tmp_path, *, baseline_zero=False):
         tmp_path / "campaign",
         Path("runtime-lock.json"),
         baseline_dispositions=dispositions,
+        repeat=repeat,
+        **policy,
     )
     return source, plan, Path(plan["root"]) / "manifest.json"
 

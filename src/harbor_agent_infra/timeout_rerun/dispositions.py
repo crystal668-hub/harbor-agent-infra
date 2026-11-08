@@ -10,19 +10,27 @@ from harbor_agent_infra.timeout_rerun.plan import digest, object_digest
 
 
 def freeze_dispositions(path: Path | None, sources: list[dict], slots: list[dict]) -> list[dict]:
-    if path is None:
-        return []
-    payload = read_object(path)
-    if payload.get("schema_version") != "formal-score-dispositions.v1":
-        raise ValueError("Invalid baseline scoring disposition schema")
     selected = {(s["run"], s["task_name"]) for s in slots}
+    decisions = [
+        {**decision, "run": source["run"]}
+        for source in sources
+        for decision in read_object(Path(source["snapshot"]) / "results.json").get(
+            "baseline_score_dispositions", []
+        )
+        if (source["run"], decision["task_name"]) not in selected
+    ]
+    if path is not None:
+        payload = read_object(path)
+        if payload.get("schema_version") != "formal-score-dispositions.v1":
+            raise ValueError("Invalid baseline scoring disposition schema")
+        decisions.extend(payload["dispositions"])
     rows = {
         (s["run"], r["task_name"]): r
         for s in sources
         for r in read_object(Path(s["snapshot"]) / "results.json")["results"]
     }
     seen = set()
-    for d in payload["dispositions"]:
+    for d in decisions:
         key = (d["run"], d["task_name"])
         if key in selected or key in seen or key not in rows:
             raise ValueError("Baseline disposition targets duplicate, rerun or absent slot")
@@ -30,7 +38,7 @@ def freeze_dispositions(path: Path | None, sources: list[dict], slots: list[dict
         validate_disposition(rows[key], d)
         if digest(Path(d["evidence_file"])) != d["evidence_sha256"]:
             raise ValueError("Baseline authorization evidence changed")
-    return payload["dispositions"]
+    return decisions
 
 
 def validate_disposition(row: dict, decision: dict):

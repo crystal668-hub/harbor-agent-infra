@@ -22,6 +22,7 @@ from harbor_agent_infra.resume.io import read_object, write_object
 from harbor_agent_infra.resume.lifecycle import attach_checkpoints, run_lock
 from harbor_agent_infra.timeout_rerun.outcomes import scan
 from harbor_agent_infra.timeout_rerun.plan import load_plan, object_digest
+from harbor_agent_infra.timeout_rerun.policy import timeout_label
 from integrations.vgb.chemistry import preflight_chemistry
 from integrations.vgb.runtime import VgbRuntime
 
@@ -45,11 +46,12 @@ def jobs_to_start(plan: dict, state: dict) -> list[tuple[dict, list[dict]]]:
     for key, items in sorted(groups.items()):
         config = copy.deepcopy(configs[key])
         config["tasks"] = [i["task"] for i in items]
-        name = f"{key[0]}-12h-{object_digest(items)[:12]}"
+        label = timeout_label(plan["policy"]["agent_timeout_sec"])
+        name = f"{key[0]}-{label}-{object_digest(items)[:12]}"
         # A cancelled partial Job retains all native attempts. Unstarted tasks get a new Job.
         suffix = 1
         while (root / "jobs" / name).exists():
-            name = f"{key[0]}-12h-{object_digest(items)[:12]}-resume{suffix}"
+            name = f"{key[0]}-{label}-{object_digest(items)[:12]}-resume{suffix}"
             suffix += 1
         config["job_name"] = name
         result.append((config, [{k: i[k] for k in ("slot_id", "ordinal")} for i in items]))
@@ -152,7 +154,7 @@ async def repair_score(plan: dict, slot: dict, attempt: dict):
     timeout = (verifier.get("override_timeout_sec") or task["verifier"]["timeout_sec"]) * multiplier
     if verifier.get("max_timeout_sec") is not None:
         timeout = min(timeout, verifier["max_timeout_sec"])
-    while len(provenance["attempts"]) < 2:
+    while len(provenance["attempts"]) < plan["policy"]["scoring_retries"]:
         entry = {"started_at": datetime.now(UTC).isoformat(), "status": "started"}
         provenance["attempts"].append(entry)
         write_object(provenance_path, provenance)  # Reserve retry before invoking a verifier.
@@ -232,7 +234,8 @@ async def run_campaign(
                     },
                 )
                 print(
-                    f"Starting {config['job_name']}: {len(items)} slots, concurrency 2", flush=True
+                    f"Starting {config['job_name']}: {len(items)} slots, "
+                    f"concurrency {config['n_concurrent_trials']}", flush=True
                 )
                 job = await Job.create(JobConfig.model_validate(config))
                 attach_checkpoints(job)
