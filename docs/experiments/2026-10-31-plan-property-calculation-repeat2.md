@@ -349,6 +349,10 @@ Basic 010–021共12项Docker中断（2项退出码255、10项环境设置Runtim
 
 2026-11-07 OpenClaw × DeepSeek正式轮`hai audit`检出6项provider工程错误：3项网络连接失败、3项429配额超限，均无Verifier评分产物。用户裁定6项均为工程失败并批准首次恢复；原始audit保留，审核版清单及带配置dry-run通过，6项各0/2、并发2。恢复尚未派发，当前OpenClaw × Qwen仍运行；详见[失败审计](../audit/2026-11-07-audit-openclaw-deepseek-repeat2.md)。
 
+2026-11-08按用户指示将上述OpenClaw × DeepSeek恢复批次并发由2降为1，
+仅修改批准清单的`metadata.batch_concurrency`并记录授权，原并发2批准版归档保留。
+6项批准及替代计数不变；带原配置再次dry-run通过，确认有效并发1、6个单题Job，尚未实际派发。
+
 ## 2026-11-07 Hermes × Qwen 正式合并验收
 
 用户授权后发布`hermes-qwen-repeat2-merged`：58项原始代表与12项恢复代表，无冲突。Advanced 006依原7200秒超时协议单独投影零分后，正式summary为70/70计分，Advanced／Basic／整体均分分别0.501352／0.718445／0.659520。
