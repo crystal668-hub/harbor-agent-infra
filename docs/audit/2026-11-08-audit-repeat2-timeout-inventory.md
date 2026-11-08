@@ -2,7 +2,7 @@
 
 日期：2026-11-08（Asia/Shanghai）  
 类型：audit（正式最终代表清点与加时准备）  
-状态：16份最终快照、1120个代表已核对；43个2h超时候选证据完整。尚未冻结加时campaign，未执行run dry-run、Agent或Verifier；本文不是补跑执行验收。
+状态：43项已按用户授权冻结，2026-11-08 19:58（上海）启动12h加时campaign；首组2项实际运行、41项未启动。清点与启动门禁已核对，补跑结果尚未验收。
 
 ## 范围与选择口径
 
@@ -59,12 +59,12 @@ OpenClaw × Qwen A018的length能力零分不属于2h超时，本次不重新开
 
 ## 补跑准备与条件变化
 
-现行[加时手册](../TIMEOUT-RERUN-GUIDE.md)已支持repeat2。本次只完成清点和纯配置准备：
+现行[加时手册](../TIMEOUT-RERUN-GUIDE.md)已支持repeat2。初次清点仅完成纯配置准备：
 43个候选的目标Job均通过现行`target_job`及Harbor JobConfig schema；
-保留原模型、单次attempt、内部重试0。未创建`manifest.json`，这些检查不等于执行门禁通过。
+保留原模型、单次attempt、内部重试0；当时未创建`manifest.json`，不将这些检查视为执行门禁通过。
 
 拟采用7200→43200秒（12h）、Job并发2、各组合串行，仅skills_off；
-这是手册默认值的准备方案，尚未将其视为本批已批准条件。
+这是初次清点时的待确认方案；后续用户授权与实际启动记录见下节。
 首次43次尝试的Agent预算上限为516 Trial小时，非费用估计或完成时间承诺；
 额外工程替代及评分修复按现行协议各最多2次，不清零历史普通恢复次数。
 
@@ -116,3 +116,28 @@ uv run --locked --python 3.12 python \
 本文矩阵与本机清单逐项一致、所改文档相对链接/新增锚点及`git diff --check`通过。
 命令与检查输出保存在本机`validation.txt`；未执行Docker集成或provider端到端，
 不将这些结果等同于正式补跑验收。
+
+## 2026-11-08 用户授权启动
+
+用户针对4个OpenClaw候选的镜像变化说明回复“已明确，请启动”，批准前述12h、并发2、
+skills_off及当前运行锁方案。旧值为7200秒，独立加时预算为43200秒；4项OpenClaw明确
+采用当前`f6b6151b…`修复镜像，其余条件及新旧身份按manifest冻结，不修改2h基线。
+
+campaign：`run-artifacts/timeout-rerun/repeat2-12h-20261108/`，选入43项、9个顺序Job；
+16份完整来源快照及3项未入选baseline裁定继承均通过校验。plan SHA-256为
+`7ef7ecf304fde422d5e63f8254f45b30540cb97269f2d07c1ee381da25d6fd49`。
+冻结前280份来源文件哈希无漂移；正式run dry-run确认43项待启动、9个Job。
+`hai doctor`通过，Docker可访问、无先前运行容器；四类harness的锁定VGB及镜像化学预检
+均为passed。未单独调用provider额度/余额探测，不以预检通过保证后续全部provider可用。
+
+19:58:10（上海）tmux会话`harbor-repeat2-timeout12h-20261108`开始运行，
+首组为Claude Code × DeepSeek的A006、B029、B030，并发2。
+19:59:21核对控制器及campaign状态均为running，A006、B029有活跃容器、完成setup且
+各已记录5条assistant流响应；B030及其他40项未启动。
+活动checkpoint尚未写入Agent执行时钟，不据该空字段误判未运行；
+`state.json`在终态hook刷新，启动现场以原生checkpoint、流响应及活跃容器交叉确认。
+
+本campaign的`launch.json`、`authorized-image-changes.json`记录本批授权；
+`launch-dry-run.json`、`preflight-*.json`、`launch-verification.json`保存启动门禁及现场证据，
+`controller-state.json`、`state.json`、`execution.log`供后续查看进度。
+新失败按冻结协议审核，不追加未获授权的工程替代，不发布未完成的合并视图。

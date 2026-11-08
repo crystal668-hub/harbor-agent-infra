@@ -894,26 +894,30 @@ repeat2由15/16更新为16/16，16份代表实际汇总1120/1120计分，总进�
 
 #### 14.3.2 合并12h超时补跑轮
 
-本轮加时campaign尚未启动，未发布合并视图；不从2h正式轮表复制分数。
+2026-11-08用户批准12h、并发2及4项OpenClaw采用当前修复镜像；19:58（上海）启动
+`repeat2-12h-20261108`，43项/9个Job，仅skills_off。首组Claude Code × DeepSeek运行，
+其他8个候选组合排队；7个无候选组合在发布时保留原代表。清单及启动证据见
+[审计记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-08-用户授权启动)。
+未发布合并视图；下表为启动时进度，不从2h正式轮表复制分数。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 未启动 | — | — |
-| Claude Code | Qwen | 未启动 | — | — |
-| Claude Code | GPT | 未启动 | — | — |
-| Claude Code | Claude | 未启动 | — | — |
-| Codex | DeepSeek | 未启动 | — | — |
-| Codex | Qwen | 未启动 | — | — |
-| Codex | GPT | 未启动 | — | — |
-| Codex | Claude | 未启动 | — | — |
-| Hermes | DeepSeek | 未启动 | — | — |
-| Hermes | Qwen | 未启动 | — | — |
-| Hermes | GPT | 未启动 | — | — |
-| Hermes | Claude | 未启动 | — | — |
-| OpenClaw | DeepSeek | 未启动 | — | — |
-| OpenClaw | Qwen | 未启动 | — | — |
-| OpenClaw | GPT | 未启动 | — | — |
-| OpenClaw | Claude | 未启动 | — | — |
+| Claude Code | DeepSeek | 3项：2运行、1等待 | — | — |
+| Claude Code | Qwen | 13项排队 | — | — |
+| Claude Code | GPT | 无候选；待发布保留 | — | — |
+| Claude Code | Claude | 无候选；待发布保留 | — | — |
+| Codex | DeepSeek | 2项排队 | — | — |
+| Codex | Qwen | 8项排队 | — | — |
+| Codex | GPT | 无候选；待发布保留 | — | — |
+| Codex | Claude | 无候选；待发布保留 | — | — |
+| Hermes | DeepSeek | 1项排队 | — | — |
+| Hermes | Qwen | 10项排队 | — | — |
+| Hermes | GPT | 无候选；待发布保留 | — | — |
+| Hermes | Claude | 2项排队 | — | — |
+| OpenClaw | DeepSeek | 无候选；待发布保留 | — | — |
+| OpenClaw | Qwen | 3项排队 | — | — |
+| OpenClaw | GPT | 无候选；待发布保留 | — | — |
+| OpenClaw | Claude | 1项排队 | — | — |
 
 ### 14.4 Repeat 3
 

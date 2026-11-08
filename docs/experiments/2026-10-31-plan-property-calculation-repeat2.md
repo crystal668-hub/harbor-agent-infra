@@ -2,14 +2,17 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2的2h正式轮已验收16/16组，16个代表快照1120/1120计分；OpenClaw × Qwen首次恢复Advanced 018按用户最终裁定能力计0，受控新镜像合并快照已发布并验收。12h加时轮和repeat3未启动。最近结案见[OpenClaw × Qwen验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)。
+状态：repeat2的2h正式轮已验收16/16组，16个代表快照1120/1120计分；12h加时轮43项于2026-11-08 19:58（上海）获准启动，当前首组运行，尚未发布加时合并结果；repeat3未启动。2h最近结案见[OpenClaw × Qwen验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)，加时状态见[启动记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-08-用户授权启动)。
 
 ## 范围与配置结论
 
 2026-11-08新增补跑清点：2h正式轮16份最终快照共43个正常Agent超时候选（Advanced 29、
 Basic 14，23道不同题）；原7200秒条件和结果不改。
 证据、完整编号及当前OpenClaw镜像变化见[超时项清单](../audit/2026-11-08-audit-repeat2-timeout-inventory.md)。
-12h/并发2仅为待确认方案，未冻结campaign或启动补跑。
+初次清点的12h/并发2方案后经用户“已明确，请启动”批准；19:58启动
+`repeat2-12h-20261108`，4项OpenClaw采用当前修复镜像的变化已明确授权。
+43项/9个Job的dry-run及四类harness环境预检通过，首组Claude Code × DeepSeek并发2。
+加时条件是独立修订，不改写下表原2h正式轮的冻结条件或成绩。
 
 本计划承接已完成的性质计算 repeat1 正式轮及超时补跑，仅准备性质计算 repeat2。
 开放生成尚未开始 repeat1，不纳入本轮 repeat2。协议以[正式方案](formal-experiment-plan.md)为准。
