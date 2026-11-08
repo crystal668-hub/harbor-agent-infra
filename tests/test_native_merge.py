@@ -982,6 +982,8 @@ def test_preinstalled_image_merge_is_explicit_and_evidence_preserving(preinstall
         "metadata",
         "adapter",
         "symlink",
+        "original_agent",
+        "original_extra_agent",
     ],
 )
 def test_preinstalled_merge_rejects_drift(preinstalled_runs, fault):
@@ -1051,6 +1053,14 @@ def test_preinstalled_merge_rejects_drift(preinstalled_runs, fault):
         write(p, data)
     elif fault == "adapter":
         trial["config"]["agent"]["import_path"] = "unrelated:Agent"
+    elif fault in ("original_agent", "original_extra_agent"):
+        p = next(original.glob("jobs/*/config.json"))
+        data = json.loads(p.read_text())
+        if fault == "original_agent":
+            data["agents"][0]["model_name"] = "different-original"
+        else:
+            data["agents"].append(copy.deepcopy(data["agents"][0]))
+        write(p, data)
     write(path, trial)
     write(manifest_path, manifest)
     meta_path = path.parent.parent / "recovery-metadata.json"

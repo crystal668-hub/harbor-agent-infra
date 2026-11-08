@@ -89,6 +89,11 @@ def validate_transition(original_path: Path, candidate_path: Path, change: dict,
 
     old_job = JobConfig.model_validate(read_json(original_path.parent.parent / "config.json"))
     actual = JobConfig.model_validate(read_json(candidate_path.parent.parent / "config.json"))
+    if (
+        len(old_job.agents) != 1
+        or old_job.agents[0].model_dump(mode="json") != original["config"]["agent"]
+    ):
+        raise ValueError("Original agent differs from the frozen Job")
     if _comparable(old_job) != _comparable(target):
         raise ValueError("Preinstalled snapshot alters frozen Job settings")
     expected_job = copy.deepcopy(target)
