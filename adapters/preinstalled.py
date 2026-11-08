@@ -19,6 +19,7 @@ from adapters.runtime_patches import (
     openclaw_adaptive_patch_command,
     openclaw_compaction_patch_command,
     openclaw_encrypted_content_patch_command,
+    openclaw_length_continuation_patch_command,
     openclaw_network_retry_patch_command,
     openclaw_session_fixes_patch_command,
 )
@@ -45,6 +46,7 @@ def selected_patches(agent) -> dict[str, str]:
             "openclaw-network-retry": openclaw_network_retry_patch_command(),
             "openclaw-session-fixes": openclaw_session_fixes_patch_command(),
             "openclaw-compaction": openclaw_compaction_patch_command(),
+            "openclaw-length-continuation": openclaw_length_continuation_patch_command(),
         }
         if agent.model_name.startswith("openai/"):
             patches["openclaw-openai-encrypted-content"] = (

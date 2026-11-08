@@ -221,6 +221,61 @@ def openclaw_compaction_patch_command() -> str:
     return export_patch + " && " + cli_patch
 
 
+OPENCLAW_LENGTH_CONTINUATION_SHA256 = (
+    "7b2d568c408240879eb998377090df11fe17780c5dc0eeb5d749f6bb147565f7"
+)
+_OPENCLAW_LENGTH_CONTINUATION_CONDITION = (
+    "if (!emptyAssistantReplyIsSilent && attemptCompactionCount > 0 && "
+    "payloadCount === 0 && !aborted && !promptError && !timedOut && "
+    "!attempt.clientToolCalls && !attempt.yieldDetected && "
+    "!attempt.didSendDeterministicApprovalPrompt && !attempt.lastToolError && "
+    "!accumulatedReplayState.hadPotentialSideEffects && "
+    "compactionContinuationRetryAttempts < 1) {"
+)
+OPENCLAW_LENGTH_CONTINUATION_REPLACEMENTS = (
+    (
+        "let compactionContinuationRetryInstruction = null;",
+        "let compactionContinuationRetryInstruction = null;\n"
+        "\t\t\tlet compactionContinuationToolsDisabled = false;",
+    ),
+    (
+        "disableTools: params.disableTools,",
+        "disableTools: params.disableTools || compactionContinuationToolsDisabled,",
+    ),
+    (
+        _OPENCLAW_LENGTH_CONTINUATION_CONDITION,
+        "const lengthContinuationNeedsToolIsolation = attemptCompactionCount > 0 && "
+        'finalAssistantStopReason === "length" && !finalAssistantVisibleText?.trim();\n'
+        "\t\t\t\t\tconst replaySafeCompactionContinuation = payloadCount === 0 && "
+        "!accumulatedReplayState.hadPotentialSideEffects;\n"
+        "\t\t\t\t\tif (!emptyAssistantReplyIsSilent && attemptCompactionCount > 0 && "
+        "(replaySafeCompactionContinuation || lengthContinuationNeedsToolIsolation) && "
+        "!aborted && !promptError && !timedOut && !attempt.clientToolCalls && "
+        "!attempt.yieldDetected && !attempt.didSendDeterministicApprovalPrompt && "
+        "!attempt.lastToolError && compactionContinuationRetryAttempts < 1) {",
+    ),
+    (
+        "compactionContinuationRetryInstruction = COMPACTION_CONTINUATION_RETRY_INSTRUCTION;",
+        "if (lengthContinuationNeedsToolIsolation) {\n"
+        "\t\t\t\t\t\tnextAttemptPromptOverride = COMPACTION_CONTINUATION_RETRY_INSTRUCTION;\n"
+        "\t\t\t\t\t\tsuppressNextUserMessagePersistence = true;\n"
+        "\t\t\t\t\t\tcompactionContinuationToolsDisabled = true;\n"
+        "\t\t\t\t\t\tcompactionContinuationRetryInstruction = null;\n"
+        "\t\t\t\t\t} else compactionContinuationRetryInstruction = "
+        "COMPACTION_CONTINUATION_RETRY_INSTRUCTION;",
+    ),
+)
+
+
+def openclaw_length_continuation_patch_command() -> str:
+    """Continue a compacted length turn once without replaying completed tools."""
+    return _openclaw_release_patch_command(
+        "embedded-agent-CGzgLLU-.js",
+        OPENCLAW_LENGTH_CONTINUATION_SHA256,
+        OPENCLAW_LENGTH_CONTINUATION_REPLACEMENTS,
+    )
+
+
 
 OPENCLAW_OPENAI_TRANSPORT_SHA256 = (
     "6b93df2b9ea93b9f862b4cda2d2bd8149823544d7053a417ef34c39aeb19126c"

@@ -16,7 +16,16 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.parametrize(
-    "outcome", ["resumed", "normal", "timeout", "reconnected", "compacted"]
+    "outcome",
+    [
+        "resumed",
+        "normal",
+        "timeout",
+        "reconnected",
+        "compacted",
+        "length_continuation",
+        "length_exhausted",
+    ],
 )
 def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch, outcome):
     if os.environ.get("RUN_OPENCLAW_RESUME") != "1":
@@ -24,13 +33,18 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     lock = load_runtime_lock(Path(os.environ.get(
         "PREINSTALLED_RUNTIME_LOCK", "runtime-lock.json"
     )))
-    pause = outcome not in {"normal", "compacted"}
+    pause = outcome not in {
+        "normal", "compacted", "length_continuation", "length_exhausted",
+    }
     image = lock.execution_image("openclaw", "preinstalled")
     task = tmp_path / "fixture__resume"
     (task / "environment").mkdir(parents=True)
     (task / "tests").mkdir()
     (task / "tests/test.sh").write_text("#!/bin/sh\nexit 0\n")
-    (task / "instruction.md").write_text("PARENT_WORK" if pause else "NO_PAUSE")
+    instruction = "PARENT_WORK" if pause else "NO_PAUSE"
+    if outcome in {"length_continuation", "length_exhausted"}:
+        instruction = "LENGTH_CONTINUATION"
+    (task / "instruction.md").write_text(instruction)
     (task / "task.toml").write_text(
         'schema_version = "1.4"\n[environment]\n'
         f'docker_image = "{image.immutable_reference}"\n[agent]\n'
@@ -74,6 +88,10 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
                 "nohup python3 /tmp/openclaw-model.py "
                 + ("--pause-forever " if outcome == "timeout" else "")
                 + ("--inflated-cache " if outcome == "compacted" else "")
+                + ("--inflated-cache --length-continuation "
+                   if outcome == "length_continuation" else "")
+                + ("--inflated-cache --length-exhausted "
+                   if outcome == "length_exhausted" else "")
                 + "> /logs/agent/fixture-model.log "
                 "2>&1 </dev/null &"
             )
@@ -146,6 +164,21 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     result = asyncio.run(run())
     trial = result.trial_results[0]
     agent_dir = Path(trial.trial_uri.removeprefix("file://")) / "agent"
+    def model_requests():
+        requests = [
+            json.loads(line)
+            for line in (agent_dir / "fixture-requests.jsonl").read_text().splitlines()
+        ]
+        return [
+            request
+            for request in requests
+            if not any(
+                message["role"] == "system"
+                and "context summarization assistant" in str(message["content"])
+                for message in request["messages"]
+            )
+        ]
+
     if outcome == "timeout":
         assert trial.exception_info.exception_type == "AgentTimeoutError"
         assert trial.verifier_result is None
@@ -159,6 +192,15 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         assert not (agent_dir / "openclaw-driver.pid").exists()
         assert not (agent_dir / "openclaw.txt").exists()
         return
+    if outcome == "length_exhausted":
+        assert trial.exception_info.exception_type == "OpenClawAgentIncompleteError"
+        assert trial.verifier_result is None
+        assert calls == verified == []
+        assert (agent_dir / "fixture-side-effect-count").read_text() == "1"
+        assert len(model_requests()) == 3
+        assert json.loads((agent_dir / "openclaw-status.json").read_text())["state"] == "failed"
+        assert not (agent_dir / "openclaw.txt").exists()
+        return
     assert trial.exception_info is None, trial.exception_info
     assert len(calls) == len(verified) == 1
     assert trial.verifier_result.rewards["reward"] == 1.0
@@ -170,6 +212,18 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         assert "CLI transcript compaction did not reduce context" not in gateway_log
         assert "CLI transcript compaction failed" not in gateway_log
         assert "Cannot continue from message role: assistant" not in gateway_log
+    if outcome == "length_continuation":
+        assert (agent_dir / "fixture-side-effect-count").read_text() == "1"
+        requests = model_requests()
+        assert len(requests) == 3
+        assert requests[-1].get("tools") in (None, [])
+        final_users = [
+            message["content"]
+            for message in requests[-1]["messages"]
+            if message["role"] == "user" and isinstance(message["content"], str)
+        ]
+        assert sum(value.endswith("LENGTH_CONTINUATION") for value in final_users) == 1
+        assert "compacted transcript" in final_users[-1].lower()
     events = [
         json.loads(line) for line in (agent_dir / "openclaw-turns.jsonl").read_text().splitlines()
     ]
@@ -185,7 +239,8 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         assert any(e["kind"] == "reconnected" for e in events)
         assert any(e["kind"] == "completed" and e["reconciled"] for e in events)
     else:
-        assert len(parent_starts) == (3 if pause else 1)
+        expected_parent_starts = 2 if outcome == "length_continuation" else (3 if pause else 1)
+        assert len(parent_starts) == expected_parent_starts
     assert {e["sessionId"] for e in parent_starts} == {parent["sessionId"]}
     transcript = [
         json.loads(line) for line in (agent_dir / "openclaw.session.jsonl").read_text().splitlines()
@@ -194,6 +249,12 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     assert sum(
         "PARENT_WORK" in str(m.get("content")) for m in messages if m["role"] == "user"
     ) == int(pause)
+    if outcome == "length_continuation":
+        assert sum(
+            "LENGTH_CONTINUATION" in str(m.get("content"))
+            for m in messages
+            if m["role"] == "user"
+        ) == 1
     assert sum(row.get("customType") == "openclaw.sessions_yield" for row in transcript) == (
         2 if pause else 0
     )

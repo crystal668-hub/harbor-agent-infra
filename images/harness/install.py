@@ -28,6 +28,7 @@ from runtime_patches import (
     openclaw_adaptive_patch_command,
     openclaw_compaction_patch_command,
     openclaw_encrypted_content_patch_command,
+    openclaw_length_continuation_patch_command,
     openclaw_network_retry_patch_command,
     openclaw_session_fixes_patch_command,
 )
@@ -93,6 +94,7 @@ def capture_patches(name: str, roots: list[str], commit: str | None) -> dict:
         commands["openclaw-network-retry"] = openclaw_network_retry_patch_command()
         commands["openclaw-session-fixes"] = openclaw_session_fixes_patch_command()
         commands["openclaw-compaction"] = openclaw_compaction_patch_command()
+        commands["openclaw-length-continuation"] = openclaw_length_continuation_patch_command()
         commands["openclaw-openai-encrypted-content"] = openclaw_encrypted_content_patch_command()
     elif name == "hermes":
         commands["hermes-output"] = hermes_output_patch_command(commit)

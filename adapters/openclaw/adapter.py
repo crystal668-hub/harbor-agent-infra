@@ -26,6 +26,7 @@ from adapters.runtime_patches import (
     openclaw_adaptive_patch_command,
     openclaw_compaction_patch_command,
     openclaw_encrypted_content_patch_command,
+    openclaw_length_continuation_patch_command,
     openclaw_network_retry_patch_command,
     openclaw_session_fixes_patch_command,
 )
@@ -92,6 +93,11 @@ class OpenClawAgent(HarborOpenClaw):
                 )
                 await self.exec_as_agent(
                     environment, command=openclaw_compaction_patch_command(), timeout_sec=30
+                )
+                await self.exec_as_agent(
+                    environment,
+                    command=openclaw_length_continuation_patch_command(),
+                    timeout_sec=30,
                 )
                 if self.model_name.startswith("openai/"):
                     await self.exec_as_agent(

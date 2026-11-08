@@ -128,6 +128,47 @@ def test_session_patch_targets_only_approved_fixes_and_rejects_drift(tmp_path, m
     assert apply_release_patch(tmp_path, command).returncode != 0
 
 
+def test_length_continuation_patch_is_bounded_tool_isolated_and_guarded(
+    tmp_path, monkeypatch
+):
+    root = tmp_path / "openclaw"
+    (root / "dist").mkdir(parents=True)
+    version = root / "package.json"
+    version.write_text('{"version":"2026.6.34"}')
+    source = "\n".join(
+        before for before, _ in patches.OPENCLAW_LENGTH_CONTINUATION_REPLACEMENTS
+    )
+    monkeypatch.setattr(
+        patches,
+        "OPENCLAW_LENGTH_CONTINUATION_SHA256",
+        hashlib.sha256(source.encode()).hexdigest(),
+    )
+    target = root / "dist/embedded-agent-CGzgLLU-.js"
+    target.write_text(source)
+    command = patches.openclaw_length_continuation_patch_command()
+    assert apply_release_patch(tmp_path, command).returncode == 0
+    once = target.read_text()
+    for before, after in patches.OPENCLAW_LENGTH_CONTINUATION_REPLACEMENTS:
+        assert after in once
+        if before not in after:
+            assert before not in once
+    assert 'finalAssistantStopReason === "length"' in once
+    assert "compactionContinuationRetryAttempts < 1" in once
+    assert "params.disableTools || compactionContinuationToolsDisabled" in once
+    assert "suppressNextUserMessagePersistence = true" in once
+    assert "replaySafeCompactionContinuation" in once
+    assert "lengthContinuationNeedsToolIsolation" in once
+    assert apply_release_patch(tmp_path, command).returncode == 0
+    assert target.read_text() == once
+    for content in (source + "// drift", once + "// drift"):
+        target.write_text(content)
+        assert apply_release_patch(tmp_path, command).returncode != 0
+        assert target.read_text() == content
+    target.write_text(source)
+    version.write_text('{"version":"other"}')
+    assert "Unexpected OpenClaw version" in apply_release_patch(tmp_path, command).stderr
+
+
 def test_official_overflow_guard_does_not_continue_a_clean_stop():
     before, after = patches.OPENCLAW_OVERFLOW_RETRY_REPLACEMENT
     assert 'stopReason === "error"' not in before
@@ -152,6 +193,9 @@ def test_session_and_compaction_patches_selected_for_all_openclaw_models(
     commands = selected_patches(agent)
     assert commands["openclaw-session-fixes"] == patches.openclaw_session_fixes_patch_command()
     assert commands["openclaw-compaction"] == patches.openclaw_compaction_patch_command()
+    assert commands["openclaw-length-continuation"] == (
+        patches.openclaw_length_continuation_patch_command()
+    )
     monkeypatch.setattr(Base, "install", AsyncMock())
     agent.exec_as_agent = AsyncMock()
     asyncio.run(agent.install(None))
