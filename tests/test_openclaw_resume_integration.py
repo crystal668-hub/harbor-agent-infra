@@ -166,7 +166,9 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         gateway_log = (agent_dir / "openclaw-gateway.log").read_text()
         assert "embedded run auto-compaction complete" in gateway_log
         assert "reconcile is not a function" not in gateway_log
-        assert "Already compacted" not in gateway_log
+        assert "CLI transcript compaction skipped for qwen/test: Already compacted" in gateway_log
+        assert "CLI transcript compaction did not reduce context" not in gateway_log
+        assert "CLI transcript compaction failed" not in gateway_log
         assert "Cannot continue from message role: assistant" not in gateway_log
     events = [
         json.loads(line) for line in (agent_dir / "openclaw-turns.jsonl").read_text().splitlines()

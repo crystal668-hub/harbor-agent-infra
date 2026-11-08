@@ -4,7 +4,7 @@
 
 类型：plan
 
-状态：独立工作树实施中，禁止合并；候选镜像待 Docker 空闲后构建
+状态：已实施并完成候选镜像验收；独立分支待用户通知后合并
 
 ## 目标与边界
 
@@ -39,12 +39,17 @@ overflow guard与既有no-op edit修复合并为单一`openclaw-session-fixes`�
    overflow guard、版本漂移和文件漂移拒绝。
 2. 更新strict preinstalled及runtime install的补丁选择，所有OpenClaw provider统一应用；未知
    compaction失败仍为fatal。
-3. Docker空闲后，从保持`2026.6.34`包版本的候选runtime-lock构建全新本地镜像引用；不覆盖
-   `hai-openclaw-latest`。manifest必须新增两个独立补丁定义及文件前后哈希。
+3. 从保持`2026.6.34`包版本的候选runtime-lock构建全新本地镜像引用；不覆盖
+   `hai-openclaw-latest`。manifest新增两个独立补丁定义及文件前后哈希。
 4. 对候选镜像运行preinstalled before/after/final probe、原有Gateway resume integration，以及
    三个真实固定版本边界复现。
 5. 最终运行相关测试、全部非integration测试、Ruff、Node语法和`git diff --check`，形成独立
    acceptance文档和聚焦提交。
+
+候选镜像已构建为
+`hai-openclaw-compaction-backport-20261108@sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768ec3f5974812`，
+OpenClaw包版本仍为`2026.6.34`。验收结果见
+[候选镜像验收记录](../acceptance/2026-11-08-acceptance-openclaw-compaction-backport.md)。
 
 ## 正式恢复边界
 
