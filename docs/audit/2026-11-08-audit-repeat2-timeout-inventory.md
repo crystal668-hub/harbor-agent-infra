@@ -2,7 +2,7 @@
 
 日期：2026-11-08；更新：2026-11-09（Asia/Shanghai）
 类型：audit（正式最终代表清点与加时准备）  
-状态：旧campaign保留9项有效12h结果、34项错误slot已证据绑定退休；中间视图1120/1120计分。新campaign已冻结34项、尚未派发；本机代理待用户启动并通知，最终12h补跑尚未验收。
+状态：旧campaign保留9项有效12h结果、34项错误slot证据绑定退休；新campaign的34项于2026-11-09 15:21（上海）启动，首组2项有Qwen模型响应，其余待调度。最终12h补跑尚未验收。
 
 ## 范围与选择口径
 
@@ -226,3 +226,26 @@ run-artifacts/formal/repeat2-timeout12h-nine-kept-20261109：16份选定快照�
 冻结repeat2、7200→43200秒、并发2、skills_off。dry-run只列34项/8个Job，
 尚无新Job、Trial或state.json。用户已要求等本机代理启动并通知后才重新派发，
 因此保持该新campaign未运行，不从现有HTTP测试外推后续模型可用性。
+
+## 2026-11-09 本机代理恢复与新campaign启动
+
+用户通知本机代理已启动，并将Docker Desktop的Containers proxy也设为手动127.0.0.1:7892。
+本机端口监听且宿主经该代理访问Qwen网关成功。Docker Desktop设置本身在新容器中
+没有自动提供代理环境；重启Docker Desktop后，未额外配置的容器HTTPS仍失败。
+此差异通过锁定Claude Code镜像的无代理/显式代理和Docker Compose检查确认。
+
+为限制影响，只在新campaign的忽略目录使用docker-client-config/config.json，
+设置HTTP(S)_PROXY为http://host.docker.internal:7892，并排除本地桥地址；
+不修改用户主目录的Docker客户端配置。启动进程以DOCKER_CONFIG指向该独立配置，
+控制记录绑定其SHA-256。Compose验证容器取得相同的HTTPS_PROXY。
+同一锁定镜像在当前代理条件下分别完成真实GPT桥接和Qwen Messages调用，
+均返回HTTP 200、正确模型及非空文本；这只证明当次最小调用，并非全部provider额度保证。
+
+新campaign repeat2-12h-redo-20261109保留原来源选择及9项有效12h结果，
+仅34个7200秒超时代表重新入选；dry-run为8个Job、34项，旧campaign错误尝试仍可审计。
+15:21:09（上海）tmux会话harbor-repeat2-timeout12h-redo-20261109启动后，
+四类harness预检均passed。首组Claude Code × Qwen 7项顺序Job已派发并发2，
+A015、A016原生Trial完成环境和Agent setup，各已记录来自qwen3.8-max的assistant响应；
+没有将首次9项有效结果重新派发。启动证据在新campaign的launch.json、
+launch-verification.json、controller-state.json、state.json和execution.log。
+本记录仅验收启动及真实调用门禁，后续34项完成、审核、合并仍待执行。

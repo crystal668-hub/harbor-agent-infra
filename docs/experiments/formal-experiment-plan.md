@@ -911,12 +911,16 @@ A018/A019由Harbor取消，30项尚未第二次尝试；9项首轮完成结果�
 原Docker Desktop手动代理127.0.0.1:7892已恢复配置，等待用户启动代理并通知，
 届时须重新做容器真实模型测试。见
 [代理等待记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-协议桥恢复错误尝试退休与代理等待)。
-未发布最终合并视图；下表为新批次待启动范围，不从2h正式轮表复制分数。
+2026-11-09 15:21（上海）在用户已启动的本机代理及独立Docker客户端代理配置下，
+新34项campaign启动；四类harness预检通过，Claude Code × Qwen首批A015/A016
+均记录真实qwen3.8-max模型响应。代理配置和真实最小请求证据见
+[启动记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-本机代理恢复与新campaign启动)。
+未发布最终合并视图；下表为新批次启动时范围，不从2h正式轮表复制分数。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 3项完成 | — | — |
-| Claude Code | Qwen | 6项中间视图保留、7项新批次待启动 | — | — |
+| Claude Code | Qwen | 6项中间视图保留、2项运行、5项等待 | — | — |
 | Claude Code | GPT | 无候选；待发布保留 | — | — |
 | Claude Code | Claude | 无候选；待发布保留 | — | — |
 | Codex | DeepSeek | 2项新批次待启动 | — | — |
