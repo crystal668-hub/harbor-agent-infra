@@ -898,26 +898,29 @@ repeat2由15/16更新为16/16，16份代表实际汇总1120/1120计分，总进�
 `repeat2-12h-20261108`，43项/9个Job，仅skills_off。首组Claude Code × DeepSeek运行，
 其他8个候选组合排队；7个无候选组合在发布时保留原代表。清单及启动证据见
 [审计记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-08-用户授权启动)。
-未发布合并视图；下表为启动时进度，不从2h正式轮表复制分数。
+2026-11-09首轮9项正常完成、34项Docker环境创建失败且Agent未启动；用户批准绑定
+首次Trial证据后重新派发。Docker重启及桥接网络冒烟测试通过，同campaign 12:44启动
+34项首次工程替代，见[审核记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-docker故障审核与首次工程替代)。
+未发布合并视图；下表为此次替代启动时进度，不从2h正式轮表复制分数。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 3项：2运行、1等待 | — | — |
-| Claude Code | Qwen | 13项排队 | — | — |
+| Claude Code | DeepSeek | 3项完成 | — | — |
+| Claude Code | Qwen | 6项完成、7项首次工程替代运行 | — | — |
 | Claude Code | GPT | 无候选；待发布保留 | — | — |
 | Claude Code | Claude | 无候选；待发布保留 | — | — |
-| Codex | DeepSeek | 2项排队 | — | — |
-| Codex | Qwen | 8项排队 | — | — |
+| Codex | DeepSeek | 2项首次工程替代排队 | — | — |
+| Codex | Qwen | 8项首次工程替代排队 | — | — |
 | Codex | GPT | 无候选；待发布保留 | — | — |
 | Codex | Claude | 无候选；待发布保留 | — | — |
-| Hermes | DeepSeek | 1项排队 | — | — |
-| Hermes | Qwen | 10项排队 | — | — |
+| Hermes | DeepSeek | 1项首次工程替代排队 | — | — |
+| Hermes | Qwen | 10项首次工程替代排队 | — | — |
 | Hermes | GPT | 无候选；待发布保留 | — | — |
-| Hermes | Claude | 2项排队 | — | — |
+| Hermes | Claude | 2项首次工程替代排队 | — | — |
 | OpenClaw | DeepSeek | 无候选；待发布保留 | — | — |
-| OpenClaw | Qwen | 3项排队 | — | — |
+| OpenClaw | Qwen | 3项首次工程替代排队 | — | — |
 | OpenClaw | GPT | 无候选；待发布保留 | — | — |
-| OpenClaw | Claude | 1项排队 | — | — |
+| OpenClaw | Claude | 1项首次工程替代排队 | — | — |
 
 ### 14.4 Repeat 3
 

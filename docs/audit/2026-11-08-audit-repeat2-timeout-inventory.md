@@ -1,8 +1,8 @@
 # Repeat2 的 2h 超时项清单与补跑准备
 
-日期：2026-11-08（Asia/Shanghai）  
+日期：2026-11-08；更新：2026-11-09（Asia/Shanghai）
 类型：audit（正式最终代表清点与加时准备）  
-状态：43项已按用户授权冻结，2026-11-08 19:58（上海）启动12h加时campaign；首组2项实际运行、41项未启动。清点与启动门禁已核对，补跑结果尚未验收。
+状态：43项已冻结并启动12h加时campaign；首轮9项完成、34项因Docker网络故障未启动Agent。2026-11-09用户批准34项首次工程替代，同一campaign已重新派发；补跑结果尚未验收。
 
 ## 范围与选择口径
 
@@ -141,3 +141,29 @@ campaign：`run-artifacts/timeout-rerun/repeat2-12h-20261108/`，选入43项、9
 `launch-dry-run.json`、`preflight-*.json`、`launch-verification.json`保存启动门禁及现场证据，
 `controller-state.json`、`state.json`、`execution.log`供后续查看进度。
 新失败按冻结协议审核，不追加未获授权的工程替代，不发布未完成的合并视图。
+
+## 2026-11-09 Docker故障审核与首次工程替代
+
+首轮调度于07:57:14（上海）退出码2、状态`0needs_review`；9个Job覆盖43项，
+9项有完整Agent执行与原生Verifier结果，34项全部为终态`0RuntimeError`。
+逐项核对34份原生Trial及结果哈希：19项Docker地址池耗尽，15项网络桥接数据库只读；
+均在环境创建时失败，`0agent_setup`和`0agent_execution`均无启动时钟。
+不将它们记作12h能力超时，也不重跑已完成的9项。
+
+用户明确裁定“9 项已完成任务审核没问题，剩余 34 项都受到了 docker 网络连接的影响，
+全部未真实启动 agent，故需要重新派发”。`0review-decisions.json`对34项分别绑定slot_id、
+首次Trial UUID、结果SHA-256、工程类别、原因及授权；9项未写审核决定。
+现行`0scan`校验34项均为`0engineering_approved`、下一尝试序号2，9项仍为completed。
+普通恢复预算不与本campaign额外两次工程替代预算混用；首次工程替代不覆盖原Trial。
+
+12:42核对Docker daemon不可用，随后重新启动Docker Desktop；
+连续两次创建/移除独立桥接网络的冒烟测试通过。
+此前残留的其他实验网络未删除，历史产物未清理。
+再次`0hai timeout-rerun run ... --dry-run`确认只启动34项、8个新Job；
+12:44:25（上海）以tmux会话`0harbor-repeat2-timeout12h-recovery1-20261109`
+接续原campaign，首组Claude Code × Qwen的7项开始执行、并发2。
+启动时2个容器存在，首个Trial环境及Agent setup完成；不提前判定本批执行或评分成功。
+
+同目录`0recovery-batch1-launch.json`、`0recovery-batch1-dry-run.json`、
+`0recovery-batch1-controller-state.json`、`0recovery-batch1-execution.log`
+保存授权、预览与执行状态。当前仍须等待终态后逐项审核，不发布合并结果。
