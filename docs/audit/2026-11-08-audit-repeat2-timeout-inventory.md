@@ -2,7 +2,7 @@
 
 日期：2026-11-08；更新：2026-11-09（Asia/Shanghai）
 类型：audit（正式最终代表清点与加时准备）  
-状态：43项已冻结并启动12h加时campaign；首轮9项完成、34项因Docker网络故障未启动Agent。2026-11-09用户批准34项首次工程替代，同一campaign已重新派发；补跑结果尚未验收。
+状态：43项已冻结；首轮9项完成、34项因Docker网络故障未启动Agent。2026-11-09首次工程替代启动后按用户要求暂停；9项完成、2项模型调用待审、2项取消、30项尚未再次尝试。无活动调度进程或补跑容器，尚未合并验收。
 
 ## 范围与选择口径
 
@@ -144,26 +144,57 @@ campaign：`run-artifacts/timeout-rerun/repeat2-12h-20261108/`，选入43项、9
 
 ## 2026-11-09 Docker故障审核与首次工程替代
 
-首轮调度于07:57:14（上海）退出码2、状态`0needs_review`；9个Job覆盖43项，
-9项有完整Agent执行与原生Verifier结果，34项全部为终态`0RuntimeError`。
+首轮调度于07:57:14（上海）退出码2、状态`needs_review`；9个Job覆盖43项，
+9项有完整Agent执行与原生Verifier结果，34项全部为终态`RuntimeError`。
 逐项核对34份原生Trial及结果哈希：19项Docker地址池耗尽，15项网络桥接数据库只读；
-均在环境创建时失败，`0agent_setup`和`0agent_execution`均无启动时钟。
+均在环境创建时失败，`agent_setup`和`agent_execution`均无启动时钟。
 不将它们记作12h能力超时，也不重跑已完成的9项。
 
 用户明确裁定“9 项已完成任务审核没问题，剩余 34 项都受到了 docker 网络连接的影响，
-全部未真实启动 agent，故需要重新派发”。`0review-decisions.json`对34项分别绑定slot_id、
+全部未真实启动 agent，故需要重新派发”。`review-decisions.json`对34项分别绑定slot_id、
 首次Trial UUID、结果SHA-256、工程类别、原因及授权；9项未写审核决定。
-现行`0scan`校验34项均为`0engineering_approved`、下一尝试序号2，9项仍为completed。
+现行`scan`校验34项均为`engineering_approved`、下一尝试序号2，9项仍为completed。
 普通恢复预算不与本campaign额外两次工程替代预算混用；首次工程替代不覆盖原Trial。
 
 12:42核对Docker daemon不可用，随后重新启动Docker Desktop；
 连续两次创建/移除独立桥接网络的冒烟测试通过。
 此前残留的其他实验网络未删除，历史产物未清理。
-再次`0hai timeout-rerun run ... --dry-run`确认只启动34项、8个新Job；
-12:44:25（上海）以tmux会话`0harbor-repeat2-timeout12h-recovery1-20261109`
+再次`hai timeout-rerun run ... --dry-run`确认只启动34项、8个新Job；
+12:44:25（上海）以tmux会话`harbor-repeat2-timeout12h-recovery1-20261109`
 接续原campaign，首组Claude Code × Qwen的7项开始执行、并发2。
 启动时2个容器存在，首个Trial环境及Agent setup完成；不提前判定本批执行或评分成功。
 
-同目录`0recovery-batch1-launch.json`、`0recovery-batch1-dry-run.json`、
-`0recovery-batch1-controller-state.json`、`0recovery-batch1-execution.log`
+同目录`recovery-batch1-launch.json`、`recovery-batch1-dry-run.json`、
+`recovery-batch1-controller-state.json`、`recovery-batch1-execution.log`
 保存授权、预览与执行状态。当前仍须等待终态后逐项审核，不发布合并结果。
+
+## 2026-11-09 暂停与模型调用核对
+
+用户要求暂停并重点复核模型调用。向Harbor运行进程发送SIGINT后，控制器12:50:09（上海）
+以130退出、campaign标记interrupted；Harbor取消活跃Trial并保留原生结果。
+复核时无活动调度进程、tmux会话或本campaign容器，未继续派发其他组合。
+
+逐项比对43个冻结slot的来源与目标Job模型字段、已启动Trial的原生配置，模型不匹配为0。
+首轮完成的Claude Code × DeepSeek 3项均记录返回模型deepseek-v4-pro，
+Claude Code × Qwen 6项均记录qwen3.8-max，并有原生Verifier结果。
+本次第二尝试只启动Claude Code × Qwen Job中的4项，配置均为qwen3.8-max；
+ANTHROPIC_BASE_URL指向Qwen HTTPS网关、QWEN_API_KEY存在。这只能证明本地路由配置，
+不证明远端收到请求或服务端实际计费。
+
+- A015、A016：Agent已启动，约170/178秒后以UnknownApiError终态；
+  Claude Code结果为“API Error: Connection dropped (ECONNRESET)”。
+  每项仅有一个合成错误assistant事件，API时长、记录token及费用均为0，
+  没有可用模型回复或Verifier评分。两项状态review，不能当作能力失败或有效模型回答。
+- A018、A019：暂停时Harbor正常取消，原生CancelledError；
+  有Agent启动记录但只有初始化事件、没有assistant模型回复。两项状态interrupted，
+  不得直接视作正常完成或不计尝试地重新派发。
+- 其余30项仍为已批准工程替代、尚未第二次尝试；首轮9项completed保持不变。
+
+原本监听127.0.0.1:4141的本地协议桥当前未运行，健康端点拒绝连接。
+该桥供Claude Code × GPT等本地转换路由；Claude Code × Qwen按配置使用独立的远端
+QWEN_ANTHROPIC_BASE_URL Messages网关，因此桥未运行不能直接解释这两项Qwen连接重置。
+未从客户端证据断言远端网关故障或服务端是否收到请求。
+
+本机pause-model-call-check.json保存无原回答/私有评分的模型配置、流事件和暂停状态摘要。
+暂停后如需接续，须先解释网关连接重置并按现行中断协调与失败审核流程处理4项；
+不得仅凭首次34项批准文件直接重新运行整个campaign。

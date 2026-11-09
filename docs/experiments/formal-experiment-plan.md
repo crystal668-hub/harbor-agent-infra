@@ -901,26 +901,31 @@ repeat2由15/16更新为16/16，16份代表实际汇总1120/1120计分，总进�
 2026-11-09首轮9项正常完成、34项Docker环境创建失败且Agent未启动；用户批准绑定
 首次Trial证据后重新派发。Docker重启及桥接网络冒烟测试通过，同campaign 12:44启动
 34项首次工程替代，见[审核记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-docker故障审核与首次工程替代)。
-未发布合并视图；下表为此次替代启动时进度，不从2h正式轮表复制分数。
+2026-11-09按用户要求暂停：本次替代的A015/A016在Qwen网关连接重置后待审，
+A018/A019由Harbor取消，30项尚未第二次尝试；9项首轮完成结果保留。
+模型字段未发现错派，网关请求是否到达服务端待确认。原本监听4141的本地协议桥
+当前未运行，但Qwen配置走独立远端Messages网关；详见
+[暂停与模型调用核对](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-暂停与模型调用核对)。
+无活动调度进程，未发布合并视图；下表为暂停时进度，不从2h正式轮表复制分数。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 3项完成 | — | — |
-| Claude Code | Qwen | 6项完成、7项首次工程替代运行 | — | — |
+| Claude Code | Qwen | 6项完成、2项连接错误待审、2项取消、3项未再次尝试 | — | — |
 | Claude Code | GPT | 无候选；待发布保留 | — | — |
 | Claude Code | Claude | 无候选；待发布保留 | — | — |
-| Codex | DeepSeek | 2项首次工程替代排队 | — | — |
-| Codex | Qwen | 8项首次工程替代排队 | — | — |
+| Codex | DeepSeek | 2项已批准替代、未派发 | — | — |
+| Codex | Qwen | 8项已批准替代、未派发 | — | — |
 | Codex | GPT | 无候选；待发布保留 | — | — |
 | Codex | Claude | 无候选；待发布保留 | — | — |
-| Hermes | DeepSeek | 1项首次工程替代排队 | — | — |
-| Hermes | Qwen | 10项首次工程替代排队 | — | — |
+| Hermes | DeepSeek | 1项已批准替代、未派发 | — | — |
+| Hermes | Qwen | 10项已批准替代、未派发 | — | — |
 | Hermes | GPT | 无候选；待发布保留 | — | — |
-| Hermes | Claude | 2项首次工程替代排队 | — | — |
+| Hermes | Claude | 2项已批准替代、未派发 | — | — |
 | OpenClaw | DeepSeek | 无候选；待发布保留 | — | — |
-| OpenClaw | Qwen | 3项首次工程替代排队 | — | — |
+| OpenClaw | Qwen | 3项已批准替代、未派发 | — | — |
 | OpenClaw | GPT | 无候选；待发布保留 | — | — |
-| OpenClaw | Claude | 1项首次工程替代排队 | — | — |
+| OpenClaw | Claude | 1项已批准替代、未派发 | — | — |
 
 ### 14.4 Repeat 3
 
