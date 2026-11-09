@@ -103,6 +103,20 @@ retire_timeout_observation=true 并满足证据约束。失败日志、结果和
 当前代码与旧清单实现哈希不同时仍阻止执行；必须使用当时冻结的实现，或另行批准并绑定
 旧／新实现哈希的修订，不能把读取兼容视为可直接接续历史campaign。
 
+### 已发布退休证据后的原目录重派
+
+2026-11-09增加受控原目录重置：只有用户明确要求重派已结束失败项，且旧证据已按Trial身份、
+结果SHA-256移至campaign外的审计目录时，才可创建attempt-reset.json
+（schema timeout-attempt-reset.v1）。它绑定原plan、授权、旧/新实现文件哈希、原退休及审核文件哈希、
+全部归档失败尝试的原/新路径与哈希、保留的有效Trial哈希和重置slot范围。
+原terminal-deferrals.json及review-decisions.json不删除；可能有已发布视图通过绝对路径
+引用其授权证据。新的审核决定写入active-review-decisions.json，不能复用旧批准。
+
+加载计划时逐项验证签名、归档结果、终态异常、原位置不存在和保留结果不变；
+任何漂移均阻止执行。重置仅使这些slot在同一冻结目录按初始尝试序号派发，
+不能重跑有效结果或将旧失败冒充未发生。发布报告和逐项尝试链仍计入归档尝试的
+时间/费用，并披露受控重置条件。没有attempt-reset.json的campaign维持原有退休门禁。
+
 ## 5. 发布修订结果
 
 发布目录及报告读取冻结repeat和预算：例如`<原run>-timeout12h-merged`；
@@ -130,7 +144,7 @@ formal-selected-snapshots.json 列出本轮修订后的统计入口，只选其�
     uv run --locked --python 3.12 pytest -q -m 'not integration' \
       tests/test_timeout_rerun_plan.py tests/test_timeout_rerun_execution.py \
       tests/test_timeout_rerun_scope.py tests/test_timeout_rerun_merge.py \
-      tests/test_timeout_rerun_generic.py
+      tests/test_timeout_rerun_generic.py tests/test_timeout_rerun_reset.py
     RUN_HAI_TIMEOUT_RERUN=1 uv run --locked --python 3.12 pytest -m integration \
       tests/test_timeout_rerun_docker_integration.py
 

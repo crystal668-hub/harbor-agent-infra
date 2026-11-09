@@ -43,6 +43,10 @@ def terminal_deferrals(plan: dict) -> dict:
     """Explicit retirement of failed, ended attempts; never reclassify live work."""
     from harbor_agent_infra.timeout_rerun.outcomes import verdict
     from harbor_agent_infra.timeout_rerun.plan import digest, object_digest
+    from harbor_agent_infra.timeout_rerun.reset import validated_reset
+
+    if validated_reset(plan):
+        return {}
 
     root = Path(plan["root"])
     path = root / "terminal-deferrals.json"
@@ -114,6 +118,10 @@ def terminal_deferrals(plan: dict) -> dict:
 
 
 def validate_implementation_transition(plan: dict, current: dict) -> bool:
+    from harbor_agent_infra.timeout_rerun.reset import validated_reset
+
+    if validated_reset(plan, current):
+        return True
     value = amendment(plan)
     return bool(
         value

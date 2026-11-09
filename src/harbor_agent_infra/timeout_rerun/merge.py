@@ -182,7 +182,20 @@ def project_replacement(
         }
         for a in attempts
     ]
-    record["attempts"] = historical + new_attempts
+    from harbor_agent_infra.timeout_rerun.reset import validated_reset
+
+    reset = validated_reset(plan)
+    archived = [
+        {
+            "trial_id": attempt["trial_id"],
+            "trial_result_path": attempt["archive_result_path"],
+            "campaign_id": plan["plan_sha256"],
+            "status": "archived_failed_attempt",
+        }
+        for attempt in (reset or {}).get("archived_attempts", [])
+        if attempt["slot_id"] == slot["slot_id"]
+    ]
+    record["attempts"] = historical + archived + new_attempts
     record["final_attempt"] = new_attempts[-1]
     record["timeout_rerun"] = {
         "plan_sha256": plan["plan_sha256"],
@@ -364,6 +377,17 @@ def merge_campaign(
                 files(Path(p).parent) != hashes for p, hashes in evidence.items()
             ):
                 raise ValueError("Execution or scoring evidence changed during publication")
+            from harbor_agent_infra.timeout_rerun.reset import validated_reset
+
+            reset = validated_reset(plan)
+            usage_state = copy.deepcopy(state)
+            if reset:
+                usage_state["slots"]["archived_failed_attempts"] = {
+                    "attempts": [
+                        {"path": item["archive_result_path"]}
+                        for item in reset["archived_attempts"]
+                    ]
+                }
             report = {
                 "schema_version": "timeout-amendment-report.v1",
                 "selection_sha256": selection_hash,
@@ -375,7 +399,8 @@ def merge_campaign(
                 "before": statistics([r for rows in before.values() for r in rows]),
                 "after": statistics(all_after),
                 "runs": comparisons,
-                "rerun_usage": attempt_usage(state),
+                "rerun_usage": attempt_usage(usage_state),
+                "attempt_reset": reset,
                 "outcomes": dict(Counter(s["status"] for s in state["slots"].values())),
                 "protocol": (
                     f"Repeat {plan['policy']['repeat']}: original "
@@ -399,7 +424,9 @@ def merge_campaign(
             )
             write_object(stage / "manifest.json", plan)
             write_object(stage / "terminal-state.json", state)
-            if (root / "terminal-deferrals.json").exists():
+            if reset:
+                write_object(stage / "attempt-reset.json", reset)
+            if retired:
                 shutil.copy2(root / "terminal-deferrals.json", stage / "terminal-deferrals.json")
                 for sid in frozen:
                     for attempt in state["slots"][sid]["attempts"]:

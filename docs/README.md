@@ -56,7 +56,7 @@
 - [OpenClaw历史部分轨迹回填](audit/2026-11-04-audit-openclaw-trajectory-backfill.md)：用户后续授权向Qwen／DeepSeek repeat1各六个原始Trial补入缺失ATIF及来源说明；156项复核通过，原失败和评分不变。
 - [失败轨迹修复主分支部署](acceptance/2026-11-05-acceptance-trajectory-deployment.md)：Hermes／OpenClaw本地主工作区部署；831项非集成测试、16份配置路由及锁定Hermes镜像断网导出通过。
 - [通用加时模块验收](acceptance/2026-11-08-acceptance-generic-timeout-rerun.md)：repeat1／2／3策略冻结、跨轮身份、范围修订、合并与旧清单边界；未启动正式补跑。
-- [Repeat2 的2h超时项清单与加时审核](audit/2026-11-08-audit-repeat2-timeout-inventory.md)：旧批次保留9项有效结果、34项错误证据退休；新34项批次经本机代理、Compose及真实模型调用检查后于11月9日启动，尚未合并验收。
+- [Repeat2 的2h超时项清单与加时审核](audit/2026-11-08-audit-repeat2-timeout-inventory.md)：原12h目录保留9项有效结果、失败尝试证据归档；34项于11月9日在原目录受控重派并运行，尚未合并验收。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。

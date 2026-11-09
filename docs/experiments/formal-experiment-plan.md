@@ -915,26 +915,31 @@ A018/A019由Harbor取消，30项尚未第二次尝试；9项首轮完成结果�
 新34项campaign启动；四类harness预检通过，Claude Code × Qwen首批A015/A016
 均记录真实qwen3.8-max模型响应。代理配置和真实最小请求证据见
 [启动记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-本机代理恢复与新campaign启动)。
-未发布最终合并视图；下表为新批次启动时范围，不从2h正式轮表复制分数。
+用户随后要求在原目录保留9项有效结果、归档38次失败尝试并重派34项。
+2026-11-09 15:42（上海）原repeat2-12h-20261108目录受控重置后启动，
+原退休授权证据仍供已发布中间视图核验；首两项Qwen已有真实响应。
+此前独立新campaign已归档，不作为调度入口。见
+[原目录重派记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-原输出目录有界重置与重派)。
+未发布最终合并视图；下表为原目录重派启动时范围，不从2h正式轮表复制分数。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 3项完成 | — | — |
-| Claude Code | Qwen | 6项中间视图保留、2项运行、5项等待 | — | — |
+| Claude Code | Qwen | 原目录6项有效、2项运行、5项等待 | — | — |
 | Claude Code | GPT | 无候选；待发布保留 | — | — |
 | Claude Code | Claude | 无候选；待发布保留 | — | — |
-| Codex | DeepSeek | 2项新批次待启动 | — | — |
-| Codex | Qwen | 8项新批次待启动 | — | — |
+| Codex | DeepSeek | 原目录2项待派 | — | — |
+| Codex | Qwen | 原目录8项待派 | — | — |
 | Codex | GPT | 无候选；待发布保留 | — | — |
 | Codex | Claude | 无候选；待发布保留 | — | — |
-| Hermes | DeepSeek | 1项新批次待启动 | — | — |
-| Hermes | Qwen | 10项新批次待启动 | — | — |
+| Hermes | DeepSeek | 原目录1项待派 | — | — |
+| Hermes | Qwen | 原目录10项待派 | — | — |
 | Hermes | GPT | 无候选；待发布保留 | — | — |
-| Hermes | Claude | 2项新批次待启动 | — | — |
+| Hermes | Claude | 原目录2项待派 | — | — |
 | OpenClaw | DeepSeek | 无候选；待发布保留 | — | — |
-| OpenClaw | Qwen | 3项新批次待启动 | — | — |
+| OpenClaw | Qwen | 原目录3项待派 | — | — |
 | OpenClaw | GPT | 无候选；待发布保留 | — | — |
-| OpenClaw | Claude | 1项新批次待启动 | — | — |
+| OpenClaw | Claude | 原目录1项待派 | — | — |
 
 ### 14.4 Repeat 3
 

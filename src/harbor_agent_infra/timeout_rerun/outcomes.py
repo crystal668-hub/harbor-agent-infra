@@ -81,7 +81,11 @@ def verdict(path: Path, slot: dict) -> dict:
 
 
 def reviews_by_attempt(plan: dict, path: Path | None) -> dict:
-    path = path or Path(plan["root"]) / "review-decisions.json"
+    from harbor_agent_infra.timeout_rerun.reset import validated_reset
+
+    path = path or Path(plan["root"]) / (
+        "active-review-decisions.json" if validated_reset(plan) else "review-decisions.json"
+    )
     payload = read_object(path)
     if payload.get("schema_version") != "timeout-rerun-review.v1":
         raise ValueError("Invalid timeout review schema")
@@ -118,7 +122,9 @@ def invalid_answer_review(path: Path, slot: dict, decision: dict, outcome: dict)
         or decision.get("category") != "engineering"
         or not trial.get("finished_at")
         or not kind
-        or kind in {"CancelledError", "AgentTimeoutError", "AgentSafetyRefusalError", "SafetyRefusalError"}
+        or kind in {
+            "CancelledError", "AgentTimeoutError", "AgentSafetyRefusalError", "SafetyRefusalError"
+        }
         or outcome["status"] not in {"completed", "scoring_pending"}
         or outcome.get("score", 0) != 0
         or answer is None

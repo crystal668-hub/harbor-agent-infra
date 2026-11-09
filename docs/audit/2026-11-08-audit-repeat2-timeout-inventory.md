@@ -2,7 +2,7 @@
 
 日期：2026-11-08；更新：2026-11-09（Asia/Shanghai）
 类型：audit（正式最终代表清点与加时准备）  
-状态：旧campaign保留9项有效12h结果、34项错误slot证据绑定退休；新campaign的34项于2026-11-09 15:21（上海）启动，首组2项有Qwen模型响应，其余待调度。最终12h补跑尚未验收。
+状态：原repeat2-12h-20261108目录已按用户指示有界重置，9项有效结果哈希保留、38次失败/取消尝试归档，34项于2026-11-09 15:42（上海）在原目录重派并运行，尚未合并验收。
 
 ## 范围与选择口径
 
@@ -249,3 +249,27 @@ A015、A016原生Trial完成环境和Agent setup，各已记录来自qwen3.8-max
 没有将首次9项有效结果重新派发。启动证据在新campaign的launch.json、
 launch-verification.json、controller-state.json、state.json和execution.log。
 本记录仅验收启动及真实调用门禁，后续34项完成、审核、合并仍待执行。
+
+## 2026-11-09 原输出目录有界重置与重派
+
+用户改为要求在原输出目录重跑剩余34项，不使用新campaign，并从活跃目录移出原失败记录。
+15:26:57（上海）已正常中断新campaign；其2份CancelledError及未派发输入整体移入
+run-artifacts/audit/repeat2-timeout-inplace-reset-20261109/superseded-redo-campaign，
+新campaign原路径不再作为调度入口。
+
+原目录的terminal-deferrals.json有20条已发布中间视图的计分证据通过绝对路径引用，
+因此保留文件及哈希。由用户授权的attempt-reset.json冻结旧/新实现哈希、34个重置slot、
+38份失败或取消的原生Trial身份与结果哈希、原/归档路径及9份有效Trial结果哈希。
+8个全失败Job及混合Job的7个失败Trial从原jobs/移入同一审计目录；
+原review-decisions.json保留，后续审核使用新的active-review-decisions.json。
+归档不抹除旧尝试、容器故障或费用；只是从活跃派发视图移除，防止重复或择优。
+
+原目录重置后load_plan与scan核验通过：9项completed、34项pending、0项deferred；
+正式run dry-run仅8个Job/34项，九份有效Trial哈希未变。源正式轮及已发布中间视图不改。
+15:42:14（上海）以tmux会话harbor-repeat2-timeout12h-inplace-20261109
+接续原目录repeat2-12h-20261108，固定7200→43200秒、并发2、仅skills_off。
+四类harness预检passed；首组Claude Code × Qwen的A015、A016环境和Agent setup完成，
+均已记录qwen3.8-max的真实assistant响应。其他32项尚待同一队列派发。
+本次只确认原目录重派与模型调用已经开始，未断言全部任务完成或评分成功。
+控制状态与证据见原目录inplace-launch.json、inplace-controller-state.json、
+inplace-launch-dry-run.json和inplace-execution.log。

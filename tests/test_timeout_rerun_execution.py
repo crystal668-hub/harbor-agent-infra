@@ -24,11 +24,11 @@ def campaign(tmp_path):
     return plan, Path(plan["root"]) / "manifest.json"
 
 
-def dispatch(plan, *, ordinal=1, kind=None, answer="42", score=0.0):
+def dispatch(plan, *, ordinal=1, kind=None, answer="42", score=0.0, job_name=None):
     slot = plan["slots"][0]
     root = Path(plan["root"])
     config = read_object(root / "inputs" / slot["slot_id"] / "job.json")
-    config["job_name"] = f"test-attempt-{ordinal}"
+    config["job_name"] = job_name or f"test-attempt-{ordinal}"
     directory = root / "jobs" / config["job_name"]
     write_object(directory / "timeout-job.json", config)
     write_object(
@@ -246,7 +246,9 @@ def bind_invalid_answer(plan, path):
 @pytest.mark.parametrize("score", [0.0, None])
 def test_bound_invalid_answer_can_retry_without_mutating_evidence(tmp_path, score):
     plan, _ = campaign(tmp_path)
-    path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Request not processed", score=score)
+    path = dispatch(
+        plan, kind="NonZeroAgentExitCodeError", answer="Request not processed", score=score
+    )
     original = files(path.parent)
     approve(plan, path)
     with pytest.raises(ValueError, match="effective result"):
@@ -278,7 +280,10 @@ def test_invalid_answer_override_preserves_effective_results(tmp_path, kind, ans
         scan(plan)
 
 
-@pytest.mark.parametrize("mutation", ["changed_answer", "changed_score_artifact", "missing_file", "missing_authorization"])
+@pytest.mark.parametrize(
+    "mutation",
+    ["changed_answer", "changed_score_artifact", "missing_file", "missing_authorization"],
+)
 def test_invalid_answer_override_requires_fresh_complete_evidence(tmp_path, mutation):
     plan, _ = campaign(tmp_path)
     path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Request not processed", score=0)
