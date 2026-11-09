@@ -8,6 +8,7 @@ import pytest
 from test_timeout_rerun_execution import dispatch
 from test_timeout_rerun_plan import timeout_fixture
 
+from harbor_agent_infra.formal import aggregate_formal_snapshots
 from harbor_agent_infra.resume.io import read_object, write_object
 from harbor_agent_infra.timeout_rerun.execution import jobs_to_start
 from harbor_agent_infra.timeout_rerun.merge import attempt_usage, merge_campaign
@@ -107,15 +108,30 @@ def test_reset_keeps_success_and_reports_archived_consumption(tmp_path):
     work = jobs_to_start(plan, state)
     assert len(work) == 1 and len(work[0][1]) == 1
     assert work[0][1][0]["slot_id"] == plan["slots"][0]["slot_id"]
+    with pytest.raises(ValueError, match="terminal"):
+        merge_campaign(manifest, tmp_path / "not-ready", dry_run=True)
     dispatch(plan, answer="42", score=0.8, job_name="fresh-attempt-1")
     assert scan(plan)["complete"] and digest(good) == good_hash
     output = tmp_path / "published"
+    preview = merge_campaign(manifest, output, dry_run=True)
+    assert preview["replaced_slots"] == 2 and preview["deferred_slots"] == 0
     result = merge_campaign(manifest, output)
+    assert result["replaced_slots"] == 2 and result["deferred_slots"] == 0
     report = read_object(output / "amendment-report.json")
     assert report["rerun_usage"]["attempts"] == 3
     assert report["attempt_reset"]["sha256"] == reset["sha256"]
     assert read_object(output / "attempt-reset.json") == reset
     records = read_object(Path(result["selected_snapshots"][0]) / "results.json")["results"]
+    assert len(records) == len({row["task_name"] for row in records}) == 3
+    by_task = {row["task_name"]: row for row in records}
+    assert by_task[plan["slots"][0]["task_name"]]["vgb_domain_result"]["scores"]["score"] == 0.8
+    assert by_task[plan["slots"][1]["task_name"]]["vgb_domain_result"]["scores"]["score"] == 0.7
+    aggregate = aggregate_formal_snapshots([Path(result["selected_snapshots"][0])])
+    assert aggregate["slots"] == aggregate["summary"]["scored"] == 3
+    assert aggregate["summary"]["mean_vgb_score"] == pytest.approx(2 / 3)
+    assert read_object(output / "formal-selected-snapshots.json")["snapshots"] == result[
+        "selected_snapshots"
+    ]
     record = next(row for row in records if row["task_name"] == plan["slots"][0]["task_name"])
     assert str(saved) in [a["trial_result_path"] for a in record["attempts"]]
     assert attempt_usage({"slots": {"archived": {"attempts": [{"path": str(saved)}]}}})[

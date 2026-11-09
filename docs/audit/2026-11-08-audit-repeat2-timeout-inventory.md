@@ -273,3 +273,24 @@ run-artifacts/audit/repeat2-timeout-inplace-reset-20261109/superseded-redo-campa
 本次只确认原目录重派与模型调用已经开始，未断言全部任务完成或评分成功。
 控制状态与证据见原目录inplace-launch.json、inplace-controller-state.json、
 inplace-launch-dry-run.json和inplace-execution.log。
+
+## 2026-11-09 合并前门禁复核（未发布）
+
+15:55（上海）按原冻结清单核对：16个来源run各70项、43个唯一run×任务超时slot，
+原代表均为AgentTimeoutError、skills_off/repeat_index=1；9份保留Trial哈希一致，
+38份归档失败尝试仍受attempt-reset.json逐项校验。重置后活跃退休数0，
+未入选项仅继承3份原有baseline裁定。正式来源原生字段有未评分的2h超时记录；
+按现行before_rows对43项投影原协议零分后，基线为1120/1120计分。
+这些核对不重评VGB，也不改变原2h正式结果。
+
+新增契约测试用两个超时slot和一个非候选slot验证：未全部终态时merge dry-run拒绝；
+完成后replace=2/deferred=0，原任务分别选择0.8与0.7的新/保留12h分数，
+非候选保留0.5，3/3计分且均分2/3；归档失败只进入该slot尝试链和全尝试用量，
+不会替代最终代表或重复计入分母。实际本campaign的预期为43个替换、0个冻结、
+16份修订快照与1120/1120计分；当前仍complete=false，未执行正式merge。
+
+本轮全部候选终态并完成必要审核后，还必须先检查正式merge dry-run，
+再发布独立修订视图；逐项比对43个新代表Trial ID、任务名、官方评分/协议零分来源，
+核对9项已保留结果与其余非候选结果不变、38份归档证据仍在、总分母1120。
+正式汇总只使用最终formal-selected-snapshots.json指向的16份快照，
+不同时累计2h来源或此前9项中间视图。上述发布与成绩验收均尚未发生。
