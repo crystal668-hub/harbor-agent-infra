@@ -2,7 +2,7 @@
 
 日期：2026-11-08；更新：2026-11-09（Asia/Shanghai）
 类型：audit（正式最终代表清点与加时准备）  
-状态：43项已冻结；首轮9项完成、34项因Docker网络故障未启动Agent。2026-11-09首次工程替代启动后按用户要求暂停；9项完成、2项模型调用待审、2项取消、30项尚未再次尝试。无活动调度进程或补跑容器，尚未合并验收。
+状态：旧campaign保留9项有效12h结果、34项错误slot已证据绑定退休；中间视图1120/1120计分。新campaign已冻结34项、尚未派发；本机代理待用户启动并通知，最终12h补跑尚未验收。
 
 ## 范围与选择口径
 
@@ -198,3 +198,31 @@ QWEN_ANTHROPIC_BASE_URL Messages网关，因此桥未运行不能直接解释这
 本机pause-model-call-check.json保存无原回答/私有评分的模型配置、流事件和暂停状态摘要。
 暂停后如需接续，须先解释网关连接重置并按现行中断协调与失败审核流程处理4项；
 不得仅凭首次34项批准文件直接重新运行整个campaign。
+
+## 2026-11-09 协议桥恢复、错误尝试退休与代理等待
+
+按用户指示重新启动本地协议桥，tmux会话为harbor-native-protocol-bridge-20261109；
+127.0.0.1:4141/health返回ok。使用锁定Claude Code镜像从容器内走本地桥向
+GPT gpt-6.1-sol发起最小真实Messages请求，返回HTTP 200与有效文本；
+同镜像直连Qwen时，最初在TLS握手前失败。
+
+Docker Desktop当时使用手动HTTPS代理127.0.0.1:7892，端口无监听；
+Docker日志记录该代理连接被拒。备份设置后暂切为系统代理且宿主机无系统代理，
+容器HTTPS及Qwen真实Messages请求返回HTTP 200、qwen3.8-max与有效文本。
+宿主机Qwen请求亦成功。临时直连验证不代表原手动代理条件已恢复。
+按用户最新要求等待其启动原本机代理，已将Docker Desktop代理模式、HTTP/HTTPS代理值
+恢复为原manual与127.0.0.1:7892；13:18（上海）检查该端口仍无监听。
+未再启动实验Job；代理启动通知后须在恢复的原模式下重新检查容器HTTPS与真实模型调用。
+
+不物理删除冻结Trial。旧campaign的terminal-deferrals.json逐项绑定34个失败slot、
+共38次已结束的原生失败/取消尝试，仍保留原结果和预算消耗；9项有效结果不变。
+旧campaign经merge dry-run确认9项替换、34项退休，已发布独立中间视图
+run-artifacts/formal/repeat2-timeout12h-nine-kept-20261109：16份选定快照、
+1120/1120计分，重新清点仍有34个7200秒原始超时代表可供新轮补跑。
+该视图只用于承接9项有效结果，不作为最终12h验收发布。
+
+新campaign为run-artifacts/timeout-rerun/repeat2-12h-redo-20261109，
+计划SHA-256为cbfcedaf3c0409ba22192f4fdc8f9361ae5cd0a80e3fa0c986a9032b70691100；
+冻结repeat2、7200→43200秒、并发2、skills_off。dry-run只列34项/8个Job，
+尚无新Job、Trial或state.json。用户已要求等本机代理启动并通知后才重新派发，
+因此保持该新campaign未运行，不从现有HTTP测试外推后续模型可用性。

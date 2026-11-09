@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）  
 类型：plan（实验执行准备）  
-状态：repeat2的2h正式轮已验收16/16组、1120/1120计分；12h加时首轮9项完成、34项Docker工程失败。2026-11-09首次工程替代按用户要求暂停，当前9项完成、2项模型连接错误待审、2项取消、30项未再次尝试；尚未合并，repeat3未启动。2h结案见[OpenClaw × Qwen验收](../acceptance/2026-11-08-acceptance-repeat2-openclaw-qwen.md)，加时见[暂停与模型调用核对](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-暂停与模型调用核对)。
+状态：repeat2的2h正式轮已验收16/16组、1120/1120计分；12h旧campaign保留9项有效结果并证据绑定退休34项失败。新campaign已冻结34项、8个Job但未派发；等待用户启动原本机代理并通知后再检查与派发，尚未完成最终12h验收。详见[代理等待与新批次记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-协议桥恢复错误尝试退休与代理等待)。
 
 ## 范围与配置结论
 

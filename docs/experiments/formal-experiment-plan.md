@@ -906,26 +906,31 @@ A018/A019由Harbor取消，30项尚未第二次尝试；9项首轮完成结果�
 模型字段未发现错派，网关请求是否到达服务端待确认。原本监听4141的本地协议桥
 当前未运行，但Qwen配置走独立远端Messages网关；详见
 [暂停与模型调用核对](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-暂停与模型调用核对)。
-无活动调度进程，未发布合并视图；下表为暂停时进度，不从2h正式轮表复制分数。
+2026-11-09协议桥恢复；旧campaign将34个失败slot按绑定证据退休，
+独立中间视图保留9项有效12h结果。新campaign冻结34项、8个Job，未派发；
+原Docker Desktop手动代理127.0.0.1:7892已恢复配置，等待用户启动代理并通知，
+届时须重新做容器真实模型测试。见
+[代理等待记录](../audit/2026-11-08-audit-repeat2-timeout-inventory.md#2026-11-09-协议桥恢复错误尝试退休与代理等待)。
+未发布最终合并视图；下表为新批次待启动范围，不从2h正式轮表复制分数。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
 | Claude Code | DeepSeek | 3项完成 | — | — |
-| Claude Code | Qwen | 6项完成、2项连接错误待审、2项取消、3项未再次尝试 | — | — |
+| Claude Code | Qwen | 6项中间视图保留、7项新批次待启动 | — | — |
 | Claude Code | GPT | 无候选；待发布保留 | — | — |
 | Claude Code | Claude | 无候选；待发布保留 | — | — |
-| Codex | DeepSeek | 2项已批准替代、未派发 | — | — |
-| Codex | Qwen | 8项已批准替代、未派发 | — | — |
+| Codex | DeepSeek | 2项新批次待启动 | — | — |
+| Codex | Qwen | 8项新批次待启动 | — | — |
 | Codex | GPT | 无候选；待发布保留 | — | — |
 | Codex | Claude | 无候选；待发布保留 | — | — |
-| Hermes | DeepSeek | 1项已批准替代、未派发 | — | — |
-| Hermes | Qwen | 10项已批准替代、未派发 | — | — |
+| Hermes | DeepSeek | 1项新批次待启动 | — | — |
+| Hermes | Qwen | 10项新批次待启动 | — | — |
 | Hermes | GPT | 无候选；待发布保留 | — | — |
-| Hermes | Claude | 2项已批准替代、未派发 | — | — |
+| Hermes | Claude | 2项新批次待启动 | — | — |
 | OpenClaw | DeepSeek | 无候选；待发布保留 | — | — |
-| OpenClaw | Qwen | 3项已批准替代、未派发 | — | — |
+| OpenClaw | Qwen | 3项新批次待启动 | — | — |
 | OpenClaw | GPT | 无候选；待发布保留 | — | — |
-| OpenClaw | Claude | 1项已批准替代、未派发 | — | — |
+| OpenClaw | Claude | 1项新批次待启动 | — | — |
 
 ### 14.4 Repeat 3
 
