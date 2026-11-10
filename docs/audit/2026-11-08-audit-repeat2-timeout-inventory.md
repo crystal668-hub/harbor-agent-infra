@@ -294,3 +294,23 @@ inplace-launch-dry-run.json和inplace-execution.log。
 核对9项已保留结果与其余非候选结果不变、38份归档证据仍在、总分母1120。
 正式汇总只使用最终formal-selected-snapshots.json指向的16份快照，
 不同时累计2h来源或此前9项中间视图。上述发布与成绩验收均尚未发生。
+
+## 2026-11-10 混合Job历史元数据修复
+
+针对历史Job claude-code-qwen-repeat2-12h-e4be42fac91f，核查发现有界重置时
+其原生Job根result.json随旧摘要移入审计目录，而lock.json与timeout-dispatch.json仍各声明
+13个原始slot；6个有效Trial在原位，7个失败Trial位于归档。因此当前目录缺少Job结果，
+若只看活跃Trial目录则会把原Job误读为6项。15:09（上海）从审计副本逐字节恢复
+Job根result.json，SHA-256为84b5079e8cdb564cfa2dc5bff4f63d21ebdd7785c32ce8e30823a363660145f4；
+原生JobResult仍为13个终态Trial、7个错误，不改历史统计。
+
+同Job新增reset-provenance.json，按13个slot分别列出原正式轮source Trial路径与哈希、
+原Job Trial结果路径、当前有效或归档位置、Trial ID及结果哈希（6有效/7归档）。
+Harbor JobResult schema没有source字段，13份原生Trial的source原本均为None，
+因此未伪造source值；迁移后的实际证据路径由旁证文件明确绑定。
+归档失败Trial未移回原活跃路径，否则会违反重置门禁并造成重复尝试。
+
+恢复前后Job原生结果哈希相同；逐项源/结果哈希、dispatch身份、冻结plan及campaign扫描均通过。
+当前正在运行的补跑不受影响。修复只覆盖这个历史混合Job的可读元数据，
+并不宣称通用查看器会自动识别旁证文件；原失败Trial的旧trial_uri仍指向已迁出的路径，
+应使用旁证文件中的归档路径读取。
