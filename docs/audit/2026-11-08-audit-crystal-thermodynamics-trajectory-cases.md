@@ -2,169 +2,164 @@
 
 日期：2026-11-08（Asia/Shanghai）  
 类型：audit（正式实验离线轨迹分析）  
-状态：已冻结6条代表Trial并完成轨迹级对照；未启动实验、未重评或修改正式成绩。
+状态：2026-11-10按扩展候选池重选6条非超时代表并完成轨迹级对照；未启动实验、未重评或修改正式成绩。
 
-## 范围与选样原则
+## 修订记录
 
-本记录分析“晶体热力学与相稳定性”类别的3项任务：A001晶体自由能差、
-A002晶相势能／压力相、A006多晶型交叉温度。每项选择一条任务内相对高分和一条低分
-（包括0分）正式代表，共6条。
+2026-11-10按用户要求调整选样口径：不再要求高低分来自同一模型与harness；候选池由两批2h
+正式代表扩展为repeat1 2h、已验收repeat2 2h和获批repeat1 12h补跑Trial；排除原生
+`AgentTimeoutError`。每题选择最高分和最低分各一条；并列时优先12h补跑代表，再选择行为证据
+更完整的轨迹。
 
-选样优先保持同一harness与provider跨repeat1/repeat2对照，以减少系统配置混杂；因此“高分”
-是任务内、受控对照意义上的高分，不一定是全矩阵绝对最高值。A006的0.5并非满分，但已达到
-现有2h正式样本的最高水平。只使用已完成、已验收批次中的最终代表，低分超时项按原生
-`AgentTimeoutError`保留。
+2026-11-08初版采用同一系统跨批次受控对照。原始证据包仍保留在
+[`crystal-thermodynamics-trajectory-cases-20261108`](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/README.md)，
+不作为本文当前主结论的样本。
 
-完整证据包位于
-[`run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/`](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/README.md)。
+## 当前范围与证据
+
+分析覆盖“晶体热力学与相稳定性”的3项任务：A001晶体自由能差、A002晶相势能／压力相、
+A006多晶型交叉温度。当前6例均已终止且不是`AgentTimeoutError`；0分包括未形成合规答案或
+已作答但结果不正确的能力失败。
+
+当前完整证据包位于
+[`run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/`](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/README.md)。
 每个case包含原始指令、`result.json`、字节一致的`trajectory.json`和无删节`transcript.md`；
-OpenClaw两例另含原生`openclaw.session.jsonl`。来源路径、文件大小和SHA-256见
-[`manifest.json`](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/manifest.json)。
+OpenClaw例另含原生`openclaw.session.jsonl`。来源路径、文件大小和SHA-256见
+[`manifest.json`](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/manifest.json)。
 
 ## 冻结样本
 
 | 任务 | 对照 | 批次与系统 | 得分 | Agent用时 | 记录Token | 轨迹步数 | Trial | 完整轨迹 |
 | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |
-| A001 晶体自由能差 | 低分 | repeat1 Codex × DeepSeek | 0 | 19.9 min | 154.8万 | 33 | `097056b2-9fef-4ca6-8812-2d892daa694a` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A001-low-repeat1-codex-deepseek/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A001-low-repeat1-codex-deepseek/transcript.md) |
-| A001 晶体自由能差 | 高分 | repeat2 Codex × DeepSeek | 0.975988 | 35.2 min | 315.5万 | 61 | `ea704b8c-2e32-4141-a110-d4787ffb4974` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A001-high-repeat2-codex-deepseek/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A001-high-repeat2-codex-deepseek/transcript.md) |
-| A002 晶相势能／压力相 | 高分 | repeat1 Codex × Qwen | 0.620750 | 57.6 min | 482.1万 | 70 | `ee4289c9-1c4d-4772-bd8e-19009e007e4d` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A002-high-repeat1-codex-qwen/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A002-high-repeat1-codex-qwen/transcript.md) |
-| A002 晶相势能／压力相 | 低分 | repeat2 Codex × Qwen | 0（超时） | 120.0 min | 1263.6万 | 109 | `9fc195ff-b7c1-4e1e-8867-e7dbde972696` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A002-low-repeat2-codex-qwen/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A002-low-repeat2-codex-qwen/transcript.md) |
-| A006 多晶型交叉温度 | 高分 | repeat1 OpenClaw × Claude | 0.500000 | 69.7 min | 476.2万 | 99 | `9f8e5ce9-d16c-4501-be64-c26b307cf9a2` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A006-high-repeat1-openclaw-anthropic/trajectory.json) · [原生session](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A006-high-repeat1-openclaw-anthropic/openclaw.session.jsonl) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A006-high-repeat1-openclaw-anthropic/transcript.md) |
-| A006 多晶型交叉温度 | 低分 | repeat2 OpenClaw × Claude | 0（超时） | 120.1 min | 1189.4万 | 192 | `d697c35b-fd92-4a12-b7c1-eb91c284620d` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A006-low-repeat2-openclaw-anthropic/trajectory.json) · [原生session](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A006-low-repeat2-openclaw-anthropic/openclaw.session.jsonl) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261108/cases/A006-low-repeat2-openclaw-anthropic/transcript.md) |
+| A001 晶体自由能差 | 高分 | repeat2 Hermes × DeepSeek | 0.996379 | 4.5 min | 34.8万 | 10 | `d37553da-d9a6-4121-bc29-11afa27685c4` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A001-high-repeat2-hermes-deepseek/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A001-high-repeat2-hermes-deepseek/transcript.md) |
+| A001 晶体自由能差 | 低分 | repeat1 12h Codex × Qwen | 0 | 197.2 min | 2674.2万 | 213 | `2749ccdd-46a1-40aa-a47c-96d85b05c029` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A001-low-12h-codex-qwen/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A001-low-12h-codex-qwen/transcript.md) |
+| A002 晶相势能／压力相 | 高分 | repeat1 Hermes × DeepSeek | 0.717500 | 11.0 min | 124.9万 | 23 | `d1e665e7-ceda-4364-82e8-1a7713945d0c` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A002-high-repeat1-hermes-deepseek/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A002-high-repeat1-hermes-deepseek/transcript.md) |
+| A002 晶相势能／压力相 | 低分 | repeat1 Codex × DeepSeek | 0 | 1.4 min | 22.6万 | 4 | `7db72fa0-a33f-417d-99c6-38a398440382` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A002-low-repeat1-codex-deepseek/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A002-low-repeat1-codex-deepseek/transcript.md) |
+| A006 多晶型交叉温度 | 高分 | repeat1 12h Claude Code × Qwen | 0.500000 | 38.0 min | 345.4万 | 54 | `27cbe76c-d30b-4a3c-a30a-58a3516136f3` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A006-high-12h-claude-qwen/trajectory.json) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A006-high-12h-claude-qwen/transcript.md) |
+| A006 多晶型交叉温度 | 低分 | repeat1 12h OpenClaw × Qwen | 0 | 128.7 min | 5392.9万 | 194 | `d97179cf-d51f-4484-877a-64418ac20a9e` | [ATIF](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A006-low-12h-openclaw-qwen/trajectory.json) · [原生session](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A006-low-12h-openclaw-qwen/openclaw.session.jsonl) · [转录](../../run-artifacts/analysis/crystal-thermodynamics-trajectory-cases-20261110/cases/A006-low-12h-openclaw-qwen/transcript.md) |
 
 Token为保存的父会话输入与输出计数，不代表全部重试、子agent、provider账单或统一算力。
+12h表示最大允许预算；三条入选12h样本均在12小时上限前自行终止。
 
 ## A001：晶体自由能差
 
-### 低分轨迹：方法完成了计算，但没有计算所问的量
+### 高分：识别实验相并直接使用相变热力学关系
 
-低分Trial先检查并安装ASE、OpenBabel、PySCF等工具，随后自行实现UFF Lennard-Jones、
-Ewald静电和MMFF94分子内能。轨迹能识别并修复多处工程问题，包括分数坐标转换、跨周期
-分子连接、把成键原子错误计入LJ以及QM计算内存不足。
+Hermes × DeepSeek没有从头执行晶格自由能计算，而是通过晶胞参数把ETDIAM01和ETDIAM18
+分别映射为乙二胺低温Phase II和高温Phase I，再从实验资料提取相变焓与相变熵。agent用
+`ΔG(T)=ΔH_trs−TΔS_trs`外推到300 K，得到绝对差0.287 kJ/mol并按契约提交。
 
-关键问题是科学协议没有闭合：任务要求300 K下两种晶体的自由能差，而最终方法混合了UFF
-分子间相互作用和MMFF94分子内势能，没有计算晶格振动自由能。轨迹自己记录Dreiding约
-2.3 kJ/mol、UFF混合方法约16.4 kJ/mol，显示结果对参数高度敏感；最终仍选择16.38 kJ/mol，
-并明确说明这只是势能、未计算振动贡献。也就是说，agent正确发现了方法不确定性和目标缺口，
-但没有把这些发现转化为停止、降级作答或拒绝给出高置信数值。
+该路线只用了10步和约4.5分钟，得分0.996379。优势在于先识别结构身份和相变关系，将任务
+转化为已有热力学数据的条件匹配；风险是默认两相`ΔCp≈0`，且答案依赖外部实验数据而非根据
+所给结构独立计算。高分因此说明目标值匹配，不等同于完成了严格的第一性原理晶体自由能计算。
 
-### 高分轨迹：先修复结构身份，再寻求数值收敛
+### 低分：12h预算支持了完整计算链，但方法误差没有因投入增加而消失
 
-高分Trial同样从环境探测开始，但把主要诊断放在输入结构与周期边界上。第一次GFN2-xTB
-气相自由能差约205 kJ/mol后，agent没有直接采用，而是发现ETDIAM01分子跨晶胞被错误拆开，
-修复周期平移后重算。之后又识别X射线结构中的X–H键长问题，规范化氢原子位置，并用
-GFN1/GFN2-xTB及RDKit检查数值方向，最终提交0.450128 kJ/mol。
+Codex × Qwen进行了周期GFN1-xTB固定晶胞结构松弛、有限差分Γ点声子、声学模识别和300 K
+振动自由能计算。轨迹修复了POSCAR原子排序、周期梯度、声学和规则、位移步长与k点敏感性等
+问题，最终报告每晶胞17.3 kJ/mol、每分子8.6 kJ/mol，得分仍为0。
 
-这条轨迹的优势不是“用了更多工具”，而是异常数值触发了对象身份核验；后续检查围绕同一个
-误差来源收敛。它仍是近似路线，但最终数值和输出契约与任务对齐，因此得到0.975988。
+这条轨迹说明额外预算确实让agent完成了原2h内难以完成的松弛与声子工作流，但不能保证所选
+近似适合微小多晶型自由能差。轨迹已经发现结果对k点、软模和声学模处理高度敏感，仍把单一
+近似值作为最终答案。高投入主要提高了流程完成度，没有建立可信的不确定性边界。
 
-### A001对照结论
+### A001启发
 
-- 工程自纠错不等同于科学协议正确；低分轨迹修复了代码，却仍在计算势能而非300 K自由能。
-- 当不同合理参数给出数量级不同结果时，应把方法敏感性视为阻塞信号，而不是任选一个结果。
-- 周期结构任务应先完成分子连通性、跨边界展开和X–H几何核验，再投入高成本能量计算。
+- 身份识别和条件匹配可能比从头计算更有效，但最终答案应标注`literature-derived`而非`computed`。
+- 12h加时适合完成长计算，不会自动修复方法偏差；发现强敏感性时应输出区间或降低置信度。
+- 晶体自由能任务需要显式记录每晶胞/每分子口径、热容假设、声子采样和软模处理。
 
 ## A002：晶相势能与压力相
 
-### 高分轨迹：计算、结构检查和外部相标定形成闭环
+### 高分：快速形成“计算结果＋相态证据”的闭环
 
-高分Trial识别出两晶体均为2,4,5-三碘咪唑，使用周期GFN-FF单点得到
-α/β能量差0.6858 eV，并由体积、密度和文献中的1.9 GPa相变确认α为常压相、β为高压相。
-轨迹还发现并处理了两个容易产生伪结果的问题：xTB会读取工作目录中残留的`gfnff_topo`，
-而错误展开的超胞会复制原子并破坏拓扑。它在新目录重跑，检查108个原子、108条键、12个
-分子，并验证坐标wrap不改变结果。
+Hermes × DeepSeek通过结构组成和文献确认材料为2,4,5-三碘咪唑，使用GFN2-xTB比较两套结构，
+得到0.531 eV能量差。agent结合晶胞体积和约1.9 GPa的已知相变，判断α为常压相、β为高压相，
+并完整提交三个要求字段，得分0.7175。
 
-得分0.620750说明数值精度仍有限，但相标签、单位、拓扑和最终输出均完整。该case适合说明
-“部分高分”并不表示方法达到高精度，而是流程保留了较完整的对象与相态证据。
+这条轨迹的核心优势是及时停止：数值、相标签、单位和输出结构齐备后即作答。其得分未接近1，
+表明所选近似的数值精度有限，但没有因继续扩展方法矩阵而失去已有结果。
 
-### 低分轨迹：早期已有可交付答案，后续探索反而消耗了全部预算
+### 低分：非超时的过早终止
 
-低分Trial在轨迹前段同样得到周期GFN-FF结果：α −19.6715 Eh、β −19.6463 Eh，差值约
-0.686 eV；随后也确认化合物身份、α/β压力相和实验转变压力。此时已具备与高分Trial近似的
-最小可交付答案。
+Codex × DeepSeek只运行4个轨迹步骤。agent连续搜索晶格参数和材料身份，随后表示将检查计算工具，
+但没有执行有效能量计算，也没有生成规定的`FINAL ANSWER`。Trial约83.6秒后终止，原生异常为空，
+因此不是超时，而是未完成能力链的0分。
 
-但agent继续扩展到GFN0/GFN1、tblite、MACE-MP、CHGNet、M3GNet、多个EOS拟合和全变胞
-松弛。部分方法给出互相冲突的0.69–7.3 eV结果，EOS脚本又反复出现字段、单位和反演错误。
-最后约17分钟全部耗在一个全变胞松弛进程上，截止时仍在运行，没有输出最终答案，最终以
-7200秒超时计0。
+该case补充了超时之外的另一类失败：系统没有耗尽预算，却在计划阶段结束。仅增加时间上限不会
+修复这种失败，需要检测“无最终答案但仍有预算”的异常终止并触发继续执行或最低限度作答。
 
-### A002对照结论
+### A002启发
 
-- 低分并非因为没有找到候选答案，而是没有设置“已满足输出契约”的提交检查点。
-- 多方法验证需要预先定义停止规则；否则新增模型会增加冲突，而非增加置信度。
-- 对长作业应保留最后可用答案并设置硬截止，例如剩余15分钟时停止新计算、整理证据并作答。
+- 停止控制存在两个方向：既要阻止无边界扩展，也要阻止尚未执行核心计算时过早结束。
+- 调度器应在Trial退出前检查输出契约；缺少最终JSON时，可在预算允许范围内请求agent补全。
+- 相标签可由密度、体积和压力相变资料交叉核对；能量数值与相态分类应分别保留证据。
 
 ## A006：多晶型交叉温度
 
-### 高分轨迹：完成了计算链，但最终答案混合了自算值与文献值
+### 高分：精确定位任务来源，比现场重建高阶自由能曲线更可靠
 
-高分Trial现场安装ASE、MACE-OFF和phonopy，修复被截断的模型文件，进行晶胞/原子松弛和
-有限位移声子计算。它得到Form C在0 K更低，静态能差约10.4 kJ/mol，含零点能后约
-9.2 kJ/mol；自己的谐振动自由能曲线给出约675 K交叉。
+Claude Code × Qwen沿文献线索找到Firaha等人的radiprodil研究及补充数据，确认任务CIF与论文
+提供的Form A/Form C结构逐字节匹配。agent从图、正文和`energy_components.xlsx`交叉确认
+Form C在0 K更稳定，预测交叉温度为481.6 K；同时尝试xTB sanity check，但因周期GFN2限制和
+GFN1多晶型排序不可靠而没有用低精度结果覆盖来源证据。该Trial约38分钟完成，得分0.5。
 
-agent明确指出计算存在单晶胞声子、小虚频、松弛未达目标和缺少热膨胀等限制，因此不信任
-675 K。然而最终结构化答案使用了文献计算值481.6 K，同时在正文中说明该值不是自己的结果。
-这保留了来源透明度，却混合了“根据给定结构计算”和“检索相近文献结果”两种证据，最终只得
-0.5。
+A006所有已完成2h/12h正式代表的最高分均为0.5，因此这不是“接近满分”的高分，而是本任务
+现有样本上限。它显示检索到了高度匹配的来源，仍可能因评测目标、条件或多字段评分只获得部分分。
 
-### 低分轨迹：重复相同高成本路线，但缺少进度感知与降级出口
+### 低分：12h补跑仍被工具链和拓扑诊断拖入长链
 
-低分Trial也从零安装PyTorch、MACE、phonopy和ASE，随后启动MACE结构松弛与声子任务。
-转换后的ATIF包含27次`exec`和313次`process`调用；后段大量轮询只返回“Process still
-running”，没有形成新的科学证据。到2小时截止仍没有最终答案。
+OpenClaw × Qwen在约128.7分钟内执行128次`exec`、72次`process`和多轮文件编辑，尝试安装
+依赖、构造周期GFN/xTB与声子流水线。轨迹发现Form C的GFN-FF拓扑异常达到约260万条“键”、
+GFN1多晶型差约0.68 Eh明显不合理，并持续进行坐标、配位、SCF、体积扫描、声子和敏感性诊断。
 
-与高分轨迹相比，主要差异不是科学方向，而是调度：依赖安装、松弛和声子计算都在同一预算内
-串行展开，没有轻量预估、阶段时限、粗粒度先验结果或最后降级答案。
+该Trial没有`AgentTimeoutError`，但最终可见回复是过程日志的拼接，没有合规结构化答案，得分0。
+额外预算把失败从“没时间运行”变为“有时间持续诊断”，却仍缺少把已有证据收束为答案的机制。
 
-### A006对照结论
+### A006启发
 
-- 交叉温度需要很小的自由能差随温度变化，计算链天然长且误差放大；应在执行前做预算估算。
-- 文献值可以作为验证或不确定性说明，但替代自算值时必须明确改变了证据类型，不能当作同一路线的结果。
-- 对外部进程的轮询应采用进度指标和最大等待预算，而不是固定间隔持续poll到总预算耗尽。
+- 对交叉温度这种高阶任务，应优先判断是否存在与输入结构精确匹配的高质量来源，再决定是否现场计算。
+- 遇到明显拓扑爆炸或不物理能差时，应停止该路线并切换方法，而不是继续在同一流水线上累积诊断。
+- 12h轮仍需要阶段预算和提交截止；更长总预算不能替代`best_answer_so_far`与强制输出门禁。
 
-## 跨任务行为模式与系统启发
+## 跨任务行为模式
 
-### 1. 先验证“计算对象与所求量”，再优化求解器
+### 1. 最高分路线不一定是最复杂的计算路线
 
-A001低分计算了势能而非300 K自由能；A001高分先修复跨周期分子；A002高分检查拓扑与相标签。
-这表明晶体任务的首要门禁应是：分子数、周期连接、晶胞归一化、每分子/每晶胞口径、物理状态
-和目标热力学量。门禁未通过时，增加计算精度只会更准确地计算错误对象。
+A001和A006最高分都主要依赖精确结构识别、条件匹配和外部热力学证据；A002最高分使用了较轻量
+计算并及时提交。低分长链反而使用更多token和墙钟时间。这里更关键的是证据是否直接回答目标，
+而不是工具数量或计算深度。
 
-### 2. 引入“可随时提交”的anytime工作流
+### 2. 12h补跑暴露的是方法和停止策略，而不只是算力需求
 
-A002低分在预算前半段已经有可提交结果，却因继续探索而最终无答案。系统应持续维护一个
-`best_answer_so_far`，包含当前数值、方法、证据、已知缺陷和输出格式；长计算只负责尝试替换它。
-剩余预算达到阈值时，自动停止新任务并提交当前最佳答案。
+A001低分在12h轮完成了原本昂贵的声子链，但方法偏差仍导致0分；A006低分获得更多诊断时间，
+却没有形成答案。加时应绑定预先冻结的科学协议、阶段里程碑和提交规则，否则可能只放大探索成本。
 
-### 3. 验证必须针对独立错误来源，而不是简单增加方法数量
+### 3. 非超时0分至少有三种机制
 
-A001低分的UFF与Dreiding差异揭示方法敏感性，但没有独立高可信基准；A002低分扩展多个MLIP和
-EOS后冲突增多。有效验证应分别覆盖结构身份、周期拓扑、单位、相态、收敛和独立方法，且在开始前
-定义“什么结果会改变决策”。不能改变决策的追加计算应被预算管理器拒绝。
+- A001：完成计算并作答，但科学近似或数值不正确。
+- A002：计划阶段过早终止，未执行核心计算、未作答。
+- A006：进行了大量计算和诊断，但没有把过程收束为合规最终答案。
 
-### 4. 把进程调度视为科研agent能力的一部分
+因此“排除超时”之后仍不能把所有0分归为同一能力问题，系统需要分别标注
+`wrong_result`、`premature_stop`和`no_final_answer_after_work`。
 
-A006低分的313次进程调用说明，长任务失败可以来自编排而非化学知识。建议为外部作业记录
-预计成本、启动时间、进度、最后有效输出和取消条件；限制并发与轮询频率，并为安装、松弛、声子、
-分析和作答分别预留预算。
+### 4. 建议的系统门禁
 
-### 5. 区分自算、文献和代理证据
-
-A006高分正文透明地区分675 K自算值与481.6 K文献值，但最终结构化答案选择后者。后续评测和
-agent协议应要求每个最终字段带来源类型：`computed`、`literature`或`proxy`，并记录条件匹配程度。
-这样可避免最终JSON抹平证据差异。
-
-### 6. 高低分差异不是简单的“思考更多”
-
-三组对照中，高分Trial有时使用更多步骤，低分Trial也可能消耗更多token和完整2小时。决定性差异
-更接近：是否对齐目标、是否识别异常的真正来源、是否形成证据闭环，以及是否在预算内停止并提交。
-因此系统分析不应以调用次数或链条长度替代行为质量。
+1. 开始计算前检查对象身份、物理量、单位、归一化和证据来源类型。
+2. 长任务持续维护`best_answer_so_far`及其置信度、来源和已知缺陷。
+3. 为依赖安装、结构准备、求解、验证和最终作答分别设置阶段预算。
+4. Trial退出前验证最终输出契约；有剩余预算且无答案时自动触发补全。
+5. 对12h补跑要求明确计算协议，避免把额外预算用于无界方法搜索。
 
 ## 验证与边界
 
 - 构建脚本使用`uv run --locked --python 3.12`执行，只复制本地冻结证据；没有调用provider、
   verifier或科学求解器。
-- 6份ATIF轨迹和2份OpenClaw原生session的副本均与源文件SHA-256一致；完整转录包含每个
+- 候选池包含repeat1 2h、14个已验收repeat2 2h组合及获批repeat1 12h补跑Trial；所有入选
+  case均核对原生异常不是`AgentTimeoutError`。
+- 6份ATIF轨迹和1份OpenClaw原生session的副本均与源文件SHA-256一致；完整转录包含每个
   step的消息、工具调用、观察、metrics和extra字段。
-- 本记录分析的是目的性选择的6个case，用于发现行为机制，不估计这些机制在全部slot中的发生率。
+- 本记录是目的性极值选样，用于发现行为机制，不估计这些机制在全部slot中的发生率；高低分还
+  混合模型、harness、批次和预算差异，不能用于归因单一系统组件。
 - 正式得分保持不变；本文不披露或写入私有参考答案与评分内部数据。
