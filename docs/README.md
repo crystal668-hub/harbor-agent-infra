@@ -67,7 +67,7 @@
 - [VGB RC接入验收](acceptance/2026-10-30-acceptance-vgb-rc-upgrade.md)：包来源、repeat1迁移、开放生成准备及验证边界。
 - [通用Agent化学任务研究（VGB RC1）](audit/2026-10-31-audit-general-agent-chemistry-vgb-rc.html)：基于 CURRENT 的 70 题、1120 个slot互动报告；0.10.0历史评分未重评。2026-10-29 的71题报告保留为历史口径。
 - [A008 / B031 全零原因专项审计](audit/2026-11-01-audit-chemistry-zero-score-alignment.html)：32条正式代表的原题、计算协议、原子映射与轨迹复核；定位方法缺失及目标原子不一致，保留旧正式分数。
-- [通用大模型与Harness的化学科研能力边界](audit/2026-11-05-audit-general-agent-chemistry-insights.html)：按任务类型归纳的文章可用分析；第一轮完整矩阵的质量、用时与token比较，以及第二轮14个已验收组合的配对复核。
+- [通用大模型与Harness的化学科研能力边界](audit/2026-11-05-audit-general-agent-chemistry-insights.html)：按任务类型归纳的文章可用分析；repeat1/repeat2两批完整16组合的得分、标准Trial用时、token与超时迁移复核。
 - [晶体热力学与相稳定性高低分轨迹对照](audit/2026-11-08-audit-crystal-thermodynamics-trajectory-cases.html)：A001/A002/A006在两批2h及repeat1 12h补跑中的非超时、完整作答高低分case，附6份完整ATIF轨迹、可读转录与行为机制分析。
 
 ## 维护约定
