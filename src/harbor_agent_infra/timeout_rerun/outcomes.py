@@ -233,7 +233,17 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
             item = by_task[name]
             sid, ordinal = item["slot_id"], item["ordinal"]
             expected = read_object(root / "inputs" / sid / "job.json")
-            validate_trial(trial, expected, slots[sid])
+            from harbor_agent_infra.timeout_rerun.replacements import effective_replacement
+
+            replacement = effective_replacement(plan, slots[sid], path, trial, expected, ordinal)
+            if replacement:
+                predecessor, ordinal = replacement
+                if predecessor["trial_id"] in seen_trials:
+                    raise ValueError("Duplicate archived Trial UUID in effective replacements")
+                seen_trials.add(predecessor["trial_id"])
+                histories[sid].append(predecessor)
+            else:
+                validate_trial(trial, expected, slots[sid])
             outcome = verdict(path, slots[sid])
             entry = {
                 "ordinal": ordinal,
