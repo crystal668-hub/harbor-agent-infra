@@ -196,6 +196,7 @@ def test_session_and_compaction_patches_selected_for_all_openclaw_models(
     assert commands["openclaw-length-continuation"] == (
         patches.openclaw_length_continuation_patch_command()
     )
+    assert commands["openclaw-cron-wake"] == patches.openclaw_cron_wake_patch_command()
     monkeypatch.setattr(Base, "install", AsyncMock())
     agent.exec_as_agent = AsyncMock()
     asyncio.run(agent.install(None))

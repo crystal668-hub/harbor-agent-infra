@@ -4,6 +4,7 @@ import json
 import re
 import sys
 import time
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from uuid import uuid4
@@ -45,6 +46,38 @@ class Handler(BaseHTTPRequestHandler):
                 "## Next Steps\n1. Return the final answer.\n\n"
                 "## Critical Context\n- The side-effect counter is already 1."
             )
+        elif any(flag in sys.argv for flag in (
+            "--cron-current", "--cron-system-event", "--cron-error",
+        )):
+            if "CRON_FINISH" in users[-1]:
+                assert Path("/workspace/resume-marker").read_text() == "preserved"
+                if "--pause-forever" in sys.argv:
+                    time.sleep(90)
+                if "--cron-error" in sys.argv and "cron" not in calls:
+                    call = ("cron", {
+                        "action": "wake", "text": "restricted follow-up", "mode": "now",
+                    })
+                else:
+                    text = ("Still working; no final answer." if "--cron-error" in sys.argv
+                            else "FINAL ANSWER: 42")
+            elif "exec" not in calls:
+                command = "printf preserved > /workspace/resume-marker"
+                if "--cron-system-event" in sys.argv:
+                    command += (
+                        ' && openclaw cron add --name fixture-report --at +10s --delete-after-run'
+                        ' --session-key "$OPENCLAW_SESSION_KEY" --system-event CRON_FINISH'
+                    )
+                call = ("exec", {"command": command})
+            elif "--cron-system-event" not in sys.argv and "cron" not in calls:
+                call = ("cron", {"action": "add", "job": {
+                    "name": "fixture-report", "sessionTarget": "current", "deleteAfterRun": True,
+                    "schedule": {"kind": "at", "at": (
+                        datetime.now(UTC) + timedelta(seconds=10)).isoformat()},
+                    "payload": {"kind": "agentTurn", "message": "CRON_FINISH"},
+                    "delivery": {"mode": "none"},
+                }})
+            else:
+                call = ("sessions_yield", {"message": "Waiting for the scheduled report."})
         elif child:
             time.sleep(90 if "--pause-forever" in sys.argv else 2)
             # Shared workspace state must still exist after the parent yielded.

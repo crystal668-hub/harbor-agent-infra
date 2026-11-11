@@ -25,6 +25,12 @@ pytestmark = pytest.mark.integration
         "compacted",
         "length_continuation",
         "length_exhausted",
+        "cron_current",
+        "cron_system_event",
+        "cron_error",
+        "cron_reconnected",
+        "cron_reconnected_error",
+        "cron_system_timeout",
     ],
 )
 def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch, outcome):
@@ -44,23 +50,25 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     instruction = "PARENT_WORK" if pause else "NO_PAUSE"
     if outcome in {"length_continuation", "length_exhausted"}:
         instruction = "LENGTH_CONTINUATION"
+    if outcome.startswith("cron_"):
+        instruction = "CRON_WORK"
     (task / "instruction.md").write_text(instruction)
     (task / "task.toml").write_text(
         'schema_version = "1.4"\n[environment]\n'
         f'docker_image = "{image.immutable_reference}"\n[agent]\n'
-        f'timeout_sec = {35 if outcome == "timeout" else 150}\n'
+        f'timeout_sec = {35 if outcome in {"timeout", "cron_system_timeout"} else 150}\n'
     )
     original = OpenClawAgent.install
     original_upload = OpenClawAgent._upload_config_text
 
     async def upload(self, environment, *, content, remote_path, filename):
-        if outcome == "reconnected" and filename == "gateway_session.mjs":
+        if "reconnected" in outcome and filename == "gateway_session.mjs":
             # Withhold the subscription during both native recovery rounds.
             content = content.replace(
                 "this.paused = true;",
                 'this.paused = true; process.emit("fixture-disconnect");',
             )
-        if outcome == "reconnected" and filename == "gateway_driver.mjs":
+        if "reconnected" in outcome and filename == "gateway_driver.mjs":
             # Recreate only the SDK connection; the Gateway, parent and children
             # keep running. Use public SDK methods without exposing test hooks.
             content = content.replace("client = new GatewayClient({", "const options = {")
@@ -68,7 +76,8 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
                 "});\n    client.start();",
                 '};\n    process.once("fixture-disconnect", () => { client.stop(); '
                 "setTimeout(() => {client = new GatewayClient(options); client.start();}, "
-                "12000); });\n    client = new GatewayClient(options); client.start();",
+                f'{22000 if outcome.startswith("cron_") else 12000}); }});\n'
+                '    client = new GatewayClient(options); client.start();',
             )
             content = content.replace(
                 "session.run(client)",
@@ -86,12 +95,17 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         await environment.exec(
             command=(
                 "nohup python3 /tmp/openclaw-model.py "
-                + ("--pause-forever " if outcome == "timeout" else "")
+                + ("--pause-forever " if outcome in {"timeout", "cron_system_timeout"} else "")
                 + ("--inflated-cache " if outcome == "compacted" else "")
                 + ("--inflated-cache --length-continuation "
                    if outcome == "length_continuation" else "")
                 + ("--inflated-cache --length-exhausted "
                    if outcome == "length_exhausted" else "")
+                + ("--" + {"cron_reconnected": "cron-current",
+                           "cron_system_timeout": "cron-system-event",
+                           "cron_reconnected_error": "cron-error"}.get(
+                               outcome, outcome.replace("_", "-")) + " "
+                   if outcome.startswith("cron_") else "")
                 + "> /logs/agent/fixture-model.log "
                 "2>&1 </dev/null &"
             )
@@ -179,7 +193,7 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
             )
         ]
 
-    if outcome == "timeout":
+    if outcome in {"timeout", "cron_system_timeout"}:
         assert trial.exception_info.exception_type == "AgentTimeoutError"
         assert trial.verifier_result is None
         assert calls == verified == []
@@ -200,6 +214,16 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         assert len(model_requests()) == 3
         assert json.loads((agent_dir / "openclaw-status.json").read_text())["state"] == "failed"
         assert not (agent_dir / "openclaw.txt").exists()
+        return
+    if outcome in {"cron_error", "cron_reconnected_error"}:
+        assert trial.exception_info.exception_type == "OpenClawAgentIncompleteError"
+        assert "cron recovery error" in trial.exception_info.exception_message
+        assert trial.verifier_result is None
+        assert calls == verified == []
+        assert not (agent_dir / "openclaw.txt").exists()
+        assert "Still working; no final answer." in (
+            agent_dir / "openclaw.session.jsonl"
+        ).read_text()
         return
     assert trial.exception_info is None, trial.exception_info
     assert len(calls) == len(verified) == 1
@@ -235,11 +259,14 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
         and e.get("sessionKey") == parent["sessionKey"]
         and e["data"]["phase"] == "start"
     ]
-    if outcome == "reconnected":
+    if "reconnected" in outcome:
         assert any(e["kind"] == "reconnected" for e in events)
         assert any(e["kind"] == "completed" and e["reconciled"] for e in events)
     else:
-        expected_parent_starts = 2 if outcome == "length_continuation" else (3 if pause else 1)
+        expected_parent_starts = (
+            2 if outcome == "length_continuation" or outcome.startswith("cron_")
+            else (3 if pause else 1)
+        )
         assert len(parent_starts) == expected_parent_starts
     assert {e["sessionId"] for e in parent_starts} == {parent["sessionId"]}
     transcript = [
@@ -248,7 +275,19 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
     messages = [row["message"] for row in transcript if row.get("type") == "message"]
     assert sum(
         "PARENT_WORK" in str(m.get("content")) for m in messages if m["role"] == "user"
-    ) == int(pause)
+    ) == int(pause and not outcome.startswith("cron_"))
+    if outcome.startswith("cron_"):
+        assert sum(m.get("content") == "CRON_WORK" or any(
+            part.get("text", "").endswith("CRON_WORK") for part in m.get("content", [])
+            if isinstance(part, dict)
+        ) for m in messages if m["role"] == "user") == 1
+        assert any((e["kind"] == "cron" and e["action"] == "finished" and e["status"] == "ok")
+                   or e["kind"] == "cron_reconciled" for e in events)
+        assert len(model_requests()) == (3 if outcome == "cron_system_event" else 4)
+        assert "[heartbeat] disabled" in (agent_dir / "openclaw-gateway.log").read_text()
+        assert json.loads((agent_dir / "openclaw.upload.json").read_text())[
+            "agents"
+        ]["defaults"]["heartbeat"]["every"] == "0m"
     if outcome == "length_continuation":
         assert sum(
             "LENGTH_CONTINUATION" in str(m.get("content"))
@@ -256,7 +295,7 @@ def test_real_gateway_resumes_parent_in_same_harbor_trial(tmp_path, monkeypatch,
             if m["role"] == "user"
         ) == 1
     assert sum(row.get("customType") == "openclaw.sessions_yield" for row in transcript) == (
-        2 if pause else 0
+        1 if outcome.startswith("cron_") else (2 if pause else 0)
     )
     assert trial.agent_result.n_output_tokens == sum(
         m.get("usage", {}).get("output", 0) for m in messages if m["role"] == "assistant"

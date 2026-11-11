@@ -18,6 +18,7 @@ from adapters.runtime_patches import (
     hermes_output_patch_command,
     openclaw_adaptive_patch_command,
     openclaw_compaction_patch_command,
+    openclaw_cron_wake_patch_command,
     openclaw_encrypted_content_patch_command,
     openclaw_length_continuation_patch_command,
     openclaw_network_retry_patch_command,
@@ -47,6 +48,7 @@ def selected_patches(agent) -> dict[str, str]:
             "openclaw-session-fixes": openclaw_session_fixes_patch_command(),
             "openclaw-compaction": openclaw_compaction_patch_command(),
             "openclaw-length-continuation": openclaw_length_continuation_patch_command(),
+            "openclaw-cron-wake": openclaw_cron_wake_patch_command(),
         }
         if agent.model_name.startswith("openai/"):
             patches["openclaw-openai-encrypted-content"] = (

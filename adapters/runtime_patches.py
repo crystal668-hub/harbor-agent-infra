@@ -276,6 +276,33 @@ def openclaw_length_continuation_patch_command() -> str:
     )
 
 
+OPENCLAW_CRON_WAKE_SHA256 = "28ab6f0affb9235b4a6da83301ac1761e9288ff1ba27560ca2ecdf2f45703631"
+OPENCLAW_CRON_WAKE_REPLACEMENTS = ((
+    "async function executeJobCore(state, job, abortSignal, options) {",
+    "async function executeJobCore(state, job, abortSignal, options) {\n"
+    "\t// HAI dispatch the explicit Trial parent event as a native session turn.\n"
+    "\t// The original job remains persisted; its outer timeout/cancellation still apply.\n"
+    "\tconst boundKey = process.env.OPENCLAW_SESSION_KEY?.toLowerCase();\n"
+    "\tconst boundAgent = process.env.OPENCLAW_AGENT_ID;\n"
+    '\tif (job.sessionTarget === "main" && job.payload.kind === "systemEvent" &&\n'
+    '\t\ttypeof job.payload.text === "string" && job.payload.text.trim() &&\n'
+    "\t\tboundKey && boundAgent && job.sessionKey?.toLowerCase() === boundKey &&\n"
+    "\t\tresolveAgentIdFromSessionKey(boundKey) === boundAgent &&\n"
+    "\t\t(!job.agentId || job.agentId === boundAgent)) {\n"
+    "\t\tjob = {...job, agentId: boundAgent, sessionKey: boundKey,\n"
+    '\t\t\tsessionTarget: `session:${boundKey}`, delivery: {mode: "none"},\n'
+    '\t\t\tpayload: {kind: "agentTurn", message: job.payload.text}};\n'
+    "\t}",
+),)
+
+
+def openclaw_cron_wake_patch_command() -> str:
+    """Route only bound parent system events through native cron agent execution."""
+    return _openclaw_release_patch_command(
+        "server-cron-CbQL-0jN.js", OPENCLAW_CRON_WAKE_SHA256,
+        OPENCLAW_CRON_WAKE_REPLACEMENTS,
+    )
+
 
 OPENCLAW_OPENAI_TRANSPORT_SHA256 = (
     "6b93df2b9ea93b9f862b4cda2d2bd8149823544d7053a417ef34c39aeb19126c"
