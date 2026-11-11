@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-12（Asia/Shanghai）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵配置校验与dry-run已通过，尚未派发；repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵已按Claude Code × DeepSeek、GPT、Claude、Qwen的顺序启动队列；首组运行中，后三组排队，尚无repeat3成绩。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -995,16 +995,23 @@ VGB 1.0.0rc1任务身份一致，分轨为19项Advanced与51项Basic。发布报
 
 #### 14.4.1 限时2h正式轮
 
-2026-11-12：本地启动准备完成，尚未派发；成绩留空。16份正式配置已按当前`runtime-lock.json`
-核验任务清单与预装镜像，repeat3专用矩阵dry-run通过并生成16条命令。本机四个锁定镜像均可检查到。
-本次没有运行Agent、Verifier或provider请求；代理、协议桥、配额及服务端可用性须在实际启动前复核。
+2026-11-12：16份正式配置已按当前`runtime-lock.json`核验任务清单与预装镜像，repeat3专用
+矩阵dry-run通过并生成16条命令；本机四个锁定镜像均可检查到。所需`.env`路由变量、Docker、
+本地代理和协议桥端口均通过启动前本机检查。
+
+2026-11-12 00:29（上海）：按用户指定顺序启动Claude Code四组正式repeat3队列：DeepSeek → GPT →
+Claude → Qwen，仅`skills_off`。顺序控制器为tmux session
+`harbor-repeat3-claude-code-20261112`，队列日志位于
+`logs/formal-experiments/repeat3-claude-code-sequence-20261112.queue.log`，各组独立日志使用正式run名。
+00:30首组Job `d36c3b1a-c880-4830-abf5-c19dbc73ea4b`已创建，两个Trial容器正在运行；
+后三组尚未派发，待前一组命令退出0后再启动。本次核对时尚无可用分数结果。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 已准备，未启动 | — | — |
-| Claude Code | Qwen | 已准备，未启动 | — | — |
-| Claude Code | GPT | 已准备，未启动 | — | — |
-| Claude Code | Claude | 已准备，未启动 | — | — |
+| Claude Code | DeepSeek | 运行中 | — | — |
+| Claude Code | Qwen | 排队 | — | — |
+| Claude Code | GPT | 排队 | — | — |
+| Claude Code | Claude | 排队 | — | — |
 | Codex | DeepSeek | 已准备，未启动 | — | — |
 | Codex | Qwen | 已准备，未启动 | — | — |
 | Codex | GPT | 已准备，未启动 | — | — |
