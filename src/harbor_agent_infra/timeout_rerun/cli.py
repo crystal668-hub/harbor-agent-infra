@@ -32,6 +32,7 @@ def register(subparsers):
     run.add_argument("--dry-run", action="store_true")
     run.add_argument("--reviews", type=Path)
     run.add_argument("--env-file", type=Path)
+    run.add_argument("--parallel", action="store_true", help="use the frozen global trial cap")
     merge = commands.add_parser("merge", help="publish complete revised formal snapshots")
     merge.add_argument("manifest", type=Path)
     merge.add_argument("--output-dir", type=Path, required=True)
@@ -73,6 +74,7 @@ def dispatch(args):
                     dry_run=args.dry_run,
                     reviews=args.reviews,
                     env_file=args.env_file,
+                    parallel=args.parallel,
                 )
             )
         else:

@@ -511,4 +511,7 @@ def load_plan(path: Path) -> dict:
             raise ValueError("Source task changed after planning")
         if files(root / "inputs" / slot["slot_id"]) != slot["input_files"]:
             raise ValueError("Frozen execution inputs changed")
+    from harbor_agent_infra.timeout_rerun.parallel import parallel_amendment
+
+    parallel_amendment(plan)
     return plan

@@ -2,7 +2,7 @@
 
 日期：2026-11-11（Asia/Shanghai）
 类型：plan（终态审核与后续补跑范围）
-状态：13:40更新：用户指定Hermes × Qwen A007、OpenClaw × Qwen A006、Claude Code × Qwen A018规划为工程补跑，维持全局并发2并允许不同harness同时运行。A019独立恢复终答和评分已验明，仍待显式正式合并。三项审核预览通过，但活动审核文件未改、并发执行器及OpenClaw新镜像条件转换未实施，本计划未派发Agent。
+状态：14:01更新：用户明确要求派发三项工程补跑；原campaign已签署并行及镜像条件修订，活动审核通过，控制器已派发Claude Code A018与Hermes A007，OpenClaw A006在全局并发2的队列中。A019仍hold且未正式合并；三项尚未验收完成。
 
 ## 范围与统计
 
@@ -116,4 +116,25 @@ OpenClaw A006目标Job仍引用已退役的旧镜像，不能仅把原Job直接�
 
 全部三项及A019恢复正式代表明确选定后，再进行最终merge dry-run；需确认43个候选中
 A019只选独立恢复评分代表、其余三项只选最终获批尝试，16个组合各70项、合计1120计分，
-归档尝试只进入尝试链/费用，不重复计分。本修订尚未实施、部署或验收并行调度。
+归档尝试只进入尝试链/费用，不重复计分。本节记录13:40时的执行门禁；实施证据见下节。
+
+## 2026-11-11 派发记录（14:01）
+
+用户再次明确要求完成并派发三项补跑。原campaign新增签名parallel-amendment.json，
+仅允许Claude Code × Qwen A018、Hermes × Qwen A007、OpenClaw × Qwen A006三个slot，
+全局活动Trial上限2。A006从已退役镜像切换到当前锁定的OpenClaw digest；
+新任务、Job与运行锁放在parallel-inputs/，旧尝试仍按旧冻结条件核验。
+原manifest、inputs、runtime-lock、39项有效结果和A019 hold未改。
+旧attempt-reset.json及活动审核决定在campaign外审计目录备份；
+前者仅更新实现哈希签名，不重新清零预算，后者绑定三项原始失败Trial及无效回答证据。
+
+provider-free测试111项及Ruff通过；load_plan与scan通过。dry-run显示39 completed、
+3 engineering_approved、1 review_hold，恰好3个单题Job、global_concurrency=2。
+本机代理7892、协议桥4141、Docker daemon和A006目标镜像均通过启动前检查。
+14:01在tmux会话harbor-repeat2-three-20261111启动原目录控制器；首批Claude Code A018、
+Hermes A007的两个原生Trial已创建，Claude Code日志已出现真实assistant事件，
+Hermes的qwen3.8-max流也在14:02:37出现首个解析及有效进度事件；
+本机证据摘要为run-artifacts/audit/repeat2-timeout-followup-20261111/model-call-check-20261111.json。
+第三项A006等待令牌释放自动启动。执行日志为campaign/engineering-followup-execution.log，
+实时状态以campaign/state.json和jobs/原生Trial为准。此记录仅证明派发与早期调用，
+不证明Hermes或A006已获得有效终答，也不执行最终merge。

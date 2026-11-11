@@ -20,6 +20,7 @@ from harbor_agent_infra.resume.io import read_object, write_object
 from harbor_agent_infra.resume.lifecycle import run_lock
 from harbor_agent_infra.timeout_rerun.dispositions import scoring_records
 from harbor_agent_infra.timeout_rerun.outcomes import official_domain, scan
+from harbor_agent_infra.timeout_rerun.parallel import condition_for_slot, parallel_amendment
 from harbor_agent_infra.timeout_rerun.plan import digest, files, load_plan, object_digest
 from harbor_agent_infra.timeout_rerun.policy import timeout_label
 from harbor_agent_infra.timing import summarize_slot_timing
@@ -197,12 +198,20 @@ def project_replacement(
     ]
     record["attempts"] = historical + archived + new_attempts
     record["final_attempt"] = new_attempts[-1]
+    condition_change = copy.deepcopy(slot["condition_change"])
+    if condition_for_slot(plan, slot["slot_id"]):
+        target = Path(plan["root"]) / "parallel-inputs" / slot["slot_id"]
+        condition_change.update(
+            target_agent=read_object(target / "job.json")["agents"][0],
+            target_task_sha256=digest(target / "task" / slot["task_name"] / "task.toml"),
+            parallel_amendment_sha256=parallel_amendment(plan)["sha256"],
+        )
     record["timeout_rerun"] = {
         "plan_sha256": plan["plan_sha256"],
         "source_trial_id": slot["source_trial_id"],
         "source_evidence_sha256": slot["source_trial_sha256"],
         "outcome": final["status"],
-        "condition_change": slot["condition_change"],
+        "condition_change": condition_change,
     }
     record["record_path"] = str(output / "per-record/skills_off" / f"slot-{slot['slot_id']}.json")
     write_object(stage / "per-record/skills_off" / f"slot-{slot['slot_id']}.json", record)
@@ -401,6 +410,7 @@ def merge_campaign(
                 "runs": comparisons,
                 "rerun_usage": attempt_usage(usage_state),
                 "attempt_reset": reset,
+                "parallel_amendment": parallel_amendment(plan),
                 "outcomes": dict(Counter(s["status"] for s in state["slots"].values())),
                 "protocol": (
                     f"Repeat {plan['policy']['repeat']}: original "

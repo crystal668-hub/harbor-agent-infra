@@ -232,7 +232,9 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
         for name, (path, trial) in native.items():
             item = by_task[name]
             sid, ordinal = item["slot_id"], item["ordinal"]
-            expected = read_object(root / "inputs" / sid / "job.json")
+            from harbor_agent_infra.timeout_rerun.parallel import job_for_slot
+
+            expected = job_for_slot(plan, sid, ordinal)
             from harbor_agent_infra.timeout_rerun.replacements import effective_replacement
 
             replacement = effective_replacement(plan, slots[sid], path, trial, expected, ordinal)

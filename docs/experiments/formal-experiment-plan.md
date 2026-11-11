@@ -941,6 +941,12 @@ A018/A019由Harbor取消，30项尚未第二次尝试；9项首轮完成结果�
 | OpenClaw | GPT | 无候选；待发布保留 | — | — |
 | OpenClaw | Claude | 原目录1项待派 | — | — |
 
+2026-11-11用户批准在原campaign中对Claude Code × Qwen A018、Hermes × Qwen A007、
+OpenClaw × Qwen A006实施首次工程替代。旧活动尝试与39项有效结果保留，A019独立恢复结果
+仍待正式选择；三项采用单题Job、跨harness全局并发2，其中仅A006显式切换到已验收新镜像。
+14:01首批Claude Code与Hermes Trial已创建，A006按令牌上限排队；未发布最终合并成绩。
+冻结原始条件及派发证据见[后续计划](../plan/2026-11-11-plan-repeat2-timeout-followup.md#2026-11-11-派发记录1401)。
+
 ### 14.4 Repeat 3
 
 #### 14.4.1 限时2h正式轮

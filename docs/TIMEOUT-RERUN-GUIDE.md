@@ -47,8 +47,16 @@ score 仅可为 0，并提供 authorization、reason、evidence_file、evidence_
 
 --env-file 指定本机凭据文件；--reviews 指定审核文件，默认使用 campaign 中的 review-decisions.json。
 dry-run 不创建 Job、不写文件、不调用 provider；实际执行检查 Docker、VGB 和锁定化学环境。
-同一campaign有进程锁，各组合顺序执行，Job内并发使用冻结值（默认2），关闭Harbor内部重试。
+同一campaign有进程锁。默认各组合顺序执行，Job内并发使用冻结值（默认2），关闭Harbor内部重试。
 state.json 记录进度，jobs/ 下的 timeout-dispatch.json 与原生 Trial 结果用于接续对账。
+
+明确批准跨harness并行替代时，先在campaign中签署parallel-amendment.json
+（timeout-parallel-amendment.v1），绑定plan哈希、批准的slot、全局活动Trial上限及授权原因；
+再显式使用run --parallel。执行器将待派项拆成单题Job，由同一个信号量限制全部活动Trial，
+上限必须等于冻结policy.concurrency。任何待派项不在批准集合中均拒绝派发。
+需要改镜像的slot另在parallel-inputs/中物化任务、Job及运行锁副本，绑定文件哈希和
+activation_ordinal；旧尝试继续按旧镜像校验，新尝试按新条件校验。原manifest、inputs、
+runtime-lock和Trial证据不改写。未签署修订时不得使用--parallel；签署后也不能省略该参数。
 
 重复 run 会先核对全部已有尝试，正常结束的零分和能力失败不重跑。
 没有启动证据的任务可继续派发；已有 Trial 身份的中断先核对容器与证据，不能直接重置。
@@ -72,6 +80,9 @@ state.json 记录进度，jobs/ 下的 timeout-dispatch.json 与原生 Trial 结
 ordinal 和证据哈希必须对应待处理尝试，不能照抄示例批准其他失败。
 无法自动分类的正常能力失败可审核为 capability，计协议零分后关闭 slot；
 已完成的有效结果不能改为工程失败进行择优重跑。
+若终态错误却留下已评分的服务错误代答或未评分进度文本，工程审核还需invalid_answer：
+绑定原答哈希、结果和回答文件哈希，以及已有的评分证据哈希；只有明确审核后才可替代。
+action=hold仅隔离该项，不能授权重跑或把文本计为有效成绩。
 
 评分失败仅在已有终态输出上最多重评两次，不重新执行 Agent；成功修复和身份保存在
 timeout-scoring-repair.json，原始执行异常与计时保留。
@@ -147,6 +158,10 @@ formal-selected-snapshots.json 列出本轮修订后的统计入口，只选其�
       tests/test_timeout_rerun_generic.py tests/test_timeout_rerun_reset.py
     RUN_HAI_TIMEOUT_RERUN=1 uv run --locked --python 3.12 pytest -m integration \
       tests/test_timeout_rerun_docker_integration.py
+
+新增并行调度与有效恢复证据校验：
+
+    uv run --locked --python 3.12 pytest -q tests/test_timeout_rerun_parallel.py tests/test_timeout_effective_replacement.py
 
 Docker gate 使用本地锁定镜像和假 Agent，以短时限验证超时、保存、清理和重启；
 不调用 provider 或私有评分数据。冻结策略、审核、评分修复及发布范围由契约测试验证。

@@ -1,4 +1,4 @@
-"""Sequential Harbor Jobs with native checkpoints and no implicit Agent retries."""
+"""Harbor Jobs with native checkpoints and no implicit Agent retries."""
 
 from __future__ import annotations
 
@@ -21,6 +21,12 @@ from harbor_agent_infra.resume.answers import final_answer
 from harbor_agent_infra.resume.io import read_object, write_object
 from harbor_agent_infra.resume.lifecycle import attach_checkpoints, run_lock
 from harbor_agent_infra.timeout_rerun.outcomes import scan
+from harbor_agent_infra.timeout_rerun.parallel import (
+    condition_for_slot,
+    job_for_slot,
+    lock_for_slot,
+    parallel_amendment,
+)
 from harbor_agent_infra.timeout_rerun.plan import load_plan, object_digest
 from harbor_agent_infra.timeout_rerun.policy import timeout_label
 from integrations.vgb.chemistry import preflight_chemistry
@@ -29,15 +35,21 @@ from integrations.vgb.runtime import VgbRuntime
 
 def jobs_to_start(plan: dict, state: dict) -> list[tuple[dict, list[dict]]]:
     root = Path(plan["root"])
+    amendment = parallel_amendment(plan)
     groups = defaultdict(list)
     configs = {}
     for slot in plan["slots"]:
         ordinal = state["slots"][slot["slot_id"]]["next_ordinal"]
         if ordinal is None:
             continue
-        config = read_object(root / "inputs" / slot["slot_id"] / "job.json")
+        if amendment and slot["slot_id"] not in amendment["slot_ids"]:
+            raise ValueError("Parallel dispatch would include an unapproved slot")
+        condition = condition_for_slot(plan, slot["slot_id"])
+        if condition and ordinal < condition["activation_ordinal"]:
+            raise ValueError("Parallel image condition is not active for this attempt")
+        config = job_for_slot(plan, slot["slot_id"], ordinal)
         common = {k: v for k, v in config.items() if k not in {"job_name", "jobs_dir", "tasks"}}
-        key = (slot["run"], object_digest(common))
+        key = (slot["run"], object_digest(common), slot["slot_id"] if amendment else "")
         configs[key] = config
         groups[key].append(
             {"slot_id": slot["slot_id"], "ordinal": ordinal, "task": config["tasks"][0]}
@@ -56,6 +68,21 @@ def jobs_to_start(plan: dict, state: dict) -> list[tuple[dict, list[dict]]]:
         config["job_name"] = name
         result.append((config, [{k: i[k] for k in ("slot_id", "ordinal")} for i in items]))
     return result
+
+
+async def run_with_global_limit(work, concurrency: int, runner):
+    """Run independent single-task Jobs without exceeding the campaign Trial cap."""
+    if concurrency < 1 or any(len(items) != 1 for _, items in work):
+        raise ValueError("Parallel timeout dispatch requires single-task Jobs")
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def limited(config, items):
+        async with semaphore:
+            await runner(config, items)
+
+    async with asyncio.TaskGroup() as group:
+        for config, items in work:
+            group.create_task(limited(config, items))
 
 
 def inactive_interrupted(state: dict):
@@ -110,20 +137,26 @@ async def preflight(plan: dict, configs: list[dict]):
         locked = read_object(Path(plan["root"]) / "runtime-lock.json")["vgb"]
         if any(meta.get(k) != locked.get(k) for k in ("package", "version", "tracks")):
             raise ValueError("VGB runtime differs from campaign lock")
-        harness = next(
-            s["harness"]
+        slot = next(
+            s
             for s in plan["slots"]
             if s["task_name"] == Path(job.tasks[0].path).name
-            and str(job.tasks[0].path).startswith(str(Path(plan["root"]) / "inputs" / s["slot_id"]))
+            and str(job.tasks[0].path) == job_for_slot(plan, s["slot_id"])["tasks"][0]["path"]
         )
+        harness = slot["harness"]
+        condition_lock = lock_for_slot(plan, slot["slot_id"])
         await asyncio.to_thread(
             preflight_chemistry,
             runtime,
-            Path(plan["root"]) / "runtime-lock.json",
+            condition_lock,
             pull_policy="never",
             agent_name=harness,
             installation_mode="preinstalled",
-            output_path=Path(plan["root"]) / f"preflight-{harness}.json",
+            output_path=Path(plan["root"]) / (
+                f"preflight-{harness}-{slot['slot_id'][:8]}.json"
+                if condition_lock != Path(plan["root"]) / "runtime-lock.json"
+                else f"preflight-{harness}.json"
+            ),
         )
 
 
@@ -133,7 +166,7 @@ async def repair_score(plan: dict, slot: dict, attempt: dict):
     answer = final_answer(path.parent / "agent", slot["harness"])
     if answer is None:
         raise ValueError("Cannot rescore without final-answer evidence")
-    config = read_object(Path(plan["root"]) / "inputs" / slot["slot_id"] / "job.json")
+    config = job_for_slot(plan, slot["slot_id"], attempt["ordinal"])
     runtime = runtime_for(config)
     provenance_path = path.parent / "timeout-scoring-repair.json"
     provenance = (
@@ -185,12 +218,16 @@ async def repair_score(plan: dict, slot: dict, attempt: dict):
 
 
 async def run_campaign(
-    manifest: Path, *, dry_run=False, reviews: Path | None = None, env_file: Path | None = None
+    manifest: Path, *, dry_run=False, reviews: Path | None = None,
+    env_file: Path | None = None, parallel: bool = False,
 ) -> dict:
     plan = load_plan(manifest)
     root = Path(plan["root"])
     with run_lock(root, create=not dry_run):
         plan = load_plan(manifest)
+        amendment = parallel_amendment(plan)
+        if parallel != bool(amendment):
+            raise ValueError("Parallel run requires a frozen parallel amendment and explicit flag")
         state = scan(plan, reviews)
         work = jobs_to_start(plan, state)
         if dry_run:
@@ -200,6 +237,7 @@ async def run_campaign(
                 "jobs_to_start": len(work),
                 "slots_to_start": sum(len(items) for _, items in work),
                 "execution_preflight": "required_before_execution",
+                "global_concurrency": amendment["max_active_trials"] if amendment else None,
             }
         load_dotenv(env_file or Path(__file__).resolve().parents[3] / ".env", override=False)
         inactive_interrupted(state)
@@ -220,7 +258,7 @@ async def run_campaign(
         try:
             for slot in repairs:
                 await repair_score(plan, slot, state["slots"][slot["slot_id"]]["attempts"][-1])
-            for config, items in work:
+            async def run_job(config, items):
                 load_plan(manifest)  # Fail before dispatch if frozen sources/inputs drifted.
                 directory = root / "jobs" / config["job_name"]
                 directory.mkdir(parents=True, exist_ok=False)
@@ -252,11 +290,24 @@ async def run_campaign(
                 job.on_trial_cancelled(on_terminal)
                 await job.run()
                 current = persist("running")
+                return current
+
+            if amendment:
+                await run_with_global_limit(work, amendment["max_active_trials"], run_job)
+                current = persist("running")
                 for slot in plan["slots"]:
                     entry = current["slots"][slot["slot_id"]]
                     if entry["status"] == "scoring_pending":
                         await repair_score(plan, slot, entry["attempts"][-1])
                 persist("running")
+            else:
+                for config, items in work:
+                    current = await run_job(config, items)
+                    for slot in plan["slots"]:
+                        entry = current["slots"][slot["slot_id"]]
+                        if entry["status"] == "scoring_pending":
+                            await repair_score(plan, slot, entry["attempts"][-1])
+                    persist("running")
             result = scan(plan, reviews)
             return persist("completed" if result["complete"] else "needs_review")
         except BaseException:
