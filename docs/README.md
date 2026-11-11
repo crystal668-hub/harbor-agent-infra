@@ -48,6 +48,7 @@
 - [OpenClaw length与压缩后续写修复交接](handoff/2026-11-08-handoff-openclaw-length-continuation.md)：供新会话修复非零length与进度payload遮挡空终答的路径，含证据、范围及验收标准。
 - [OpenClaw压缩错误受影响slots重审](audit/2026-11-08-audit-openclaw-compaction-affected-slots.md)：区分有效终答、可恢复output-limit、7200秒能力失败及独立压缩超时。
 - [OpenClaw 2026.6.34压缩修复镜像验收](acceptance/2026-11-08-acceptance-openclaw-compaction-backport.md)：三个官方最小修复精确回移，离线镜像门禁及真实Gateway压缩场景通过，已切换canonical镜像和运行锁。
+- [OpenClaw cron续跑与定向唤醒验收](acceptance/2026-11-11-acceptance-openclaw-cron-continuation.md)：同runId轮次、旧缓存和cron结果关联修复；候选隔离验收记录，正式锁与A019现场未变。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：取消链路与证据保全验收；后续已于11月5日接入本地主工作区。
 - [OpenClaw失败轨迹修复详细设计](plan/2026-11-04-plan-openclaw-failure-trajectory.md)：四类harness的ATIF文件依赖、失败测试、函数改动与验收边界；方案已审批并在隔离分支实施。
