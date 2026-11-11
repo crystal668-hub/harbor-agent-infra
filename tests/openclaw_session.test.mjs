@@ -53,7 +53,7 @@ test("multiple paused turns remain pending until the final parent turn", async (
   client.request = async (method, p) => method === "agent.wait" && p.runId === "again"
     ? {status: "ok", yielded: true, endedAt: 25} : original(method, p);
   const pending = session.run(client);
-  session.accept(event("again", "end"));
+  session.accept(event("again", "end", {data: {phase: "end", startedAt: 20, endedAt: 25}}));
   await setImmediate();
   assert.equal(evidence.filter((e) => e.kind === "completed").length, 0);
   session.accept(event("last", "end"));
@@ -211,4 +211,121 @@ test("reconnect observes a failed parent instead of waiting for a missed error e
   const pending = session.run(client);
   session.reconnect();
   await assert.rejects(pending, /parent recovery failed/);
+});
+
+function timedEvent(runId, phase, startedAt, endedAt, meta = {}) {
+  return event(runId, phase, {ts: endedAt ?? startedAt,
+    data: {phase, startedAt, endedAt, ...meta}});
+}
+function cronEvent(action, extra = {}) {
+  return {event: "cron", payload: {action, jobId: "job", runAtMs: 19,
+    job: {sessionTarget: `session:${input.sessionKey.toLowerCase()}`}, ...extra}};
+}
+
+test("reused initial runId consumes new rounds and rejects the old paused cache", async () => {
+  const {session, client, calls, evidence} = fixture({yielded: true});
+  session.accept(timedEvent("first", "start", 1));
+  session.accept(timedEvent("first", "end", 1, 10));
+  const original = client.request;
+  client.request = async (method, p) => method === "agent.wait"
+    ? {status: "ok", startedAt: 1, endedAt: 10, yielded: true} : original(method, p);
+  const pending = session.run(client);
+  await setImmediate();
+  session.accept(timedEvent("first", "start", 20));
+  session.accept(timedEvent("first", "end", 20, 25, {yielded: true}));
+  await setImmediate();
+  session.accept(timedEvent("first", "end", 1, 10)); // Delayed duplicate.
+  session.accept(timedEvent("first", "start", 30));
+  session.accept(timedEvent("first", "end", 30, 50, finalMeta));
+  session.accept(timedEvent("first", "end", 30, 50, finalMeta));
+  assert.equal((await pending).payloads[0].text, "FINAL ANSWER: 42");
+  assert.equal(evidence.filter((e) => e.kind === "stale_wait").length, 2);
+  assert.equal(evidence.filter((e) => e.kind === "completed").length, 1);
+  assert.equal(calls.filter((c) => c.method === "agent").length, 1);
+});
+
+test("queued terminal retains its start when a later start arrives", async () => {
+  const {session, client} = fixture({yielded: true});
+  const pending = session.run(client);
+  await setImmediate();
+  session.accept(timedEvent("resume", "start", 20));
+  session.accept(timedEvent("resume", "end", undefined, 50, finalMeta));
+  session.accept(timedEvent("resume", "start", 60));
+  assert.equal((await pending).payloads[0].text, "FINAL ANSWER: 42");
+});
+
+for (const bad of [
+  {role: "assistant", stopReason: "stop", timestamp: 5, content: [{type: "text", text: "old"}]},
+  {...finalMessage, timestamp: 60},
+]) test(`stale wait cannot select message outside round: ${bad.timestamp}`, async () => {
+  const {session, client} = fixture({yielded: true});
+  const original = client.request;
+  client.request = async (method, p) => method === "agent.wait"
+    ? {status: "ok", startedAt: 1, endedAt: 10, yielded: true}
+    : method === "sessions.get" ? {messages: [bad]} : original(method, p);
+  const pending = session.run(client);
+  session.accept(timedEvent("resume", "end", 20, 50, finalMeta));
+  await assert.rejects(pending, /without a terminal response/);
+});
+
+test("unverifiable reused cache fails once rather than spinning", async () => {
+  const {session, client, evidence} = fixture({yielded: true});
+  const original = client.request;
+  client.request = async (method, p) => method === "agent.wait"
+    ? {status: "ok", endedAt: 10, yielded: true} : original(method, p);
+  const pending = session.run(client);
+  session.accept(timedEvent("resume", "end", undefined, 50));
+  await assert.rejects(pending, /cannot be verified/);
+  assert.equal(evidence.filter((e) => e.kind === "wait").length, 1);
+});
+
+for (const failed of [true, false]) test(`cron outcome gates lifecycle end: error=${failed}`, async () => {
+  const {session, client, evidence} = fixture({yielded: true});
+  let finished = false;
+  const pending = session.run(client).finally(() => {finished = true;});
+  const checked = failed ? assert.rejects(pending, /cron recovery error: restricted/) : pending;
+  await setImmediate();
+  session.accept(cronEvent("started"));
+  session.accept(timedEvent("resume", "start", 20));
+  session.accept(timedEvent("resume", "end", 20, 50, finalMeta));
+  await setImmediate();
+  assert.equal(finished, false);
+  assert.equal(evidence.filter((e) => e.kind === "parent_response").length, 0);
+  session.accept(cronEvent("finished", {status: failed ? "error" : "ok",
+    error: failed ? "restricted" : undefined, durationMs: 35}));
+  await checked;
+  assert.equal(evidence.filter((e) => e.kind === "completed").length, failed ? 0 : 1);
+});
+
+test("cron failure without lifecycle end preserves native retry then surfaces exhaustion", async () => {
+  const {session, client} = fixture({yielded: true});
+  let finished = false;
+  const pending = session.run(client).finally(() => {finished = true;});
+  const checked = assert.rejects(pending, /cron recovery skipped: disabled/);
+  await setImmediate();
+  session.accept(cronEvent("finished", {status: "skipped", error: "disabled", nextRunAtMs: 60}));
+  await setImmediate();
+  assert.equal(finished, false);
+  session.accept(cronEvent("finished", {runAtMs: 60, status: "skipped", error: "disabled"}));
+  await checked;
+});
+
+test("other sessions' cron failures cannot end this parent", async () => {
+  const {session, client} = fixture({yielded: true});
+  const pending = session.run(client);
+  session.accept(cronEvent("finished", {sessionKey: "agent:other", status: "error"}));
+  session.accept(event("resume", "end"));
+  assert.equal((await pending).payloads[0].text, "FINAL ANSWER: 42");
+});
+
+test("reconnect checks missed cron failure before trusting stale session done", async () => {
+  const {session, client} = fixture({yielded: true});
+  const original = client.request;
+  client.request = async (method, p) => method === "cron.runs" ? {entries: [
+    {jobId: "job", runAtMs: 19, status: "error", error: "restricted"},
+  ]} : original(method, p);
+  const pending = session.run(client);
+  session.accept(cronEvent("started"));
+  session.reconnect();
+  await assert.rejects(pending, /cron recovery error: restricted/);
 });

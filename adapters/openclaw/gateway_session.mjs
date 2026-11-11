@@ -30,20 +30,61 @@ export class SessionRun {
     this.paused = false;
     this.lastEndedAt = 0;
     this.started = new Map();
+    this.initialPending = true;
+    this.cronRuns = new Map();
+    this.handled = new Set();
+  }
+
+  acceptCron(p) {
+    const target = p?.job?.sessionTarget;
+    const key = p?.sessionKey ?? p?.job?.sessionKey ??
+      (target?.startsWith("session:") ? target.slice(8) : null);
+    if (key?.toLowerCase() !== this.input.sessionKey.toLowerCase()) return;
+    if (p.sessionId && p.sessionId !== this.input.sessionId) {
+      this.events.push({failure: "OpenClaw parent session changed during execution"});
+    } else if (["started", "finished"].includes(p.action) && Number.isFinite(p.runAtMs)) {
+      const id = `${p.jobId}:${p.runAtMs}`;
+      const cron = this.cronRuns.get(id) ?? {id, startedAt: p.runAtMs};
+      this.cronRuns.set(id, cron);
+      this.record("cron", p);
+      if (p.action === "finished" && !cron.finished) {
+        cron.finished = p;
+        if (p.status !== "ok") this.events.push({cronFailure: cron});
+        else if (cron.terminal) this.events.push(cron.terminal);
+      }
+    }
+    this.wake?.();
   }
 
   accept(event) {
     const p = event.payload;
+    if (event.event === "cron") return this.acceptCron(p);
     if (event.event !== "agent" || p?.sessionKey?.toLowerCase() !== this.input.sessionKey.toLowerCase() ||
         p.stream !== "lifecycle") return;
     // A reset/rebound session must never supply this trial's final answer.
     if (p.sessionId && p.sessionId !== this.input.sessionId) {
       this.events.push({failure: "OpenClaw parent session changed during execution"});
     } else if (p.data.phase === "start") {
-      this.started.set(p.runId, p.data.startedAt ?? p.ts);
-    } else if (["end", "error"].includes(p.data.phase) && !this.seen.has(p.runId)) {
-      this.seen.add(p.runId);
-      this.events.push(p);
+      const starts = this.started.get(p.runId) ?? [];
+      const at = p.data.startedAt ?? p.ts;
+      if (!starts.some((s) => s.at === at)) starts.push({at,
+        initial: this.initialPending && p.runId === this.input.idempotencyKey && !starts.length});
+      this.started.set(p.runId, starts);
+    } else if (["end", "error"].includes(p.data.phase)) {
+      const endedAt = p.data.endedAt ?? p.ts;
+      const start = (this.started.get(p.runId) ?? []).filter((s) => s.at <= endedAt &&
+        (p.data.startedAt == null || s.at === p.data.startedAt)).sort((a, b) => b.at - a.at)[0];
+      const startedAt = p.data.startedAt ?? start?.at;
+      const round = `${p.runId}:${startedAt ?? endedAt}`;
+      if (this.seen.has(round)) return;
+      this.seen.add(round);
+      const activeCron = [...this.cronRuns.values()].filter((c) => c.startedAt <=
+        (startedAt ?? endedAt) && (!c.finished || endedAt <= c.finished.runAtMs + c.finished.durationMs));
+      const cron = activeCron.length === 1 ? activeCron[0] : undefined;
+      const terminal = {...p, round, roundStartedAt: startedAt, roundEndedAt: endedAt,
+        initial: start?.initial ?? (this.initialPending && p.runId === this.input.idempotencyKey), cron};
+      if (cron) cron.terminal = terminal;
+      this.events.push(terminal);
     }
     this.wake?.();
   }
@@ -61,6 +102,7 @@ export class SessionRun {
 
   async run(client) {
     const initial = await client.request("agent", this.input, {expectFinal: true});
+    this.initialPending = false;
     let envelope = initial.result;
     if (!envelope?.meta) throw new Error("OpenClaw initial run did not return a result");
     this.record("turn", {runId: initial.runId, result: envelope});
@@ -70,13 +112,30 @@ export class SessionRun {
     for (;;) {
       const event = await this.next();
       if (event.failure) throw new Error(event.failure);
-      if (event.runId === this.input.idempotencyKey) {
-        this.lastEndedAt = Math.max(this.lastEndedAt, event.data.endedAt ?? event.ts);
+      if (event.cronFailure) {
+        const result = event.cronFailure.finished;
+        if (Number.isFinite(result.nextRunAtMs)) continue; // Native retry owns recovery.
+        throw new Error(`OpenClaw cron recovery ${result.status}: ${result.error ?? "unknown"}`);
+      }
+      if (event.initial) {
+        this.lastEndedAt = Math.max(this.lastEndedAt, event.roundEndedAt);
         continue;
       }
+      if (event.cron && (!event.cron.finished || event.cron.finished.status !== "ok")) continue;
+      if (event.round && this.handled.has(event.round)) continue;
       try {
         let wait;
         if (event.reconcile) {
+          // Reconcile cron outcome first: session summaries can retain an old
+          // 'done' state even when the resumed cron turn ultimately failed.
+          for (const cron of this.cronRuns.values()) {
+            if (cron.finished) continue;
+            const {entries} = await client.request("cron.runs", {id: cron.id.split(":")[0], limit: 100});
+            const result = entries?.find((r) => r.runAtMs === cron.startedAt);
+            if (result) this.acceptCron({...result, action: "finished", sessionKey: this.input.sessionKey});
+          }
+          if ([...this.cronRuns.values()].some((c) => !c.finished || c.finished.status !== "ok"))
+            continue;
           const {session} = await client.request("sessions.describe", {key: this.input.sessionKey});
           if (!session || session.sessionId !== this.input.sessionId) {
             throw new Error("OpenClaw parent session unavailable after reconnect");
@@ -87,10 +146,26 @@ export class SessionRun {
           if (session.status !== "done") continue;
           wait = {status: "ok", startedAt: session.startedAt, endedAt: session.endedAt};
         } else {
+          if (event.data.phase === "error")
+            throw new Error(event.data.error ?? "OpenClaw parent recovery failed");
           do {
             wait = await client.request("agent.wait", {runId: event.runId, timeoutMs: 30000});
           } while (wait.status === "timeout"); // Harbor owns the overall deadline.
           this.record("wait", {runId: event.runId, result: wait});
+          // The native runId cache can still contain the initial yielded turn.
+          // A later lifecycle boundary is authoritative only with explicit metadata.
+          if (!(wait.endedAt >= event.roundEndedAt) ||
+              (wait.startedAt != null && event.roundStartedAt != null &&
+               wait.startedAt !== event.roundStartedAt)) {
+            this.record("stale_wait", {runId: event.runId, result: wait,
+              startedAt: event.roundStartedAt, endedAt: event.roundEndedAt});
+            if (!Number.isFinite(event.roundStartedAt) ||
+                (!isPaused(event.data) && (event.data.aborted !== false ||
+                 event.data.livenessState !== "working" || event.data.stopReason !== "stop")))
+              throw new Error("OpenClaw resumed round cannot be verified against stale run cache");
+            wait = {...event.data, status: "ok", startedAt: event.roundStartedAt,
+              endedAt: event.roundEndedAt};
+          }
           if (isPaused(wait)) {
             this.lastEndedAt = Math.max(this.lastEndedAt, wait.endedAt ?? event.ts);
             continue;
@@ -102,8 +177,9 @@ export class SessionRun {
         this.record("parent_response", {runId: event.runId ?? null, message: last});
         // This is the resumed parent's terminal message, not a child announcement,
         // old assistant text or a tool-call preamble. No benchmark answer heuristic.
-        const startedAt = wait.startedAt ?? this.started.get(event.runId) ?? event.data?.startedAt;
-        if (last?.role !== "assistant" || !(last.timestamp >= startedAt)) {
+        const startedAt = event.roundStartedAt ?? wait.startedAt;
+        const endedAt = event.roundEndedAt ?? wait.endedAt;
+        if (last?.role !== "assistant" || !(last.timestamp >= startedAt && last.timestamp <= endedAt)) {
           if (event.reconcile) continue;
           throw new Error("OpenClaw resumed parent ended without a terminal response");
         }
@@ -123,6 +199,7 @@ export class SessionRun {
         for (const key of ["executionTrace", "toolSummary", "finalAssistantRawText"])
           delete envelope.meta[key];
         envelope = requireTerminal(envelope);
+        if (event.round) this.handled.add(event.round);
         this.record("completed", {runId: event.runId ?? null, reconciled: !!event.reconcile, result: wait});
         return envelope;
       } catch (error) {
