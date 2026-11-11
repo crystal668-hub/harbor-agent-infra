@@ -107,7 +107,11 @@ def effective_replacement(plan: dict, slot: dict, path: Path, trial: dict,
         raise ValueError("Effective replacement is not bound by the campaign registry")
     archive = Path(certificate["archived_result_path"]).resolve()
     source = Path(certificate["recovery_result_path"]).resolve()
-    if (archive.is_relative_to(root) or not source.is_relative_to(root / "checkpoint-recoveries")
+    recovery_roots = (
+        (root / "checkpoint-recoveries").resolve(),
+        (root / "evidence" / "attempts" / "jobs").resolve(),
+    )
+    if (archive.is_relative_to(root) or not any(source.is_relative_to(p) for p in recovery_roots)
             or digest(archive) != certificate["archived_result_sha256"]
             or files(archive.parent) != certificate["archived_files"]
             or digest(source) != certificate["recovery_result_sha256"]

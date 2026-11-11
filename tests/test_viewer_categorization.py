@@ -153,6 +153,11 @@ def test_discover_timeout_rerun_campaigns_recursively(tmp_path: Path) -> None:
     campaign_jobs = base / "timeout-rerun" / "batch" / "campaign-001" / "jobs"
     (campaign_jobs / "job-a").mkdir(parents=True)
     (campaign_jobs / "job-a" / "config.json").touch()
+    attempts_jobs = (
+        base / "timeout-rerun" / "batch" / "evidence" / "attempts" / "jobs"
+    )
+    (attempts_jobs / "recovery-job").mkdir(parents=True)
+    (attempts_jobs / "recovery-job" / "config.json").touch()
     unrelated_jobs = base / "other-archive" / "nested" / "jobs"
     (unrelated_jobs / "job-b").mkdir(parents=True)
     (unrelated_jobs / "job-b" / "config.json").touch()

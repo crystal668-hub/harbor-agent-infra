@@ -19,7 +19,7 @@ from harbor_agent_infra.timeout_rerun.plan import digest, files, object_digest
 from harbor_agent_infra.timeout_rerun.replacements import project_result
 
 
-def replacement_fixture(tmp_path):
+def replacement_fixture(tmp_path, recovery_root="evidence/attempts/jobs"):
     _, plan, manifest = merge_fixture(tmp_path)
     root = Path(plan["root"])
     original = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Progress only", score=None)
@@ -33,8 +33,8 @@ def replacement_fixture(tmp_path):
     archive = archive_job / original.parent.name / "result.json"
     recovered = dispatch(plan, ordinal=2, kind="NonZeroAgentExitCodeError",
                          answer="FINAL ANSWER: 42", score=0.8)
-    source_job = root / "checkpoint-recoveries/recovered-job"
-    source_job.parent.mkdir()
+    source_job = root / recovery_root / "recovered-job"
+    source_job.parent.mkdir(parents=True)
     shutil.move(recovered.parent.parent, source_job)
     source = source_job / recovered.parent.name / "result.json"
     source_result = read_object(source)
@@ -79,8 +79,9 @@ def replacement_fixture(tmp_path):
     return plan, manifest, original, archive, source
 
 
-def test_effective_recovery_has_two_attempts_and_preserves_native_error(tmp_path):
-    plan, _, active, archive, source = replacement_fixture(tmp_path)
+@pytest.mark.parametrize("recovery_root", ["checkpoint-recoveries", "evidence/attempts/jobs"])
+def test_effective_recovery_has_two_attempts_and_preserves_native_error(tmp_path, recovery_root):
+    plan, _, active, archive, source = replacement_fixture(tmp_path, recovery_root)
     preserved = files(archive.parent), files(source.parent)
     state = scan(plan)
     item = state["slots"][plan["slots"][0]["slot_id"]]

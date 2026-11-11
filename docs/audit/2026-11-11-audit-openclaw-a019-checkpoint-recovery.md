@@ -157,3 +157,27 @@ manifest、campaign运行锁的哈希不变；等待期间产生的其他恢复�
 替换后独立读回确认2122字符作答与评分一致，原Job已包含A019的reward分桶。
 有效替换、超时执行、合并和并行调度定向测试42项通过；最新全量非integration测试
 936 passed、109 deselected。未新增模型调用、Verifier调用或执行尝试。
+
+## 标准尝试目录迁移（2026-11-12）
+
+按用户要求，将A019原生恢复Job并入repeat2的标准尝试证据目录：
+
+```text
+run-artifacts/timeout-rerun/repeat2-12h-20261108/
+  evidence/attempts/jobs/openclaw-qwen-a019-checkpoint-recovery-skills_off/
+```
+
+原生Trial、Job配置、日志、Verifier证据与provenance随Job归档；`summary.json`和
+`recovered-result.json`中的当前路径改为相对标准Job目录定位。迁移清单
+`migration-manifest.json`记录迁移前后路径与逐文件哈希。首次同步的`sync-manifest.json`
+及迁移前摘要副本保留，以便继续核验当时的同步收据。
+
+campaign的`checkpoint-continuations.json`、当前A019的`checkpoint-recovery.json`及
+`effective-replacement.json`现指向标准目录。原`checkpoint-recoveries/openclaw-qwen-a019`
+及为其建立的兼容链接树已在路径核验后删除。首次同步清单移入Job的
+`provenance/initial-sync/`。正式快照中的活动来源引用已改为标准路径，并刷新其结果哈希收据；
+原生执行日志和历史审计快照保留旧路径文本作为当时位置的记录，不再有对应文件系统入口。
+Viewer已排除标准`evidence/attempts/`树。
+
+迁移前后恢复Trial SHA-256一致，首次同步清单与有效替换证书核验通过；campaign仍为43个
+候选slot，未新增Job执行、Trial或评分。已运行Viewer及有效替换定向测试。

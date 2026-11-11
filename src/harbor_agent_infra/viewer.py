@@ -70,9 +70,15 @@ def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
     if timeout_dir.is_dir() and not timeout_dir.is_symlink():
         for jobs_dir in timeout_dir.rglob("jobs"):
             relative = jobs_dir.relative_to(timeout_dir)
+            parts = relative.parts
+            is_attempt_evidence = any(
+                parts[index : index + 2] == ("evidence", "attempts")
+                for index in range(len(parts) - 1)
+            )
             if (
                 not jobs_dir.is_dir()
                 or jobs_dir.is_symlink()
+                or is_attempt_evidence
                 or len(relative.parts) < 2
                 or "jobs" in relative.parts[:-1]
                 or any(
