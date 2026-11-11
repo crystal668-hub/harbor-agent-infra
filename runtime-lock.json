@@ -352,8 +352,8 @@
       "version": "0.21.6"
     },
     "openclaw": {
-      "digest": "sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093",
-      "manifest_sha256": "e218627efd6369363e03142bd759f1983aff2dc579c8766264e221928725fba6",
+      "digest": "sha256:37133f8397480ee5b47c4e9c186a349e0b8ffd670dacd18afc30ca921bfe029e",
+      "manifest_sha256": "7f12fd7f4388edbac5408a1c9f8603bbaca0d5c94de80d557c3952f88c65e127",
       "platform": "linux/arm64",
       "reference": "hai-openclaw-latest",
       "version": "2026.6.34"
