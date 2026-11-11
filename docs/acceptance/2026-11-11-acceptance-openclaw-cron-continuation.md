@@ -4,7 +4,8 @@
 
 类型：acceptance
 
-状态：实现及隔离验收完成；未部署至正式运行锁，未恢复 A019。
+状态：实现及隔离验收完成；2026-11-11已部署至正式运行锁。A019已独立恢复真实终答并评分，
+保留答后执行异常，未合并正式快照；详见[恢复审计](../audit/2026-11-11-audit-openclaw-a019-checkpoint-recovery.md)。
 
 ## 范围与最终实现
 
@@ -99,10 +100,10 @@ uv run --locked --python 3.12 pytest -q tests/test_openclaw_resume_integration.p
 
 ## 部署与 A019 恢复边界
 
-根 `runtime-lock.json` 和 canonical 镜像未切换。新适配器需要含新补丁定义的候选 manifest；
+隔离验收阶段根 `runtime-lock.json` 和 canonical 镜像未切换。新适配器需要含新补丁定义的候选 manifest；
 不能拿旧 canonical manifest 冒充新实现已部署。旧容器中已加载的 driver 不会因仓库修改而更新。
 
-A019 未重启、取消、修改 cron、注入消息、重算或重评。后续恢复须先保存 workspace、父会话、
+隔离验收阶段A019未重启、取消、修改cron、注入消息、重算或重评。后续恢复须先保存workspace、父会话、
 cron 历史及原始日志，绑定实现／运行条件的新旧哈希，核对原剩余预算和恢复计次，确保只有一个
 控制器持有 campaign 锁。`rate.log` 计算结果不能由操作员直接改写成模型终答。
 
@@ -113,3 +114,7 @@ gateway日志仍为10:12最后修改，turns仍为08:58最后修改，状态文�
 另见[repeat2 后续处置计划](../plan/2026-11-11-plan-repeat2-timeout-followup.md)：
 A006 目前含无效进度文本，控制器收尾可能进入自动评分修复。A019 恢复前须处理这一处置边界，
 不能因本补丁验收就默认批准 A006 重评、其他任务重跑或历史结果合并。
+
+后续用户批准部署、恢复与旧镜像清理，已按受控流程实施。
+当前部署及退役状态见[镜像手册](../PREINSTALLED-HARNESS.md#2026-11-11-openclaw-cron续跑修复部署与旧镜像清理)，
+恢复结果和执行异常见上述恢复审计；本节12:35记录保留为当时的验收边界。

@@ -141,3 +141,33 @@ Gateway fixture 验收后，经明确授权将 `hai-openclaw-latest` 与唯一
 切换前确认没有引用旧或候选 OpenClaw 镜像的活动/停止容器。旧 `70cdb8c…` 镜像未删除，
 未执行全局 prune，历史运行仍保留原冻结身份。本次未调用真实 provider、未启动正式恢复，
 修复与验收边界见[验收记录](acceptance/2026-11-08-acceptance-openclaw-length-continuation.md)。
+
+### 2026-11-11 OpenClaw cron续跑修复部署与旧镜像清理
+
+2026-11-11 12:49（上海），按用户授权将 `hai-openclaw-latest` 与根
+`runtime-lock.json` 从 `sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093`
+切换到 `sha256:37133f8397480ee5b47c4e9c186a349e0b8ffd670dacd18afc30ca921bfe029e`。
+OpenClaw仍为2026.6.34；新manifest SHA-256为
+`7f12fd7f4388edbac5408a1c9f8603bbaca0d5c94de80d557c3952f88c65e127`。
+依据为[cron续跑隔离验收](acceptance/2026-11-11-acceptance-openclaw-cron-continuation.md)。
+正式锁相关64项测试及切换后的真实Gateway合成场景通过。原恢复容器收尾后，使用根锁执行
+标准preinstalled离线门禁，2/2 Trial、零失败，两个容器的外部网络阻断检查通过。
+此次部署不改历史campaign的冻结锁。
+
+13:16确认原A019旧容器已由Harbor清理、恢复段使用新镜像且没有其他容器引用旧镜像后，
+按用户“清理所有旧镜像”授权删除全部4个旧OpenClaw镜像ID：
+
+- `sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093`：旧标准镜像及临时父引用。
+- `sha256:08bf5bb120477ce25b145887aeff522cc6a09d61d58b25c270c09c30d65c16e5`：首版过渡候选。
+- `sha256:93b2b78cd16552892d99b78d4107ffc8f610401e12800dc920e677ece88a9d53`：第二版过渡候选。
+- `sha256:b4f6ef675a5e70a24f0ee3b8a93060885bd80b2f6476b3b251b1b389d695fd33`：第三版过渡候选。
+
+本机OpenClaw仅保留新标准镜像ID，canonical和验收候选别名指向同一内容。
+其他harness、共用基础、验收基础及其他项目镜像未删除，未执行全局prune。
+历史冻结锁和原Trial中的旧digest仍保留为证据，本机不再支持按这些旧digest重新启动。
+后续恢复须显式采用新运行条件，不能覆盖原冻结锁或静默替换历史执行身份。
+删除清单、旧安装manifest及前后镜像清单保存在本机忽略目录
+`run-artifacts/audit/openclaw-a019-recovery-20261111/`。
+
+A019检查点恢复、答后压缩超时和独立评分的边界见
+[恢复审计](audit/2026-11-11-audit-openclaw-a019-checkpoint-recovery.md)。

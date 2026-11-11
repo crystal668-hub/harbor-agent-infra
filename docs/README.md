@@ -48,7 +48,8 @@
 - [OpenClaw length与压缩后续写修复交接](handoff/2026-11-08-handoff-openclaw-length-continuation.md)：供新会话修复非零length与进度payload遮挡空终答的路径，含证据、范围及验收标准。
 - [OpenClaw压缩错误受影响slots重审](audit/2026-11-08-audit-openclaw-compaction-affected-slots.md)：区分有效终答、可恢复output-limit、7200秒能力失败及独立压缩超时。
 - [OpenClaw 2026.6.34压缩修复镜像验收](acceptance/2026-11-08-acceptance-openclaw-compaction-backport.md)：三个官方最小修复精确回移，离线镜像门禁及真实Gateway压缩场景通过，已切换canonical镜像和运行锁。
-- [OpenClaw cron续跑与定向唤醒验收](acceptance/2026-11-11-acceptance-openclaw-cron-continuation.md)：同runId轮次、旧缓存和cron结果关联修复；候选隔离验收记录，正式锁与A019现场未变。
+- [OpenClaw cron续跑与定向唤醒验收](acceptance/2026-11-11-acceptance-openclaw-cron-continuation.md)：同runId轮次、旧缓存和cron结果关联修复；已验收并部署。
+- [OpenClaw × Qwen A019检查点恢复](audit/2026-11-11-audit-openclaw-a019-checkpoint-recovery.md)：原父会话终答已恢复并独立评分，保留答后压缩错误，旧进度零分隔离，未正式合并。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：取消链路与证据保全验收；后续已于11月5日接入本地主工作区。
 - [OpenClaw失败轨迹修复详细设计](plan/2026-11-04-plan-openclaw-failure-trajectory.md)：四类harness的ATIF文件依赖、失败测试、函数改动与验收边界；方案已审批并在隔离分支实施。
@@ -58,7 +59,7 @@
 - [失败轨迹修复主分支部署](acceptance/2026-11-05-acceptance-trajectory-deployment.md)：Hermes／OpenClaw本地主工作区部署；831项非集成测试、16份配置路由及锁定Hermes镜像断网导出通过。
 - [通用加时模块验收](acceptance/2026-11-08-acceptance-generic-timeout-rerun.md)：repeat1／2／3策略冻结、跨轮身份、范围修订、合并与旧清单边界；未启动正式补跑。
 - [Repeat2 的2h超时项清单与加时审核](audit/2026-11-08-audit-repeat2-timeout-inventory.md)：原12h目录保留9项有效结果、失败尝试证据归档；34项于11月9日在原目录受控重派并运行，尚未合并验收。
-- [Repeat2 超时补跑后续处置计划](plan/2026-11-11-plan-repeat2-timeout-followup.md)：排除正在修复的A019，42项终态中39项保留、3项待审核；未批准或派发。
+- [Repeat2 超时补跑后续处置计划](plan/2026-11-11-plan-repeat2-timeout-followup.md)：A019独立恢复另记，其余42项中39项保留、3项待后续处置；A006已hold，未派发额外任务。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。
