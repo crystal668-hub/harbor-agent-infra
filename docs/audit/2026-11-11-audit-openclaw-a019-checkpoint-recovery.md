@@ -5,7 +5,8 @@
 类型：audit
 
 状态：标准镜像已部署、4个旧OpenClaw镜像已删除；A019真实终答已恢复并完成独立评分。
-恢复后的作答记录和结果已同步至原超时补跑目录。原生执行错误保留，尚未合并到正式代表快照；A006未评分、未重跑。
+恢复后的作答和评分现已回写用户指定的原Job目录，A019在campaign扫描中为completed，保留两次尝试。
+原生答后执行错误保留；尚未执行全campaign正式代表快照合并。其他任务后续并行恢复另有记录。
 
 ## 授权与边界
 
@@ -16,7 +17,7 @@
 部署和镜像退役记录统一维护于[预装镜像手册](../PREINSTALLED-HARNESS.md#2026-11-11-openclaw-cron续跑修复部署与旧镜像清理)，
 本记录只说明A019恢复与结果边界。
 
-## 原始现场与评分隔离
+## 初次恢复时的原始现场与评分隔离
 
 原Trial为 `52c1417e-c12e-4ea6-af84-0213aa5f7bc4`，目录后缀 `9sDHGyZ`。
 恢复前保存84个文件及哈希，包括原Trial日志、父会话、计算目录和cron作业／运行记录；
@@ -79,11 +80,11 @@ A006的1484字符进度文本已通过结果、回答及已有artifact哈希绑�
 原地尝试、检查点请求与Job、答后错误、终答核验、评分授权及最终操作检查。
 `recovery-result.json` 绑定原Trial、恢复Trial、回答及评分artifact哈希。
 
-原campaign的 `checkpoint-continuations.json` 已挂接这一恢复结果，状态为
-`answer_recovered_and_scored`，正式选择状态仍为 `pending_explicit_merge`。
-当前campaign扫描仍隔离原记录；正式采用恢复段时，须将sidecar登记的第2执行段及其成本
+最初通过原campaign的 `checkpoint-continuations.json` 挂接恢复结果，状态为
+`answer_recovered_and_scored`，当时正式选择状态为 `pending_explicit_merge`。
+该阶段campaign扫描仍隔离原记录；采用恢复段时，须将sidecar登记的第2执行段及其成本
 纳入尝试账，不能因原扫描只有1项就再次发放同一次工程替代额度。
-原A019无效结果继续hold；正式汇总应采用经审核的恢复结果，不能再次采用旧进度零分，
+该阶段原A019无效结果继续hold；正式汇总应采用经审核的恢复结果，不能再次采用旧进度零分，
 也不能把本次操作解释为已批准A006、A007、A018的额外重跑或全campaign合并。
 
 ## 同步至原超时补跑目录（2026-11-11）
@@ -101,12 +102,58 @@ run-artifacts/timeout-rerun/repeat2-12h-20261108/
 评分仍为0.8156059520115813，没有重新调用模型或评分器。
 `sync-manifest.json` 记录35个原样复制文件和2个派生文件的哈希。
 
-campaign的 `checkpoint-continuations.json` 主引用现指向目录内副本；
+该次同步将campaign的 `checkpoint-continuations.json` 引用指向目录内副本；
 原Trial `9sDHGyZ` 下新增 `checkpoint-recovery.json` 导航记录，相关审核引用哈希和state定位
 同步更新。原生文件内部的旧路径保留为历史元数据，当前定位以同步清单和campaign引用为准。
 
-全部43个原生Trial result.json、原A019既有记录、冻结manifest和运行锁哈希不变；审计源文件
+该次旁路同步时，全部43个原生Trial result.json、原A019既有记录、冻结manifest和运行锁哈希不变；审计源文件
 保留。复制目录位于 `checkpoint-recoveries/`，不伪装为新的原生派发Job，不增加恢复次数。
-原A019无效结果仍hold，正式代表快照仍待明确合并。
+当时原A019无效结果仍hold，尚未完成原Job有效结果回写。
 同步核对记录在本机忽略目录
 `run-artifacts/audit/openclaw-a019-recovery-20261111/sync-to-campaign-20261111/verification.json`。
+
+## 原Job有效结果替换（2026-11-11 23:32，上海）
+
+用户查验后明确要求“请完成备份和结果替换”。最初因同一campaign的并行恢复控制器持锁而停止写入；
+用户要求保留运行中的任务并等待通知，因此监控和自动替换等待进程均已停止。用户随后通知恢复任务
+结束，确认写锁释放后，在锁内重新备份当前Job和元数据，再采用已存在的恢复结果。
+
+本次直接替换的目录为：
+
+```text
+run-artifacts/timeout-rerun/repeat2-12h-20261108/jobs/
+  openclaw-qwen-repeat2-12h-9d44661b0b67/
+    property_calculation_advanced__p__9sDHGyZ/
+```
+
+- 该目录的 `result.json` 现在使用真实恢复Trial身份 `f327a268-a155-4b31-a095-550a2bd9a53c`，
+  `verifier_result.rewards.reward` 和 `vgb_score` 均为0.8156059520115813。
+- 原生会话、评分artifact及错误文件采用恢复段记录；`recovered-final-answer.txt` 保存2122字符真实终答。
+  作答与评分来自现有证据，没有再次调用模型或评分器。
+- 旧“parent session changed”失败记录完整归档。有效结果仍保留恢复段真实发生的
+  `Compaction timed out` 异常、Agent执行时钟和未知usage，不伪造无错误执行。
+- 原Job `result.json` 使用Harbor统计逻辑重新计算，计分Trial由1项增至2项，A019评分已纳入
+  reward统计。执行异常数仍为2：A006原记录及A019答后压缩错误；未强行清零。
+- campaign扫描中的A019由review_hold变为completed，历史为归档原尝试ordinal 1及已采用恢复
+  ordinal 2，next_ordinal为空；不重复发放工程替代额度。
+
+新增通用、哈希绑定的有效结果采用校验，要求原始失败备份、既有恢复身份、官方评分、公开任务输入、
+预算和允许的镜像条件变化均匹配；有效投影仅调整存放位置和回填既有评分。
+每次扫描核对 `effective-replacement.json` 与campaign登记，不以旁路文件存在代替有效结果采用。
+后续正式合并会保留两个不同的尝试路径，不覆盖归档历史或重复计算累计usage。
+
+重新取得写锁后的完整备份位于本机忽略目录：
+
+```text
+run-artifacts/audit/openclaw-a019-effective-replacement-20261111/
+  openclaw-qwen-repeat2-12h-9d44661b0b67--before-effective-20261111T153242726955Z/
+```
+
+初次80文件备份同时保留。最新备份清单为 `locked-backup-manifest.json`，采用核对和独立读回
+分别为 `verification.json`、`readback-verification.json`。其他45个当前原生结果文件以及冻结
+manifest、campaign运行锁的哈希不变；等待期间产生的其他恢复结果未被覆盖。
+此次完成的是原超时Job有效结果替换，不是全campaign正式代表快照合并。
+
+替换后独立读回确认2122字符作答与评分一致，原Job已包含A019的reward分桶。
+有效替换、超时执行、合并和并行调度定向测试42项通过；最新全量非integration测试
+936 passed、109 deselected。未新增模型调用、Verifier调用或执行尝试。
