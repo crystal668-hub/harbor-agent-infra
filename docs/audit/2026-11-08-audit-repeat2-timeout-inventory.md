@@ -314,3 +314,7 @@ Harbor JobResult schema没有source字段，13份原生Trial的source原本均�
 当前正在运行的补跑不受影响。修复只覆盖这个历史混合Job的可读元数据，
 并不宣称通用查看器会自动识别旁证文件；原失败Trial的旧trial_uri仍指向已迁出的路径，
 应使用旁证文件中的归档路径读取。
+
+## 2026-11-11 排除A019的后续审核
+
+排除正在修复的OpenClaw × Qwen A019，其他42项均终态。机器40项completed中Hermes × Qwen A007实际为服务错误代答；OpenClaw × Qwen A006仅有进度文本，不应机械重评。最新分流为39项保留、3项待审核，未改分或批准重跑；详见[后续处置计划](../plan/2026-11-11-plan-repeat2-timeout-followup.md)。实现修复尚在进行，冻结哈希接续门禁未通过。
