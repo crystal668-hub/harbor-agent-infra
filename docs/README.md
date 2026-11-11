@@ -70,6 +70,8 @@
 - [通用大模型与Harness的化学科研能力边界](audit/2026-11-05-audit-general-agent-chemistry-insights.html)：按任务类型归纳的文章可用分析；repeat1/repeat2两批完整16组合的得分、标准Trial用时、token与超时迁移复核。
 - [晶体热力学与相稳定性高低分轨迹对照](audit/2026-11-08-audit-crystal-thermodynamics-trajectory-cases.html)：A001/A002/A006在两批2h及repeat1 12h补跑中的非超时、完整作答高低分case，附6份完整ATIF轨迹、可读转录与行为机制分析。
 
+- [正式实验高精度工具选择意图](audit/2026-11-11-audit-high-accuracy-tool-intent.md)：两轮2h及12h补跑的全量离线轨迹检索，区分指定方法、自主升级、实际执行和环境/方法障碍。
+
 ## 维护约定
 
 本地报告与工程产物的目录合并见[2026-11-02 迁移验收](acceptance/2026-11-02-acceptance-artifact-directory-consolidation.md)。
