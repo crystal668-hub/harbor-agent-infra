@@ -99,6 +99,8 @@ def reviews_by_attempt(plan: dict, path: Path | None) -> dict:
             or type(key[1]) is not int
             or not 1 <= key[1] <= 3
             or d.get("category") not in {"engineering", "capability"}
+            or d.get("action") not in {None, "hold"}
+            or (d.get("action") == "hold" and d.get("category") != "engineering")
             or not all(
                 isinstance(d.get(k), str) and d[k].strip()
                 for k in ("trial_id", "evidence_sha256", "authorization", "reason")
@@ -253,9 +255,9 @@ def scan(plan: dict, reviews: Path | None = None) -> dict:
                     entry["original_outcome"] = outcome
                     entry.pop("score", None)
                 entry.update(
-                    status="engineering_approved"
-                    if d["category"] == "engineering"
-                    else "capability_zero",
+                    status=("review_hold" if d.get("action") == "hold" else
+                            "engineering_approved" if d["category"] == "engineering" else
+                            "capability_zero"),
                     review=d,
                 )
                 if d["category"] == "capability":

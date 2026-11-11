@@ -264,6 +264,36 @@ def test_bound_invalid_answer_can_retry_without_mutating_evidence(tmp_path, scor
     assert scan(plan)["complete"]
 
 
+def test_bound_hold_blocks_scoring_and_dispatch_without_approving_retry(tmp_path, monkeypatch):
+    plan, manifest = campaign(tmp_path)
+    path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Progress only", score=None)
+    original = files(path.parent)
+    approve(plan, path)
+    bind_invalid_answer(plan, path)
+    target = Path(plan["root"]) / "review-decisions.json"
+    payload = read_object(target)
+    payload["decisions"][0]["action"] = "hold"
+    write_object(target, payload)
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("A held result must neither score nor start another Job")
+
+    monkeypatch.setattr("harbor_agent_infra.timeout_rerun.execution.repair_score", forbidden)
+    monkeypatch.setattr("harbor_agent_infra.timeout_rerun.execution.preflight", forbidden)
+    state = asyncio.run(run_campaign(manifest))
+    entry = state["slots"][plan["slots"][0]["slot_id"]]
+    assert entry["status"] == "review_hold" and entry["next_ordinal"] is None
+    assert not state["complete"] and jobs_to_start(plan, state) == []
+    assert files(path.parent) == original
+    assert len(entry["attempts"]) == 1
+
+    # A hold does not relax the existing answer/result evidence binding.
+    payload["decisions"][0]["invalid_answer"]["answer_sha256"] = "stale"
+    write_object(target, payload)
+    with pytest.raises(ValueError, match="Invalid answer review"):
+        scan(plan)
+
+
 @pytest.mark.parametrize("kind,answer,score", [
     (None, "Request not processed", 0),
     ("AgentTimeoutError", "Request not processed", 0),
