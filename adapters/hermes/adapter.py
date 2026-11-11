@@ -18,7 +18,7 @@ from adapters.hermes.evidence import evidence_command, record_conversion
 from adapters.preinstalled import PreinstalledOptions, check_preinstalled, verify_after_run
 from adapters.runtime_patches import hermes_output_patch_command
 
-EVIDENCE_TIMEOUT_SEC = 30
+EVIDENCE_TIMEOUT_SEC = 120
 
 
 class HermesOptions(PreinstalledOptions, HarborHermesOptions):
@@ -284,7 +284,7 @@ class HermesAgent(HarborHermes):
         export_result = await self._run_evidence(environment, "collect", EVIDENCE_TIMEOUT_SEC)
         self._native_session_id = getattr(self, "_evidence_session_id", None)
         if export_result is not None:
-            native_session_id = self._extract_native_session_id(export_result.stdout)
+            native_session_id = self._extract_native_session_id(export_result.stdout or "")
             if native_session_id:
                 self._native_session_id = native_session_id
 

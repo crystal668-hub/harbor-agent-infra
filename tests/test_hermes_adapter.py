@@ -234,6 +234,16 @@ def test_preinstalled_native_routes_export_oneshot_session(
     assert " collect /tmp/hermes /logs/agent" in execute.await_args.kwargs["command"]
 
 
+def test_none_export_stdout_does_not_raise_secondary_error(tmp_path, monkeypatch):
+    agent = _agent(tmp_path)
+    execute = AsyncMock(return_value=SimpleNamespace(stdout=None))
+    monkeypatch.setattr(agent, "exec_as_agent", execute)
+
+    asyncio.run(agent._export_oneshot_session(None))
+
+    assert execute.await_count == 1
+
+
 @pytest.mark.parametrize("provider", ["openai", "anthropic", "qwen", "deepseek"])
 @pytest.mark.parametrize("outcome", ["normal", "cancel", "error"])
 def test_session_collection_runs_on_every_exit(tmp_path, monkeypatch, provider, outcome):

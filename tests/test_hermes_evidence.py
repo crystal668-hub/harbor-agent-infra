@@ -211,3 +211,10 @@ def test_remote_command_quotes_session_identity():
     arguments = shlex.split(evidence_command("collect", identity).split("python3 -c ", 1)[1])
     assert arguments[-1] == identity
     compile(arguments[0], "evidence.py", "exec")
+
+
+def test_export_budget_is_longer_than_original_short_limit():
+    from adapters.hermes.evidence import COLLECT_BUDGET_SEC, EXPORT_TIMEOUT_SEC
+
+    assert EXPORT_TIMEOUT_SEC == 30
+    assert COLLECT_BUDGET_SEC == 90

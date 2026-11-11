@@ -31,6 +31,10 @@ _ASSIGNMENT = re.compile(
     r"[\"']?\s*[:=]\s*[\"']?)[^\s,\"';&}]+"
 )
 
+EXPORT_TIMEOUT_SEC = 30
+COLLECT_BUDGET_SEC = 90
+SNAPSHOT_BUDGET_SEC = 15
+
 
 def scrub(value, secrets=()):
     if isinstance(value, dict):
@@ -164,7 +168,7 @@ def snapshot(home: Path, target: Path, secrets, deadline: float):
         temporary.unlink(missing_ok=True)
 
 
-def collect(home: Path, logs: Path, session_id: str | None, *, budget: float = 24):
+def collect(home: Path, logs: Path, session_id: str | None, *, budget: float = COLLECT_BUDGET_SEC):
     native = logs / "hermes-native"
     native.mkdir(parents=True, exist_ok=True, mode=0o700)
     secrets = secret_values()
@@ -174,7 +178,8 @@ def collect(home: Path, logs: Path, session_id: str | None, *, budget: float = 2
         # Diagnostics and native state survive even when session export fails.
         try:
             report["database"] = snapshot(
-                home, native / "state.db", secrets, min(deadline, time.monotonic() + 5)
+                home, native / "state.db", secrets,
+                min(deadline, time.monotonic() + SNAPSHOT_BUDGET_SEC)
             )
         except Exception as exc:
             report["database"] = {"status": "failed", "error": type(exc).__name__}
@@ -254,7 +259,7 @@ def collect(home: Path, logs: Path, session_id: str | None, *, budget: float = 2
                     env={**os.environ, "HERMES_HOME": str(home)},
                     capture_output=True,
                     text=True,
-                    timeout=max(0.01, min(8, deadline - time.monotonic())),
+                    timeout=max(0.01, min(EXPORT_TIMEOUT_SEC, deadline - time.monotonic())),
                 )
                 attempt.update(
                     return_code=result.returncode,
