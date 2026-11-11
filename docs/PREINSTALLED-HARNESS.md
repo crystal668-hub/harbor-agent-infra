@@ -162,7 +162,7 @@ OpenClaw仍为2026.6.34；新manifest SHA-256为
 - `sha256:93b2b78cd16552892d99b78d4107ffc8f610401e12800dc920e677ece88a9d53`：第二版过渡候选。
 - `sha256:b4f6ef675a5e70a24f0ee3b8a93060885bd80b2f6476b3b251b1b389d695fd33`：第三版过渡候选。
 
-本机OpenClaw仅保留新标准镜像ID，canonical和验收候选别名指向同一内容。
+最终核对本机OpenClaw仅保留新标准镜像ID及canonical标签，候选构建身份保留在验收证据中。
 其他harness、共用基础、验收基础及其他项目镜像未删除，未执行全局prune。
 历史冻结锁和原Trial中的旧digest仍保留为证据，本机不再支持按这些旧digest重新启动。
 后续恢复须显式采用新运行条件，不能覆盖原冻结锁或静默替换历史执行身份。
