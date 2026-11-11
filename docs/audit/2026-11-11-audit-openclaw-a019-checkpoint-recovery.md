@@ -5,7 +5,7 @@
 类型：audit
 
 状态：标准镜像已部署、4个旧OpenClaw镜像已删除；A019真实终答已恢复并完成独立评分。
-原生执行错误保留，尚未合并到正式代表快照；A006未评分、未重跑。
+恢复后的作答记录和结果已同步至原超时补跑目录。原生执行错误保留，尚未合并到正式代表快照；A006未评分、未重跑。
 
 ## 授权与边界
 
@@ -85,3 +85,28 @@ A006的1484字符进度文本已通过结果、回答及已有artifact哈希绑�
 纳入尝试账，不能因原扫描只有1项就再次发放同一次工程替代额度。
 原A019无效结果继续hold；正式汇总应采用经审核的恢复结果，不能再次采用旧进度零分，
 也不能把本次操作解释为已批准A006、A007、A018的额外重跑或全campaign合并。
+
+## 同步至原超时补跑目录（2026-11-11）
+
+用户要求将恢复后的作答记录和结果同步回原目录。已将完整恢复Job、原生会话轨迹、VGB评分
+artifact及来源记录复制至：
+
+```text
+run-artifacts/timeout-rerun/repeat2-12h-20261108/
+  checkpoint-recoveries/openclaw-qwen-a019/
+```
+
+该目录的 `recovered-final-answer.txt` 是原生assistant终答的逐字提取；
+`recovered-result.json` 汇总评分、Trial身份、原生异常及评分证据路径。
+评分仍为0.8156059520115813，没有重新调用模型或评分器。
+`sync-manifest.json` 记录35个原样复制文件和2个派生文件的哈希。
+
+campaign的 `checkpoint-continuations.json` 主引用现指向目录内副本；
+原Trial `9sDHGyZ` 下新增 `checkpoint-recovery.json` 导航记录，相关审核引用哈希和state定位
+同步更新。原生文件内部的旧路径保留为历史元数据，当前定位以同步清单和campaign引用为准。
+
+全部43个原生Trial result.json、原A019既有记录、冻结manifest和运行锁哈希不变；审计源文件
+保留。复制目录位于 `checkpoint-recoveries/`，不伪装为新的原生派发Job，不增加恢复次数。
+原A019无效结果仍hold，正式代表快照仍待明确合并。
+同步核对记录在本机忽略目录
+`run-artifacts/audit/openclaw-a019-recovery-20261111/sync-to-campaign-20261111/verification.json`。
