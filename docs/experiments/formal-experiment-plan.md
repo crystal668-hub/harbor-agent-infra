@@ -1,8 +1,8 @@
 # 正式实验方案
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
-**配置核对日期**：2026-11-03（Asia/Shanghai；开放生成时限及repeat2后续队列另有记录）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮已验收16/16组，代表快照1120/1120计分，含OpenClaw × Qwen受控新镜像恢复合并。repeat2/3的12h合并轮未启动。验收证据见第14节及相关记录。
+**配置核对日期**：2026-11-12（Asia/Shanghai）
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵配置校验与dry-run已通过，尚未派发；repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -206,12 +206,17 @@ repeat1 两套迁移视图各1120条；后续repeat2/3为RC原生运行，共224
 > `hai-openclaw-latest` 切换至 `f6b6151…`。包版本、模型、7200秒总时限、64000单响应输出
 > 上限、context window 与压缩阈值未变；未启动真实 provider 验证或正式恢复，历史运行身份不回写。
 
+> 2026-11-11 更新：cron续跑与定向唤醒修复通过隔离验收并部署后，当前运行锁和
+> `hai-openclaw-latest` 切换至 `sha256:37133f8397480ee5b47c4e9c186a349e0b8ffd670dacd18afc30ca921bfe029e`。
+> OpenClaw包版本、模型、Agent预算、输出上限和资源参数不变；本变更适用于后续新运行，
+> 不回写repeat1/2的冻结镜像。验收见[cron续跑修复报告](../acceptance/2026-11-11-acceptance-openclaw-cron-continuation.md)。
+
 当前锁配置的正式 Trial 按 harness 选择下列不可变执行镜像；
 镜像名中的 `latest` 不参与版本选择，实际身份由 digest 固定，`pull_policy: never`。
 
 | Harness | 执行镜像 | Digest |
 | --- | --- | --- |
-| OpenClaw | `hai-openclaw-latest` | `sha256:f6b6151b90caf265045319d7340923271a13b666d8c3c5744e6f0221ec12a093` |
+| OpenClaw | `hai-openclaw-latest` | `sha256:37133f8397480ee5b47c4e9c186a349e0b8ffd670dacd18afc30ca921bfe029e` |
 | Hermes | `hai-hermes-latest` | `sha256:6a5985d929602fee0905c2548afab5058192dc812e4538e3b8b57d93042444bb` |
 | Codex | `hai-codex-latest` | `sha256:ae908ae8e55477ef999c5c4f1a18fe017146f057ab813c8646a2d606ac8ac41e` |
 | Claude Code | `hai-claude-code-latest` | `sha256:07f303f4664efbdac808c03fc97fe18dd5c1cd1d04d73605092e9d07f0f7fe16` |
@@ -947,30 +952,71 @@ OpenClaw × Qwen A006实施首次工程替代。旧活动尝试与39项有效结
 14:01首批Claude Code与Hermes Trial已创建，A006按令牌上限排队；未发布最终合并成绩。
 冻结原始条件及派发证据见[后续计划](../plan/2026-11-11-plan-repeat2-timeout-followup.md#2026-11-11-派发记录1401)。
 
+2026-11-11 23:58（上海）完成最终12h修订快照`repeat2-timeout12h-merged`。Campaign状态
+`complete=true`，43/43候选终态、退出码0、无deferred slots；正式视图共16个唯一组合、
+1120个slots，43项采用12h补跑代表、1077项沿用2h代表。`hai summary`复核1120/1120计分，
+Advanced 304/304（均分0.593874）、Basic 816/816（均分0.831125），整体均分0.766728；
+所有slot执行计时完整，缺失和无效计时均为0。保留15项原生执行错误标记及完整尝试链，
+不将结案解释为所有Trial均无异常。A019恢复尝试、A007恢复答复及三项工程补跑均按各自证据记录。
+
+16份入选快照的`run-manifest.json`、`runtime-manifest.json`、`protocol.json`、
+`timeout-amendment.json`、`slots.jsonl`、`results.json`、`events/trials.jsonl`及
+`frozen-jobs/skills_off.json`均存在；每份含70个唯一slot，repeat_index=1、组别`skills_off`、
+VGB 1.0.0rc1任务身份一致，分轨为19项Advanced与51项Basic。发布报告、合并清单和
+选择清单位于本机`run-artifacts/formal/repeat2-timeout12h-merged/`。
+
+#### 14.3.3 Repeat2 12h合并结果
+
+| Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
+| --- | --- | --- | --- | --- |
+| Claude Code | DeepSeek | 已完成 | 19 / 19；0.307956 | 51 / 51；0.663737 |
+| Claude Code | Qwen | 已完成 | 19 / 19；0.579785 | 51 / 51；0.869920 |
+| Claude Code | GPT | 已完成 | 19 / 19；0.726054 | 51 / 51；0.889773 |
+| Claude Code | Claude | 已完成 | 19 / 19；0.663184 | 51 / 51；0.898802 |
+| Codex | DeepSeek | 已完成 | 19 / 19；0.328010 | 51 / 51；0.685683 |
+| Codex | Qwen | 已完成 | 19 / 19；0.704581 | 51 / 51；0.912670 |
+| Codex | GPT | 已完成 | 19 / 19；0.573417 | 51 / 51；0.889270 |
+| Codex | Claude | 已完成 | 19 / 19；0.706392 | 51 / 51；0.852950 |
+| Hermes | DeepSeek | 已完成 | 19 / 19；0.641796 | 51 / 51；0.750456 |
+| Hermes | Qwen | 已完成 | 19 / 19；0.598879 | 51 / 51；0.806347 |
+| Hermes | GPT | 已完成 | 19 / 19；0.695054 | 51 / 51；0.888275 |
+| Hermes | Claude | 已完成 | 19 / 19；0.712915 | 51 / 51；0.899189 |
+| OpenClaw | DeepSeek | 已完成 | 19 / 19；0.395556 | 51 / 51；0.630160 |
+| OpenClaw | Qwen | 已完成 | 19 / 19；0.582160 | 51 / 51；0.861578 |
+| OpenClaw | GPT | 已完成 | 19 / 19；0.647516 | 51 / 51；0.903586 |
+| OpenClaw | Claude | 已完成 | 19 / 19；0.638725 | 51 / 51；0.895606 |
+
+本表采用最终`formal-selected-snapshots.json`并运行`hai summary`复核；正式2h基线仍单独保留。
+原始2h尝试、12h重跑、工程恢复及经审查选样的统计口径与来源见
+[`REPORT.md`](../../run-artifacts/formal/repeat2-timeout12h-merged/REPORT.md)和
+[`amendment-report.json`](../../run-artifacts/formal/repeat2-timeout12h-merged/amendment-report.json)。
+
 ### 14.4 Repeat 3
 
 #### 14.4.1 限时2h正式轮
 
-尚未启动；成绩留空。
+2026-11-12：本地启动准备完成，尚未派发；成绩留空。16份正式配置已按当前`runtime-lock.json`
+核验任务清单与预装镜像，repeat3专用矩阵dry-run通过并生成16条命令。本机四个锁定镜像均可检查到。
+本次没有运行Agent、Verifier或provider请求；代理、协议桥、配额及服务端可用性须在实际启动前复核。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 |
 | --- | --- | --- | --- | --- |
-| Claude Code | DeepSeek | 未启动 | — | — |
-| Claude Code | Qwen | 未启动 | — | — |
-| Claude Code | GPT | 未启动 | — | — |
-| Claude Code | Claude | 未启动 | — | — |
-| Codex | DeepSeek | 未启动 | — | — |
-| Codex | Qwen | 未启动 | — | — |
-| Codex | GPT | 未启动 | — | — |
-| Codex | Claude | 未启动 | — | — |
-| Hermes | DeepSeek | 未启动 | — | — |
-| Hermes | Qwen | 未启动 | — | — |
-| Hermes | GPT | 未启动 | — | — |
-| Hermes | Claude | 未启动 | — | — |
-| OpenClaw | DeepSeek | 未启动 | — | — |
-| OpenClaw | Qwen | 未启动 | — | — |
-| OpenClaw | GPT | 未启动 | — | — |
-| OpenClaw | Claude | 未启动 | — | — |
+| Claude Code | DeepSeek | 已准备，未启动 | — | — |
+| Claude Code | Qwen | 已准备，未启动 | — | — |
+| Claude Code | GPT | 已准备，未启动 | — | — |
+| Claude Code | Claude | 已准备，未启动 | — | — |
+| Codex | DeepSeek | 已准备，未启动 | — | — |
+| Codex | Qwen | 已准备，未启动 | — | — |
+| Codex | GPT | 已准备，未启动 | — | — |
+| Codex | Claude | 已准备，未启动 | — | — |
+| Hermes | DeepSeek | 已准备，未启动 | — | — |
+| Hermes | Qwen | 已准备，未启动 | — | — |
+| Hermes | GPT | 已准备，未启动 | — | — |
+| Hermes | Claude | 已准备，未启动 | — | — |
+| OpenClaw | DeepSeek | 已准备，未启动 | — | — |
+| OpenClaw | Qwen | 已准备，未启动 | — | — |
+| OpenClaw | GPT | 已准备，未启动 | — | — |
+| OpenClaw | Claude | 已准备，未启动 | — | — |
 
 #### 14.4.2 合并12h超时补跑轮
 
@@ -986,14 +1032,14 @@ OpenClaw × Qwen A006实施首次工程替代。旧活动尝试与39项有效结
 | Codex | Qwen | 未启动 | — | — |
 | Codex | GPT | 未启动 | — | — |
 | Codex | Claude | 未启动 | — | — |
-| Hermes | DeepSeek | 未启动 | — | — |
-| Hermes | Qwen | 未启动 | — | — |
-| Hermes | GPT | 未启动 | — | — |
-| Hermes | Claude | 未启动 | — | — |
-| OpenClaw | DeepSeek | 未启动 | — | — |
-| OpenClaw | Qwen | 未启动 | — | — |
-| OpenClaw | GPT | 未启动 | — | — |
-| OpenClaw | Claude | 未启动 | — | — |
+| Hermes | DeepSeek | 已准备，未启动 | — | — |
+| Hermes | Qwen | 已准备，未启动 | — | — |
+| Hermes | GPT | 已准备，未启动 | — | — |
+| Hermes | Claude | 已准备，未启动 | — | — |
+| OpenClaw | DeepSeek | 已准备，未启动 | — | — |
+| OpenClaw | Qwen | 已准备，未启动 | — | — |
+| OpenClaw | GPT | 已准备，未启动 | — | — |
+| OpenClaw | Claude | 已准备，未启动 | — | — |
 
 ### 14.5 结果来源与后续更新
 
