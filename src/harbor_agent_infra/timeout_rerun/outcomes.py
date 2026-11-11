@@ -130,7 +130,9 @@ def invalid_answer_review(path: Path, slot: dict, decision: dict, outcome: dict)
         or outcome["status"] not in {"completed", "scoring_pending"}
         or outcome.get("score", 0) != 0
         or answer is None
-        or "final answer:" in answer.text.lower()
+        # A hold cannot authorize replacement; it may quarantine quoted format
+        # examples in an error/progress response without weakening retry approval.
+        or ("final answer:" in answer.text.lower() and decision.get("action") != "hold")
         or evidence.get("answer_sha256") != object_digest(answer.text)
         or not all(isinstance(evidence.get(k), str) and evidence[k].strip()
                    for k in ("authorization", "reason"))

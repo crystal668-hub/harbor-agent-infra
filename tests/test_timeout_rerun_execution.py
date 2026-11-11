@@ -264,9 +264,12 @@ def test_bound_invalid_answer_can_retry_without_mutating_evidence(tmp_path, scor
     assert scan(plan)["complete"]
 
 
-def test_bound_hold_blocks_scoring_and_dispatch_without_approving_retry(tmp_path, monkeypatch):
+@pytest.mark.parametrize("answer", ["Progress only", 'Expected FINAL ANSWER: {"answer": ...}'])
+def test_bound_hold_blocks_scoring_and_dispatch_without_approving_retry(
+    tmp_path, monkeypatch, answer
+):
     plan, manifest = campaign(tmp_path)
-    path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer="Progress only", score=None)
+    path = dispatch(plan, kind="NonZeroAgentExitCodeError", answer=answer, score=None)
     original = files(path.parent)
     approve(plan, path)
     bind_invalid_answer(plan, path)
