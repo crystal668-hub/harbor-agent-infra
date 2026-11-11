@@ -128,23 +128,41 @@ export class SessionRun {
         if (event.reconcile) {
           // Reconcile cron outcome first: session summaries can retain an old
           // 'done' state even when the resumed cron turn ultimately failed.
-          for (const cron of this.cronRuns.values()) {
-            if (cron.finished) continue;
-            const {entries} = await client.request("cron.runs", {id: cron.id.split(":")[0], limit: 100});
-            const result = entries?.find((r) => r.runAtMs === cron.startedAt);
-            if (result) this.acceptCron({...result, action: "finished", sessionKey: this.input.sessionKey});
+          const {entries, hasMore} = await client.request("cron.runs", {scope: "all", limit: 200});
+          const recentCron = (entries ?? []).filter((r) =>
+            r.sessionKey?.toLowerCase() === this.input.sessionKey.toLowerCase() &&
+            r.runAtMs + r.durationMs > this.lastEndedAt).sort((a, b) => b.runAtMs - a.runAtMs)[0];
+          if (hasMore && !recentCron)
+            throw new Error("OpenClaw cron recovery history exceeds reconciliation window");
+          if (recentCron?.sessionId && recentCron.sessionId !== this.input.sessionId)
+            throw new Error("OpenClaw parent session changed during execution");
+          if (recentCron && recentCron.status !== "ok") {
+            if (Number.isFinite(recentCron.nextRunAtMs)) continue;
+            throw new Error(`OpenClaw cron recovery ${recentCron.status}: ${recentCron.error ?? "unknown"}`);
           }
-          if ([...this.cronRuns.values()].some((c) => !c.finished || c.finished.status !== "ok"))
-            continue;
+          for (const cron of this.cronRuns.values()) {
+            const result = entries?.find((r) => r.jobId === cron.id.split(":")[0] &&
+              r.runAtMs === cron.startedAt);
+            if (result) cron.finished = result;
+          }
+          if ([...this.cronRuns.values()].some((c) => !c.finished)) continue;
           const {session} = await client.request("sessions.describe", {key: this.input.sessionKey});
           if (!session || session.sessionId !== this.input.sessionId) {
             throw new Error("OpenClaw parent session unavailable after reconnect");
           }
-          if (!(session.endedAt > this.lastEndedAt)) continue;
-          if (["failed", "killed", "timeout"].includes(session.status))
-            throw new Error(`OpenClaw parent recovery ${session.status}`);
-          if (session.status !== "done") continue;
-          wait = {status: "ok", startedAt: session.startedAt, endedAt: session.endedAt};
+          if (recentCron && (!session.endedAt || session.endedAt < recentCron.runAtMs)) {
+            // Native cron history outlives deleted one-shot jobs and the stale
+            // session summary. Bound the message to its completed native run.
+            wait = {status: "ok", startedAt: recentCron.runAtMs,
+              endedAt: recentCron.runAtMs + recentCron.durationMs};
+            this.record("cron_reconciled", {result: recentCron});
+          } else {
+            if (!(session.endedAt > this.lastEndedAt)) continue;
+            if (["failed", "killed", "timeout"].includes(session.status))
+              throw new Error(`OpenClaw parent recovery ${session.status}`);
+            if (session.status !== "done") continue;
+            wait = {status: "ok", startedAt: session.startedAt, endedAt: session.endedAt};
+          }
         } else {
           if (event.data.phase === "error")
             throw new Error(event.data.error ?? "OpenClaw parent recovery failed");

@@ -23,6 +23,7 @@ function fixture(meta, payloads = []) {
     if (method === "agent.wait") return {status: "ok", startedAt: 20, endedAt: 50};
     if (method === "sessions.get") return {messages: [finalMessage]};
     if (method === "sessions.describe") return {session: {sessionId: "AbC", status: "done", startedAt: 20, endedAt: 50}};
+    if (method === "cron.runs") return {entries: []};
     throw new Error(method);
   }};
   return {session, client, calls, evidence};
@@ -322,10 +323,25 @@ test("reconnect checks missed cron failure before trusting stale session done", 
   const {session, client} = fixture({yielded: true});
   const original = client.request;
   client.request = async (method, p) => method === "cron.runs" ? {entries: [
-    {jobId: "job", runAtMs: 19, status: "error", error: "restricted"},
+    {jobId: "job", runAtMs: 19, durationMs: 35, sessionKey: input.sessionKey,
+      status: "error", error: "restricted"},
   ]} : original(method, p);
   const pending = session.run(client);
   session.accept(cronEvent("started"));
   session.reconnect();
   await assert.rejects(pending, /cron recovery error: restricted/);
+});
+
+test("reconnect discovers a deleted cron job and rejects stale session timing", async () => {
+  const {session, client, evidence} = fixture({yielded: true});
+  const original = client.request;
+  client.request = async (method, p) => method === "cron.runs" ? {entries: [
+    {jobId: "deleted", runAtMs: 20, durationMs: 35, sessionKey: input.sessionKey,
+      sessionId: input.sessionId, status: "ok"},
+  ]} : method === "sessions.describe" ? {session: {sessionId: input.sessionId,
+    status: "done", startedAt: 1, endedAt: 10}} : original(method, p);
+  const pending = session.run(client);
+  session.reconnect();
+  assert.equal((await pending).payloads[0].text, "FINAL ANSWER: 42");
+  assert.equal(evidence.filter((e) => e.kind === "cron_reconciled").length, 1);
 });
