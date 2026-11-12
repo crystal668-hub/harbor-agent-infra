@@ -1,3 +1,11 @@
+"""Expose multiple Harbor artifact runs through one local Viewer endpoint.
+
+This module discovers browsable formal, timeout-rerun, and legacy runs, renders
+the run-selection page, and dispatches requests for the selected run to
+Harbor's official jobs Viewer. It does not score or transform trials; temporary
+directories and ``evidence/attempts`` are deliberately excluded from discovery.
+"""
+
 from __future__ import annotations
 
 import json
@@ -43,7 +51,7 @@ class ArtifactRun:
 
 def discover_artifact_runs(artifacts_dir: Path) -> tuple[ArtifactRun, ...]:
     """Discover formal, timeout-rerun, and legacy runs, excluding temporary."""
-    runs = []
+    runs: list[ArtifactRun] = []
 
     # Discover formal runs
     category_dir = artifacts_dir / "formal"
