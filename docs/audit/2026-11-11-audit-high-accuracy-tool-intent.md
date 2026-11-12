@@ -4,7 +4,7 @@
 
 类型：audit（离线、探索性轨迹分析）
 
-状态：11月11日全量扫描与案例复核已完成；11月12日补充Gaussian/VASP/ORCA专项复核，详见文末。旧统计保持冻结；未启动实验、未重评、未改变正式代表选择。
+状态：11月11日全量扫描与案例复核已完成；11月12日补充Gaussian/VASP/ORCA及现行环境专项复核，详见文末。旧统计保持冻结；未启动实验、未重评、未改变正式代表选择。
 
 ## 结论
 
@@ -253,3 +253,94 @@ B011氨二聚体，repeat1 Hermes × Qwen，Trial 1dd7ced7-ff30-49bd-b29e-950995
 保存的原始扫描、别名补查、具体事件与哈希位于git忽略目录run-artifacts/analysis/gaussian-vasp-orca-intent-20261112/，只作为本报告的底层证据，未新建另一份正式报告。验证记录见该目录verification.json。本次无软件安装、无量化求解、无重评；新增已结束Trial来自既有实验产物，并非本次启动。
 
 本节离线核对结果：7,929个输入文件SHA-256一致，6个主案例步骤定位、5项关键调用/返回内容及31个报告内本地链接检查通过；既有formal score analysis非provider回归测试19项通过。上述检查不构成新软件可用性、许可证或化学精度验收。
+
+## 2026-11-12现行正式环境复核：联网、安装权限与资源一致性
+
+核对时间：2026-11-12 21:48–21:58（Asia/Shanghai）。范围为当前runtime-lock.json、性质计算与开放生成的32份现行配置、共同基础镜像及四个harness执行镜像，以及核对时正在运行的两个Claude Code正式Trial。此节是当前环境检查，不回写此前实验的冻结条件。
+
+**结论：四个harness都配置为公网访问，允许agent在Trial容器内安装包和工具；容器CPU/内存预算一致且实测生效。但网络下载可靠性、实际可用算力及harness内部运行限制不能概括为完全一致。**
+
+### 镜像身份与验证方式
+
+四个派生镜像均为linux/arm64，RootFS前10层与共同父镜像hai-base-env的f40ae2b6…一致。32份配置的执行digest全部匹配当前运行锁。
+
+| Harness | 版本 | 当前执行digest前缀 | 容器默认用户 | 公网与安装探针 |
+| --- | --- | --- | --- | --- |
+| Claude Code | 2.1.296 | 07f303f4664e… | root / UID 0 | 公网下载、本地pip、dpkg安装通过 |
+| Codex | 0.162.1 | ae908ae8e554… | root / UID 0 | 公网下载、本地pip、dpkg安装通过 |
+| Hermes | 0.21.6 | 6a5985d92960… | root / UID 0 | 公网下载、本地pip、dpkg安装通过 |
+| OpenClaw | 2026.6.34 | 37133f839748… | root / UID 0 | 公网下载、本地pip、dpkg安装通过 |
+
+使用锁定digest启动一次性、无provider凭据、无宿主目录挂载的轻量探针容器，逐个执行；采用public对应的bridge网络及4 CPU/6144m限制。只在这些临时容器里安装小型测试包，随后删除容器，没有重建镜像、修改运行锁或正在运行的Trial。对两个活跃正式容器仅做Docker inspect和cgroup读取；没有调用模型、化学求解器或verifier，因此这是环境能力验证，不是四个harness的provider端到端验收。
+
+底层证据位于git忽略目录[formal-environment-check-20261112](../../run-artifacts/analysis/formal-environment-check-20261112/evidence.json)，补充结果为[本地pip与IPv4下载](../../run-artifacts/analysis/formal-environment-check-20261112/followup.json)、[下载后安装验证](../../run-artifacts/analysis/formal-environment-check-20261112/download-install.json)、[活跃容器只读核对](../../run-artifacts/analysis/formal-environment-check-20261112/live-final.json)。
+
+### 1. 网络权限：全部开放，但不能等同所有下载稳定成功
+
+32份配置均为agent_network_mode=public、agent_allowed_hosts=[]；verifier也设为public。空列表在public模式下不是“禁止全部地址”，而是未启用目标域名白名单限制。材料化逻辑把这些字段写入task.toml，Harbor按阶段解析；实际两个正式容器均在非Internal的Docker bridge网络，没有network_mode=none。
+
+四镜像的HTTPS访问GitHub和Debian源均返回200。首次PyPI索引探针有1/4出现TLS EOF；其后四个镜像的直接pip install six==1.17.0均在files.pythonhosted.org包下载阶段出现TLS/SSL EOF。不能把该失败记成“没有公网权限”或“pip被禁止”。
+
+进一步在四个镜像用curl强制IPv4下载同一11050字节wheel，均返回HTTP 200；随后pip --no-index安装该下载文件并import six，四个均成功，版本1.17.0。独立的本地测试wheel安装也全部成功。这说明存在可工作的公网获取和安装路径，而默认pip路径在本次抽查时不稳定；**没有隔离TLS库、IPv6、代理/网络链路等因素，不能确定根因或声称强制IPv4已修复正式环境。** 未更改DNS、代理、pip源或正式网络策略。
+
+相关配置/实现：[Codex性质计算配置](../../configs/experiments/property-calculation/codex/vgb-gpt.config.yaml)、[task_materializer.py](../../src/harbor_agent_infra/harbor/task_materializer.py)、[job_config.py](../../src/harbor_agent_infra/harbor/job_config.py)。镜像本身不决定最终网络策略；正式运行配置与容器启动参数共同决定。本仓库预装镜像离线验收中的network_mode=none是验收条件，不是正式实验默认设置。
+
+### 2. 自行安装：四个都允许，且不是只有工作目录可写
+
+运行锁的agent_python.package_install_policy为agent-managed。共同父镜像设置PIP_BREAK_SYSTEM_PACKAGES=1，提供系统Python 3.11.2、pip、apt-get、dpkg、curl和git。四个镜像均以root运行、根文件系统可写；/usr/local/bin、/opt、/workspace、/tmp、Python系统包目录及apt/dpkg状态目录写入探针全部通过。
+
+实际安装验证：
+
+- 四个容器均成功把自制无依赖wheel装入/usr/local/lib/python3.11/dist-packages，并import执行验证值。
+- 四个容器均用dpkg安装自制微型.deb，将命令放入/usr/local/bin并成功运行。未执行完整apt-get update/远程apt安装，因此远程apt全过程不算已验收；Debian源可达和本地系统安装权限已分别验证。
+- 四个容器均成功安装并导入公网下载的six wheel。首次直接pip下载失败完整保留，没有以本地安装通过掩盖该问题。
+
+harness命令层也没有统一的安装禁令：
+
+| Harness | 当前执行权限配置/实现证据 |
+| --- | --- |
+| Codex | Harbor启动codex exec时使用--dangerously-bypass-approvals-and-sandbox |
+| Claude Code | 默认permission_mode=bypassPermissions；容器运行设IS_SANDBOX=1允许root使用该模式 |
+| Hermes | 使用hermes --yolo chat；TERMINAL_ENV/local backend在Trial容器内执行命令 |
+| OpenClaw | 未启用额外工具sandbox；锁定镜像代码DEFAULT_SECURITY=full、DEFAULT_ASK=off；当前配置只额外deny message，没有deny exec/安装命令 |
+
+OpenClaw默认值直接取自本机锁定镜像中的exec-approvals模块，证据见[openclaw-policy.json](../../run-artifacts/analysis/formal-environment-check-20261112/openclaw-policy.json)，没有用其他版本在线文档替代；这里的gateway“host”是Trial容器内Gateway所在环境，不表示给agent宿主macOS的root权限。
+
+preinstalled模式约束的是harness自身版本和安装清单，不是禁止任务内追加计算工具。Hermes的HERMES_DISABLE_LAZY_INSTALLS=1禁止其启动时自动重建自身依赖，也不是禁止agent执行pip/apt。相关说明见[化学环境配置](../experiments/chemistry.md)及[预装镜像手册](../PREINSTALLED-HARNESS.md)。
+
+**共同的实用限制仍存在**：四个镜像均未发现PATH中的gcc、make、cmake、conda或micromamba；因此源码构建或照搬conda安装命令可能失败，需要先补工具链。平台均为linux/arm64，包是否提供兼容构建、软件授权和下载入口是否可用仍是独立问题。允许安装不等于任意化学软件都能成功安装；本次没有安装Gaussian、VASP、ORCA或编译器。
+
+### 3. 资源限制：容器预算统一，实际资源与内部限制有边界
+
+当前32份配置的profile仅名称按harness变化，数值及enforcement政策完全一致。四个探针容器和两个活跃正式容器的cgroup均匹配：
+
+| 项目 | 当前一致的设置或观测 | 含义 |
+| --- | --- | --- |
+| CPU | 4，policy=limit；cpu.max=400000 100000 | 总CPU时间配额约4核，不是独占4颗核 |
+| 内存 | 6144 MiB=6 GiB，policy=limit；memory.max=6442450944 | 容器硬上限，不是预留/保证可用6 GiB |
+| Swap | memory.swap.max=6442450944；Docker MemorySwap=12884901888 | cgroup允许额外6 GiB swap；Docker字段为内存加swap总上限，实际还受宿主swap约束 |
+| CPU可见性 | os.cpu_count=10、cpuset有效范围0–9 | 可见10个逻辑核不意味着能持续占用10核；受4核配额约束 |
+| /dev/shm | 64 MiB | 与6 GiB内存上限分开，使用共享内存的程序可能先触及此限制 |
+| 进程、磁盘 | pids.max=max；无显式StorageOpt磁盘配额 | 无本次单容器显式限额，不是宿主进程/磁盘无限 |
+| 文件描述符 | soft/hard均1048576 | 四镜像探针相同 |
+| GPU | 当前正式配置未分配；活跃容器DeviceRequests为空 | 不应假定化学/ML工具能用GPU |
+| 每Job并发 | 2个Trial | 是Job级上限，不是跨所有Job的全局限制 |
+| 正式Agent时限 | 7200秒 | 四harness相同；已批准12h补跑单独按43200秒冻结，不能混为统一2h条件 |
+| Verifier时限 | 性质计算120秒；开放生成180秒 | 同子集内四harness相同；不同子集有明确差异 |
+| 请求输出参数 | 64000，推理设置high | 是单次响应请求参数，不是统一累计token/费用预算 |
+| 重试 | n_attempts=1、max_retries=0 | 正式模板一致，人工批准恢复/补跑另记 |
+
+活跃正式容器的Compose资源覆写实际为cpus=4.0、mem_limit=6144m，Docker inspect与内部cgroup读数一致；不是只检查YAML声明。
+
+**需要明确两项非等价性：**
+
+1. 核对时Docker Desktop VM为10逻辑CPU、约11.67 GiB内存、约2 GiB总swap。两个6 GiB容器的上限总和已超过VM物理内存，且harness与系统也占资源；memory_reservation=0，没有为每Trial预留6 GiB。并发计算可能共享争用、换页或受到宿主内存压力影响。本次没有做压力/OOM测试，不断言已有失败因此造成。
+2. harness内部预算不完全相同。当前Hermes生成配置明确agent.max_turns=90、terminal.timeout=180、delegation.max_iterations=50；Claude Code的max_turns默认None，未设统一跨harness轮数。终端调用超时还可随工具参数变化，各harness上下文压缩和子任务机制不同。因此可以说“CPU/内存及正式外层时间预算一致”，不能说“所有内部运行限制与有效计算能力完全等价”。
+
+### 对前文环境归因的补充
+
+这些当前证据排除了“正式环境普遍关闭网络”或“harness普遍禁止自行安装”作为统一解释。历史轨迹中的which未命中、错误包名、下载404、架构不匹配及算力成本仍须逐项归因。本次同时观察到真实的包下载TLS问题与共享宿主资源余量约束，它们可以妨碍安装/长计算，但不能反推历史Trial中每次失败的原因，也没有据此修改正式条件。
+
+完整检查结果及验收边界记录在同目录verification.json；本次仅将结论补入本报告，所有安装探针都发生在已删除的一次性容器中。
+
+本节验证：32份现行配置、5个镜像身份/父层关系、4套隔离容器探针、2个活跃正式容器只读cgroup、51个配置/源码哈希及41个报告本地链接核对通过；相关非provider回归测试87项通过。首次直接pip下载的4次TLS故障作为已观察问题保留，未标记为全部网络链路稳定通过。
