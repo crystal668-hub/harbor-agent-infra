@@ -398,8 +398,9 @@ run-artifacts/
 configs/experiments/
   property-calculation/<harness>/vgb-<model>.config.yaml
   open-generation/<harness>/vgb-<model>.config.yaml
-  <harness>/vgb-<model>.config.yaml  # 性质计算兼容入口
 ```
+
+2026-11-12：旧顶层兼容配置已清理；新任务只使用与 benchmark 子集匹配的配置路径。
 
 ### 8.2 关键配置字段
 
@@ -546,7 +547,7 @@ uv run --locked --python 3.12 hai audit '<run-id>' \
 # 3. 校验获准补跑；审查通过后移除 --dry-run 执行
 uv run --locked --python 3.12 hai recover \
   'run-artifacts/formal/<run-id>/recovery-manifest.json' \
-  --config 'configs/experiments/<harness>/vgb-<model>.config.yaml' \
+  --config 'configs/experiments/<subset>/<harness>/vgb-<model>.config.yaml' \
   --output-dir 'run-artifacts/formal/<repair-run-id>' --dry-run
 
 # 4. 补跑终态可核对后，进入下面的合并与正式统计

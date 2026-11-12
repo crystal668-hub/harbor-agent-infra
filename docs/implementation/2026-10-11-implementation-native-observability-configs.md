@@ -17,12 +17,14 @@
 
 ## 本地模板
 
-| harness | 本地文件（Git ignored） | 模型/参数 | provider 环境变量 |
-| --- | --- | --- | --- |
-| Codex | configs/experiments/codex/vgb-gpt.config.yaml | gpt-5.6-sol / high | OPENAI_API_KEY、OPENAI_BASE_URL |
-| Claude Code | configs/experiments/claude-code/vgb-claude.config.yaml | claude-opus-5.5 / high | ANTHROPIC_API_KEY、ANTHROPIC_BASE_URL |
+2026-11-12 路径更新：下表及命令指向当前性质计算模板；2026-10-11 的模型与验证结论仍为历史记录。当前 Codex GPT 模板已使用 gpt-6.1-sol，旧 gpt-5.6-sol 验证不代表当前配置已重新验证。
 
-每个目录都有 CONTRACT.md。可复现的无密钥副本位于 examples/experiments 下同名目录。
+| harness | 当前模板路径 | 模型/参数 | provider 环境变量 |
+| --- | --- | --- | --- |
+| Codex | configs/experiments/property-calculation/codex/vgb-gpt.config.yaml | gpt-6.1-sol / high（历史验证使用 gpt-5.6-sol） | OPENAI_API_KEY、OPENAI_BASE_URL |
+| Claude Code | configs/experiments/property-calculation/claude-code/vgb-claude.config.yaml | claude-opus-5.5 / high | ANTHROPIC_API_KEY、ANTHROPIC_BASE_URL |
+
+契约文档保留在受版本控制的 examples/experiments/<harness>/CONTRACT.md；configs/experiments 下仅保存本地 YAML 配置。
 各提供一份已验证组合即可，不增加未验证的 Qwen、跨模型网关或其他协议模板；这不是对 CLI 理论模型厂商支持范围的限制。
 
 默认一条 rdkit_001_qed_max、4 CPU/4096 MB、单并发、无 retry、high。VGB_PYTHON
@@ -30,8 +32,8 @@
 普通运行显式 --group skills_off；测试确认不会材料化 skills_on，也不要求其目录存在。
 
 ```bash
-uv run --locked hai run --config configs/experiments/codex/vgb-gpt.config.yaml --group skills_off
-uv run --locked hai run --config configs/experiments/claude-code/vgb-claude.config.yaml --group skills_off
+uv run --locked hai run --config configs/experiments/property-calculation/codex/vgb-gpt.config.yaml --group skills_off
+uv run --locked hai run --config configs/experiments/property-calculation/claude-code/vgb-claude.config.yaml --group skills_off
 ```
 
 ## 验证

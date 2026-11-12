@@ -161,8 +161,8 @@ Trial 目录，采用与 Harbor 原生 resume 一致的删除后补跑语义。
    runtime-manifest 和原 Job config；身份以保存内容为准，目录名作辅助校验。
 2. 新 hai run 保存脱敏启动来源：项目根、源配置路径、规范化配置摘要、
    runtime lock 摘要、所需环境变量名称及来源文件位置，不保存密钥值。
-3. 历史 run 无配置来源时，从已定位项目的 configs/experiments/<harness>/
-   vgb-<template>.config.yaml 查找唯一候选并与冻结条件交叉核验。
+3. 历史 run 无配置来源时，根据冻结 protocol 的 benchmark_identity 或 task track 确定子集，再从已定位项目的 configs/experiments/<subset>/<harness>/
+   vgb-<template>.config.yaml 查找候选并与冻结条件交叉核验。仅在完整配置身份匹配时使用；找不到匹配项就停止，不从不相干子集推断。
    provider 映射为 openai→gpt、anthropic→claude、qwen→qwen、deepseek→deepseek。
 4. 不回退到 examples，不以当前 YAML 的 output_dir 改写原 run 位置。
    身份不明、候选冲突或冻结条件漂移时明确报错，不通过 resume 改变实验条件。

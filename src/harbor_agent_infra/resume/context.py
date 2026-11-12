@@ -9,12 +9,30 @@ import yaml
 from dotenv import load_dotenv
 from harbor import JobConfig
 
+from integrations.vgb.catalog import SUBSETS
 from harbor_agent_infra.preparation.experiments import expand_required
 from harbor_agent_infra.resume.io import read_object
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATES = {"openai": "gpt", "anthropic": "claude",
              "qwen": "qwen", "deepseek": "deepseek"}
+
+
+def _subset_from_protocol(protocol: dict) -> str | None:
+    identity = protocol.get("benchmark_identity") or {}
+    subset = identity.get("subset")
+    if subset in SUBSETS:
+        return subset
+    experiment = protocol.get("experiment") or {}
+    benchmark = experiment.get("benchmark") or {}
+    cases = benchmark.get("cases") or []
+    tracks = {case.get("track") for case in cases if isinstance(case, dict)}
+    if not cases:
+        return None
+    if len(tracks) != len(cases):
+        return None
+    matches = [name for name, allowed in SUBSETS.items() if tracks.issubset(allowed)]
+    return matches[0] if len(matches) == 1 else None
 
 
 @dataclass
@@ -109,17 +127,23 @@ def resolve_context(target: str, *, config: Path | None = None,
     if not selected:
         raise ValueError("No matching original Job")
     candidate = config or (Path(source["config"]) if source.get("config") else None)
-    if candidate is None and protocol:
-        provider, harness = protocol.get("provider"), protocol.get("harness")
-        if provider in TEMPLATES and harness in {"openclaw", "hermes", "codex", "claude-code"}:
-            candidate = (workspace / "configs/experiments" / harness
-                         / f"vgb-{TEMPLATES[provider]}.config.yaml")
     if candidate is not None:
         candidate = (candidate if candidate.is_absolute() else workspace / candidate).resolve()
         if not candidate.is_file():
             if config is not None:
                 raise ValueError(f"Configuration not found: {candidate}")
             candidate = None
+    if candidate is None and protocol:
+        provider, harness = protocol.get("provider"), protocol.get("harness")
+        if provider in TEMPLATES and harness in {"openclaw", "hermes", "codex", "claude-code"}:
+            subset = _subset_from_protocol(protocol)
+            if subset is not None:
+                candidate = (
+                    workspace / "configs/experiments" / subset / harness
+                    / f"vgb-{TEMPLATES[provider]}.config.yaml"
+                ).resolve()
+                if not candidate.is_file():
+                    candidate = None
     return ResumeContext(path, workspace, manifest, protocol, jobs, selected, candidate)
 
 

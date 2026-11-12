@@ -35,7 +35,7 @@ def test_formal_generation_applies_open_generation_timeout_only(tmp_path, monkey
     monkeypatch.setattr(run_formal_matrix, "MODELS", (("gpt", "openai"),))
     monkeypatch.setattr(update_phase1_tasks, "VgbRuntime", lambda _: Runtime())
     monkeypatch.setattr(update_phase1_tasks, "locked_cases", lambda *_: [])
-    source = tmp_path / "configs/experiments/codex/vgb-gpt.config.yaml"
+    source = tmp_path / "configs/experiments/property-calculation/codex/vgb-gpt.config.yaml"
     source.parent.mkdir(parents=True)
     original = {
         "experiment": {"experiment_id": "fixture", "benchmark": {}},

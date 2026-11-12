@@ -8,7 +8,7 @@
 ## 文件与环境
 
 - examples/experiments/<harness>/ 提供受版本控制的示例及 CONTRACT.md。
-- configs/experiments/<harness>/ 存放被 Git 忽略的本地配置；缺失时从对应示例复制，避免覆盖已有文件。
+- configs/experiments/<subset>/<harness>/ 存放被 Git 忽略的本地配置；当前子集为 property-calculation 与 open-generation。示例仅供字段参考，正式任务清单按实验方案准备。
 - 示例是小任务验收配置，不是正式实验配置；正式任务集、资源和参数按 [实验方案](experiments/formal-experiment-plan.md) 准备。
 - 从仓库根目录执行命令。相对路径按进程工作目录使用；本地绝对路径仅保留在忽略文件或环境变量中。
 - 读取 consolidated YAML 时，从该文件所在目录向上查找最近的 .env；已有进程环境优先。
@@ -71,7 +71,7 @@ setup 校验实际版本、入口和安装文件身份，不自动联网补装�
 材料化示例会生成任务和配置，可能运行 Docker/VGB 预检；它不是只读检查：
 
     uv run --locked --python 3.12 hai materialize \
-      --config configs/experiments/codex/vgb-gpt.config.yaml \
+      --config configs/experiments/property-calculation/codex/vgb-gpt.config.yaml \
       --output run-artifacts/temporary/materialized/materialized.json
 
 输出包含配置哈希、任务路径、每组原生 JobConfig 和镜像/资源预检证据。
@@ -99,7 +99,8 @@ setup 校验实际版本、入口和安装文件身份，不自动联网补装�
 宿主运行时为`.vgb-runtime-1.0.0rc1/bin/python`；正式配置显式写入该路径，
 不依赖全局`VGB_PYTHON`切换。性质计算70题、开放生成30题分别存于
 `configs/experiments/property-calculation/`与`configs/experiments/open-generation/`。
-旧路径的16份配置同步为性质计算RC兼容入口。
+2026-11-12 路径清理：旧顶层目录中的16份本地 YAML 已移除；新运行改用子集目录中的配置。
+性质计算和开放生成分别使用上列目录，历史冻结 Job 仍以其保存的配置快照和 runtime lock 为准。
 
 旧`.vgb-runtime`保留，旧锁按SHA-256归档到`run-artifacts/runtime-locks/`；
 resume只接受与冻结哈希完全相等的锁及相同包版本，不自动使用当前RC。

@@ -112,7 +112,7 @@ executor 只向冻结 Agent 添加受支持的 kwargs.config，模型、凭据�
 实际 provider smoke 使用独立新目录：
 
     uv run --locked --python 3.12 python scripts/run_native_cross_provider_smoke.py \
-      --config 'configs/experiments/codex/vgb-qwen.config.yaml' \
+      --config 'configs/experiments/property-calculation/codex/vgb-qwen.config.yaml' \
       --output-dir 'run-artifacts/temporary/<new-provider-smoke>'
 
 该脚本会调用 provider，验证真实工具挑战、会话模型和 usage，不读取私有 VGB 评分数据。

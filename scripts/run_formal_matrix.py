@@ -26,13 +26,14 @@ def validate_formal_configs(workspace_root: Path, subset: str | None = None) -> 
     """Refuse formal runs unless all configs use this workspace's preinstalled lock."""
     workspace_root = workspace_root.resolve()
     catalogs = {}
+    config_subset = subset or "property-calculation"
     for harness in HARNESSES:
         for template, _ in MODELS:
             config_path = (
                 workspace_root
                 / "configs"
                 / "experiments"
-                / (subset or "")
+                / config_subset
                 / harness
                 / f"vgb-{template}.config.yaml"
             )

@@ -5,6 +5,8 @@
 **检查人**: Claude Code  
 **基线**: `74e2b2e` (docs: record 64000 matrix validation and adaptive thinking fix)
 
+2026-11-12 路径跟进：以下命令使用当前子集配置路径，仅供新运行；本报告仍是历史准备度快照，既有71题冻结条件和验收结论未改写。
+
 ---
 
 ## 执行摘要
@@ -235,7 +237,7 @@ run-artifacts/
 # 选择 1-2 个组合，1-2 个任务，2 次重复
 # 例如：OpenClaw + GPT, 2 个任务
 uv run hai run \
-  --config configs/experiments/openclaw/vgb-gpt.config.yaml \
+  --config configs/experiments/property-calculation/openclaw/vgb-gpt.config.yaml \
   --group skills_off \
   --tasks property_calculation_basic_001_toluene_aqueous_solvation_free_energy \
            property_calculation_basic_002_ethanol_aqueous_solvation_free_energy \
@@ -258,7 +260,7 @@ for harness in openclaw hermes codex claude-code; do
   for model in gpt claude qwen deepseek; do
     echo "Starting: $harness - $model"
     uv run hai run \
-      --config configs/experiments/$harness/vgb-$model.config.yaml \
+      --config configs/experiments/property-calculation/$harness/vgb-$model.config.yaml \
       --group skills_off
   done
 done

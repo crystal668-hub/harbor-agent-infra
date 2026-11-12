@@ -22,7 +22,10 @@ def generate(workspace: Path, runtime: Path, lock: Path, destination: Path) -> l
 
     for harness in HARNESSES:
         for model, _ in MODELS:
-            source = workspace / "configs/experiments" / harness / f"vgb-{model}.config.yaml"
+            source = (
+                workspace / "configs/experiments" / "property-calculation"
+                / harness / f"vgb-{model}.config.yaml"
+            )
             original = yaml.safe_load(source.read_text())
             for subset in SUBSETS:
                 config = copy.deepcopy(original)

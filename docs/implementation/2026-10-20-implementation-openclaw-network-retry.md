@@ -92,10 +92,11 @@ DNS 故障通过测试专用 node:dns/promises lookup 注入；没有生产故�
 旧 latest 标签，旧 digest 仍可访问。运行必须使用锁中的完整 digest，不能裸用 latest。
 镜像仅在本机 Docker 验收，未发布 Registry。
 
-已将 codex/openclaw-provider-network-retry 快进合并至本地 main（a9e86f5），并切换本机
-configs/experiments/openclaw 下 gpt、claude、qwen、deepseek 四组正式配置的 image.digest。
+已将 codex/openclaw-provider-network-retry 快进合并至本地 main（a9e86f5），并将本机 OpenClaw 四模型正式配置的 image.digest 切换至新锁 digest。
 manifest 从主工作区新锁读取；package_lock 路径仍指向主工作区。模型、推理、token 上限、
 资源、时限、skills_off 分组及其他 harness 配置均未改变，历史实验产物不改写。
+
+2026-11-12 路径与镜像补记：旧本地 OpenClaw 配置使用的 digest sha256:70cdb8c3671da30798827e1e7d5b1e8323e726019803b51876768ec3f5974812 已过期；当前 runtime-lock.json 及两个子集的四模型配置统一使用 sha256:37133f8397480ee5b47c4e9c186a349e0b8ffd670dacd18afc30ca921bfe029e。OpenClaw 版本仍为 2026.6.34；这是同版本镜像的 bug 修复重建，不是版本升级。此说明不回写历史冻结条件或结果。
 
 主工作区 Python 3.12 locked uv 环境已确认加载新 adapter；四组配置生成的新 AgentConfig
 均携带新镜像和 manifest 身份，全部 16 组正式配置校验通过。配置属于本机忽略文件，

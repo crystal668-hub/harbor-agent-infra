@@ -6,6 +6,8 @@
 文档类型：plan（实验执行）
 状态：历史执行计划；现行协议见[正式实验方案](formal-experiment-plan.md)，命令见[执行速查](../EXECUTION-QUICK-REF.md)。
 
+2026-11-12 路径跟进：下方配置入口改为当前子集目录，供新运行使用。历史71题运行的冻结条件、结果和任务清单不变；不要用当前70题配置替代历史快照。
+
 ## 1. 规模与执行顺序
 
 第一阶段为 4 harness × 4 model × 71 tasks × 3 repeats，共 **3,408 slots**。
@@ -49,7 +51,7 @@ bash scripts/run_formal_experiments.sh
 ```bash
 # 示例：Claude Code × DeepSeek，repeat1
 uv run --locked --python 3.12 hai run \
-  --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
+  --config configs/experiments/property-calculation/claude-code/vgb-deepseek.config.yaml \
   --group skills_off --formal-provider deepseek --formal-repeat 1
 ```
 

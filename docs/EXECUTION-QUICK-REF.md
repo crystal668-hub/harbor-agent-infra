@@ -19,8 +19,10 @@ doctor 只检查基础运行条件，不能代替镜像、provider 和 VGB 验�
 临时验证使用新目录，保持与正式结果分离：
 
     uv run --locked --python 3.12 hai run \
-      --config 'configs/experiments/<harness>/vgb-<model>.config.yaml' \
+      --config 'configs/experiments/<subset>/<harness>/vgb-<model>.config.yaml' \
       --group skills_off --output-dir 'run-artifacts/temporary/<new-run>'
+
+<subset> 使用 property-calculation 或 open-generation，并与待运行任务集一致。
 
 正式运行使用已按实验方案准备的本地配置：
 
@@ -64,6 +66,6 @@ analyze 仅用于恢复诊断。
 | 原始运行意外中断、还有未启动或中断任务 | [resume](RESUME-GUIDE.md)：先预览，再在原目录续跑 |
 | 已结束工程失败，需要审核替代尝试 | [audit → recover → merge](RECOVERY-SYSTEM-GUIDE.md)：先审查清单，再预览执行与合并 |
 | 已有有效零分、正常能力失败或正常预算超时 | 保留观测；普通恢复不因低分或超时自动重跑 |
-| 已明确修订 Repeat1 超时协议 | [timeout-rerun](TIMEOUT-RERUN-GUIDE.md)：独立冻结 campaign 与修订快照 |
+| 已明确批准超时加时补跑 | [timeout-rerun](TIMEOUT-RERUN-GUIDE.md)：适用于各 repeat 的通用补跑协议，独立冻结 campaign 与修订快照 |
 
 已有答案的评分故障优先修复评分，不用新 Agent 执行代替。原生证据、来源身份及已经消耗的预算保留。

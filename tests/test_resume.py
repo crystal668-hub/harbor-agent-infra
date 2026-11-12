@@ -96,13 +96,13 @@ def test_env_autoload_does_not_require_unused_skills(original, monkeypatch):
 
     root, _ = original
     workspace = root.parents[2]
-    path = workspace / "configs/experiments/codex/vgb-deepseek.config.yaml"
+    path = workspace / "configs/experiments/property-calculation/codex/vgb-deepseek.config.yaml"
     path.parent.mkdir(parents=True)
     path.write_text('run:\n  skills_root: ${MISSING_SKILLS}\n  vgb_python: ${VGB_PYTHON}\n')
     (workspace / ".env").write_text("VGB_PYTHON=/fixture/python\nDEEPSEEK_API_KEY=fixture\n")
     monkeypatch.delenv("VGB_PYTHON", raising=False)
     monkeypatch.setenv("DEEPSEEK_API_KEY", "explicit")
-    context = resolve_context(str(root))
+    context = resolve_context(str(root), config=path)
     assert context.config_path == path
     load_environment(context)
     assert os.environ["DEEPSEEK_API_KEY"] == "explicit"
@@ -499,8 +499,31 @@ def test_formal_configuration_matrix(original, harness, provider, template):
     protocol_path = root / "protocol.json"
     protocol = json.loads(protocol_path.read_text())
     protocol.update(harness=harness, provider=provider)
+    protocol["experiment"] = {"benchmark": {"cases": [
+        {"track": "property_calculation_basic", "task_ids": ["task-1"]},
+    ]}}
     save(protocol_path, protocol)
-    config = root.parents[2] / "configs/experiments" / harness / f"vgb-{template}.config.yaml"
+    config = (
+        root.parents[2] / "configs/experiments/property-calculation"
+        / harness / f"vgb-{template}.config.yaml"
+    )
+    config.parent.mkdir(parents=True)
+    config.write_text("run: {}\n")
+    assert resolve_context(str(root)).config_path == config
+
+
+def test_formal_configuration_subset_is_inferred_from_frozen_tracks(original):
+    root, _ = original
+    workspace = root.parents[2]
+    protocol_path = root / "protocol.json"
+    protocol = json.loads(protocol_path.read_text())
+    protocol["experiment"] = {"benchmark": {"cases": [
+        {"track": "open_generation_rdkit", "task_ids": ["task-1"]},
+    ]}}
+    save(protocol_path, protocol)
+    config = (
+        workspace / "configs/experiments/open-generation/codex/vgb-deepseek.config.yaml"
+    )
     config.parent.mkdir(parents=True)
     config.write_text("run: {}\n")
     assert resolve_context(str(root)).config_path == config

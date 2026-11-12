@@ -44,7 +44,7 @@ Claude Code × DeepSeek Repeat 1 作为唯一支持对象，也不能逐组合�
 | 原始 Repeat 1 | `run-artifacts/formal/claude-code-deepseek-repeat1/` |
 | 本轮补跑 | `run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1/` |
 | 建议合并输出 | `run-artifacts/formal/claude-code-deepseek-repeat1-merged/` |
-| 原始配置 | `configs/experiments/claude-code/vgb-deepseek.config.yaml` |
+| 当前新运行配置模板 | `configs/experiments/property-calculation/claude-code/vgb-deepseek.config.yaml` |
 | Harness／模型 | Claude Code 2.1.296／DeepSeek V4 Pro |
 | 分组 | 仅 `skills_off` |
 | 原始 slot 数 | 71（advanced 20，basic 51） |
@@ -349,6 +349,8 @@ VGB artifact 中的 score 必须与该 TrialResult verifier reward 一致。
 后续 audit 需要读到派生的 attempts/选择与计数，不能再次把已替代旧失败批准成全新 slot。
 达到两次替代上限且仍无有效代表时标记预算耗尽，不自动启动第三次。
 
+2026-11-12 路径跟进：下方路径用于当前新运行配置；本计划中的历史71-slot身份仍以冻结 protocol、Job 快照和 artifacts 为准，不能用当前70题配置重建。
+
 ## 10. CLI 交付示例（通用接口，以首个案例展示）
 
 以下接口已在独立 worktree 实现；实际发布仍需先审核 dry-run，当前进行中的补跑不使用新代码。
@@ -357,7 +359,7 @@ VGB artifact 中的 score 必须与该 TrialResult verifier reward 一致。
 # 恢复启动前验证配置；适配后同时展示有效并发上限 2
 uv run --locked --python 3.12 hai recover \
   run-artifacts/formal/claude-code-deepseek-repeat1/recovery-manifest.json \
-  --config configs/experiments/claude-code/vgb-deepseek.config.yaml \
+  --config configs/experiments/property-calculation/claude-code/vgb-deepseek.config.yaml \
   --output-dir run-artifacts/formal/claude-code-deepseek-repeat1-recovery-batch1 \
   --dry-run
 

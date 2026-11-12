@@ -51,11 +51,12 @@ RecoveryManifest.approve_slot() 可同步两个批准字段；正式审批还需
 ## 3. 预览与执行
 
     uv run --locked --python 3.12 hai recover '<reviewed-manifest.json>' \
-      --config 'configs/experiments/<harness>/vgb-<model>.config.yaml' \
+      --config 'configs/experiments/<subset>/<harness>/vgb-<model>.config.yaml' \
       --output-dir 'run-artifacts/formal/<run-id>-recovery-batch<N>' --dry-run
 
 预览通过且范围获批后，移除 --dry-run 执行。正式预览必须带 --config；不带时只列出获批项，
 不验证真实 JobConfig。恢复将每个获批 slot 材料化为一个单任务 Harbor Job，受冻结并发上限约束。
+<subset> 必须与原始冻结 benchmark 一致；先核对原始 protocol 和任务 track，再选对应子集配置。
 metadata.batch_concurrency 可显式降低该批次并发；不改变每 Trial 的 CPU、内存、时限或重试策略。
 
 执行写 recovery-state.json、逐 Job 元数据及 recovery-result.json。目录必须全新；

@@ -207,7 +207,7 @@ def test_matrix_requires_all_16_configs_to_match_workspace_preinstalled_lock(tmp
         ):
             image = lock.execution_image(harness, "preinstalled")
             config_path = (
-                workspace / "configs" / "experiments" / harness
+                workspace / "configs" / "experiments" / "property-calculation" / harness
                 / f"vgb-{template}.config.yaml"
             )
             config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -219,7 +219,10 @@ def test_matrix_requires_all_16_configs_to_match_workspace_preinstalled_lock(tmp
                 "groups": [{"id": "skills_off", "skills_enabled": False}],
             }}))
     validate_formal_configs(workspace)
-    first = workspace / "configs/experiments/claude-code/vgb-deepseek.config.yaml"
+    first = (
+        workspace / "configs/experiments/property-calculation/claude-code/"
+        "vgb-deepseek.config.yaml"
+    )
     config = yaml.safe_load(first.read_text())
     config["experiment"]["benchmark"]["package_lock"] = "runtime-lock.json"
     first.write_text(yaml.safe_dump(config))
