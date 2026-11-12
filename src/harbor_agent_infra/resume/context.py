@@ -9,9 +9,9 @@ import yaml
 from dotenv import load_dotenv
 from harbor import JobConfig
 
-from integrations.vgb.catalog import SUBSETS
 from harbor_agent_infra.preparation.experiments import expand_required
 from harbor_agent_infra.resume.io import read_object
+from integrations.vgb.catalog import SUBSETS
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATES = {"openai": "gpt", "anthropic": "claude",
