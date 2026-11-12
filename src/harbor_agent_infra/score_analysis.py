@@ -5,6 +5,14 @@ from collections import defaultdict
 DEFAULT_SCORE_BINS = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 
 
+def _validated_score(value: object) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not 0 <= value <= 1:
+        return None
+    return value
+
+
 def validate_score_bins(edges: tuple[float, ...]) -> tuple[float, ...]:
     if (len(edges) < 2 or any(type(edge) not in (int, float) for edge in edges)
             or edges[0] != 0 or edges[-1] != 1
@@ -22,9 +30,9 @@ def _summarize(entries: list[dict], top_n: int, edges: tuple[float, ...]) -> dic
             unscored += 1
             continue
         domain = record.get("vgb_domain_result") or {}
-        score = (domain.get("scores") or {}).get("score")
+        score = _validated_score((domain.get("scores") or {}).get("score"))
         # Exclude booleans, missing values, NaN/infinity and out-of-contract scores.
-        if type(score) not in (int, float) or not 0 <= score <= 1:
+        if score is None:
             invalid += 1
             continue
         final = record.get("final_attempt") or {}

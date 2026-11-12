@@ -8,7 +8,7 @@ from pathlib import Path
 from harbor.models.trial.config import AgentConfig
 
 from harbor_agent_infra.contracts.experiment import AgentSpec
-from harbor_agent_infra.preparation.runtime_lock import InfraRuntimeLock
+from harbor_agent_infra.preparation.runtime_lock import HarnessImageLock, InfraRuntimeLock
 from integrations.vgb.agent_output import response_from_agent_artifacts
 
 
@@ -16,6 +16,8 @@ def _installation_kwargs(spec: AgentSpec, lock: InfraRuntimeLock) -> dict[str, o
     if spec.installation_mode == "runtime_install":
         return {}
     image = lock.execution_image(spec.adapter, spec.installation_mode)
+    if not isinstance(image, HarnessImageLock):
+        raise TypeError("preinstalled execution images must include a manifest checksum")
     return {"preinstalled": {
         "manifest_sha256": image.manifest_sha256,
         "image": image.immutable_reference,
