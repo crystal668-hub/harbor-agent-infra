@@ -4,7 +4,7 @@
 
 类型：audit（离线、探索性轨迹分析）
 
-状态：全量结构化扫描和代表案例链路复核已完成；具体覆盖与验证边界见下文。未启动实验、未重评、未改变正式代表选择。
+状态：11月11日全量扫描与案例复核已完成；11月12日补充Gaussian/VASP/ORCA专项复核，详见文末。旧统计保持冻结；未启动实验、未重评、未改变正式代表选择。
 
 ## 结论
 
@@ -164,3 +164,92 @@ B011氨二聚体，repeat1 Hermes × Qwen，Trial 1dd7ced7-ff30-49bd-b29e-950995
 按11类统计解释风险逐项审视：分组混淆/Simpson、生态推断、选择、碰撞、基率、回归均值、幸存者、多重探索、分析自由度、相关与因果、反向因果。采用固定主分母、任务约束/模型分层、保留缺失/失败、披露目的性案例和探索阈值，不宣称这些风险已被设计消除，也不作显著性或因果判断。未执行新的化学精度验收、软件安装验收或硬件性能测试。
 
 本次验证结果：9,763个源文件与68份选择清单/快照SHA-256一致，4,480条视图记录身份/任务指令/评分来源及44个本地文档链接检查通过；相关score analysis、timeout merge/generic非provider回归测试69项通过。它们仅确认离线分析完整性与既有评分口径，不代表新的化学精度验收。
+
+## 2026-11-12专项复核：Gaussian、VASP、ORCA的具体使用企图
+
+复核日期：2026-11-12（Asia/Shanghai）。本节按后续要求补充三种指定软件的原始推理和工具执行证据；前文11月11日的2,240个正式代表统计保持冻结，不用新增样本覆盖旧结论。
+
+**三种软件都存在明确的候选使用意图；证据达到的阶段不同：Gaussian、VASP主要为方案考虑及可用性探测，ORCA还出现真实下载与包管理器安装尝试。本次未确认三者的量化求解器实际完成过本地任务计算。** 这一否定结论只限已保存、可检查的轨迹，不涵盖缺失记录或未导出的子会话。
+
+### 本次范围与检索口径
+
+本次重新从正式目录盘点并读取原始文件，清单冻结于**2026-11-12 16:37:58**。包含2,686个已结束Trial标识、10,105份目录副本；较前次增加143个标识，其中140个来自repeat3（Claude Code × DeepSeek/GPT各70），另3个为repeat2补跑/恢复。2,605个有ATIF，14个另有原始会话工具链，67个仍无可恢复链路；1,748个保存可读原始推理。正在运行或清单冻结后才结束的执行不在本次覆盖内，且本次未启动任何实验。
+
+除了名称，还查g03/g09/g16、GAUSS_EXEDIR、GAUSS_SCRDIR、vasp_std/vasp_gam/vasp_ncl、ORCA版本名和orcaforum下载地址；回看探测、下载/安装、输入准备、执行命令及其输出。只用assistant自身的推理/调用判断意图；网页、论文、工具输出里的名称必须另判来源。宽松关键词计数没有直接转成“企图次数”。
+
+前次通用筛查会漏掉只含orcaforum域名而没有独立ORCA单词的下载调用；此次已增加别名/域名补查。因此前文的软件参数提及数继续作为旧规则指标，不能当作穷尽的使用尝试清单。本节以逐链证据补足，不回写旧频率。
+
+### 按软件归纳
+
+| 软件 | 已确认的最高行动阶段 | 本次尚未确认的阶段 |
+| --- | --- | --- |
+| Gaussian | 将g16/Gaussian作为替代量化引擎或独立校验候选，并真实执行PATH探测 | Gaussian程序安装、提交输入任务、实际求解器运行 |
+| VASP | 明确规划VASP DFT→声子→自由能，并真实执行which/find查找 | VASP求解器下载/安装、INCAR/POTCAR配置、实际求解 |
+| ORCA | 明确偏好；真实请求论坛二进制下载；另有包管理器安装尝试及裸命令/版本探测 | 成功获得真正量化ORCA、针对本任务的求解器执行与完成 |
+
+“未预装”“下载链接失效”“安装到同名包”“认为需要账户”是不同障碍，不能统一写成ARM不支持或许可证拒绝。以下许可、账户及发行平台说法若无工具实测，均只记录为agent当时判断。
+
+### Gaussian：不仅是文献提及，确有从xTB转向g16的想法
+
+**G1：B014水—甲醇结合能，repeat1 Codex × DeepSeek。** Trial 2a5fb2b2-0ad7-4ff6-b782-937cc750da55，为两套repeat1视图的正式代表。
+
+[原始codex.txt第184行](../../run-artifacts/formal/codex-deepseek-repeat1-recovery-batch1/jobs/codex-vgb-deepseek-cross-provider-skills_off-recovery-e9190569-b80c-4ab8-a794-7ce0c3ba6ab5/property_calculation_basic__prop__5tTwukF/agent/codex.txt)先指出GFN1/GFN2算出的结合能符号不合理，随后提出检查ORCA，或“try using g16 or any other QM code”。这是为了修复自己的计算而考虑替代引擎，不是引述论文。随后[ATIF step54](../../run-artifacts/formal/codex-deepseek-repeat1-recovery-batch1/jobs/codex-vgb-deepseek-cross-provider-skills_off-recovery-e9190569-b80c-4ab8-a794-7ce0c3ba6ab5/property_calculation_basic__prop__5tTwukF/agent/trajectory.json)实际执行which orca、which g16、which nwchem；无路径输出、exit1。后续未见Gaussian安装或运行，最终仍采用GFN2-xTB//GFN-FF。
+
+结论：**明确替代使用意图＋实际可用性探测**；不能称为Gaussian启动后失败，也不能把PATH探测扩大为该机器无法安装Gaussian。
+
+**G2：B031烯丙基自由基自旋密度，repeat2 Codex × Qwen。** Trial 3700dbf8-5c15-444e-8677-b93ec530d5c3，为两套repeat2视图的正式代表。
+
+[ATIF step4](../../run-artifacts/formal/codex-qwen-repeat2/jobs/codex-vgb-qwen-cross-provider-skills_off/property_calculation_basic__prop__XnKBE4t/agent/trajectory.json)探测g16/g09等命令，只找到xTB；[原始codex.txt第39行](../../run-artifacts/formal/codex-qwen-repeat2/jobs/codex-vgb-qwen-cross-provider-skills_off/property_calculation_basic__prop__XnKBE4t/agent/codex.txt)在已有PySCF结果后考虑用Gaussian结果独立核对，但认为无法运行Gaussian，于是转向检查PySCF泛函定义、布居实现及网格/基函数约定。最终使用PySCF结果，未发生Gaussian计算。
+
+这是“独立引擎交叉验证”的意图，不一定是更换理论层级。软件品牌不同不自动表示同一B3LYP/基组下精度更高。
+
+### VASP：存在具体任务路线，但停在探测阶段
+
+**V1：A006多晶型交叉温度，repeat2 Codex × DeepSeek。** Trial d1e753f2-c615-404f-a58d-67b02efd62a7，为两套repeat2视图的正式代表。
+
+[原始codex.txt第6行](../../run-artifacts/formal/codex-deepseek-repeat2-recovery-batch1/jobs/codex-vgb-deepseek-cross-provider-skills_off-recovery-4a22713d-259e-4b8e-82ee-7b6233f3bc26/property_calculation_advanced__p__TGYuKzA/agent/codex.txt)明确计划用CIF建立VASP或类似程序的DFT计算，再求声子和Helmholtz自由能。[ATIF step5](../../run-artifacts/formal/codex-deepseek-repeat2-recovery-batch1/jobs/codex-vgb-deepseek-cross-provider-skills_off-recovery-4a22713d-259e-4b8e-82ee-7b6233f3bc26/property_calculation_advanced__p__TGYuKzA/agent/trajectory.json)实际which vasp，无VASP路径；step10进一步find / -name "vasp*"，仅找到ASE的VASP Python接口和缓存文件。随后改用xTB等路线，未见VASP输入配置或求解器启动。
+
+结论：**VASP被当作自己的候选计算工具，并非仅提到文献软件**；但已观察到的是找不到可执行文件，不能推断为许可错误或硬件不兼容。
+
+另有两个当前正式代表支持相同现象：
+
+- repeat1 Claude Code × DeepSeek A006，d9cb3afb-3b8c-49c1-bde6-aa5a14dfa9c0：[推理第126/661行](../../run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_advanced__p__E4Cnv6Q/agent/claude-code.txt)规划VASP/QE，探测无结果后改半经验/力场；[ATIF step2](../../run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_advanced__p__E4Cnv6Q/agent/trajectory.json)是which探测，不是VASP进程执行失败。
+- repeat1 Claude Code × DeepSeek A001，109fe25a-8f4b-4547-91be-e83d4e719862：[推理第1409行](../../run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_advanced__p__x3Ae3Kq/agent/claude-code.txt)考虑ASE VASP calculator，但[ATIF step15](../../run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_advanced__p__x3Ae3Kq/agent/trajectory.json)实际脚本采用xTB；format='vasp'只是格式转换。
+
+### ORCA：有真正获取/安装企图，且不止which探测
+
+**O1：B027吡咯表面静电势方差，repeat1 Hermes × Qwen。** Trial 927f1baa-8dfb-495a-8084-0a84fdf2b417，为两套repeat1视图的正式代表。
+
+[原始hermes-session.jsonl第1行、messages[9].reasoning](../../run-artifacts/formal/hermes-qwen-repeat1/jobs/hermes-vgb-qwen3.8-max-skills_off/property_calculation_basic__prop__KN8pnof/agent/hermes-session.jsonl)明确提出下载所谓“ORCA 6.0.1 Linux ARM64 binary”，并决定检查论坛直链。这里的平台版本是agent的设想，本审计没有确认该发行包存在。
+
+[ATIF step5](../../run-artifacts/formal/hermes-qwen-repeat1/jobs/hermes-vgb-qwen3.8-max-skills_off/property_calculation_basic__prop__KN8pnof/agent/trajectory.json)真实curl请求ORCA论坛下载端点，结果是HTTP 404、16字节HTML文件。shell exit_code=0不能覆盖HTTP失败。step6/7转向PySCF＋Multiwfn并最终作答。
+
+结论：**明确选择＋真实二进制获取尝试**。直接观察到的失败是URL404，不是许可证拒绝或ARM执行错误；这是三种软件中最强的“确实动手获取”正式代表案例。
+
+**O2：旧A004白藜芦醇IR，repeat1 Codex × DeepSeek恢复执行。** Trial a369f31a-c262-40fd-a994-c50886500621。该题已在迁移中删除，不属于当前70题代表，只作全部历史正式轨迹的补充证据。
+
+[ATIF step81/82](../../run-artifacts/formal/codex-deepseek-repeat1-recovery-batch2/jobs/codex-vgb-deepseek-cross-provider-skills_off-recovery-aed36baa-ecc7-44cf-a597-472abe0d66b4/property_calculation_advanced__p__YCrZpUd/agent/trajectory.json)先执行pip install orca，取得约20kB的orca-1.9纯Python wheel并拉取pandas依赖；agent随即识别这不是量化ORCA。再尝试conda install -c conda-forge orca，实际返回conda: command not found。[原始推理第436/444/452/524行](../../run-artifacts/formal/codex-deepseek-repeat1-recovery-batch2/jobs/codex-vgb-deepseek-cross-provider-skills_off-recovery-aed36baa-ecc7-44cf-a597-472abe0d66b4/property_calculation_advanced__p__YCrZpUd/agent/codex.txt)记录了安装意图、同名包纠正和注册可行性判断。
+
+结论：安装企图真实，**包身份识别错误和包管理器缺失**也真实；没有真正量化ORCA安装完成的证据。此例不能按当前任务集计算发生率。
+
+**O3：A016丁二酮磷光速率，repeat1 12h OpenClaw × Qwen。** Trial 0fcd301e-7c40-49f4-b667-dc712dfd753a，为已批准12h代表。
+
+[原始openclaw.session.jsonl第8行](../../run-artifacts/timeout-rerun/repeat1-12h-20261027/jobs/openclaw-qwen-repeat1-12h-526de1733d12/property_calculation_advanced__p__XZZ9p42/agent/openclaw.session.jsonl)明确认为“ORCA would be ideal”，但未安装且需要账户；[ATIF step2](../../run-artifacts/timeout-rerun/repeat1-12h-20261027/jobs/openclaw-qwen-repeat1-12h-526de1733d12/property_calculation_advanced__p__XZZ9p42/agent/trajectory.json)只探测到xTB。没有ORCA下载/注册请求，后来安装并使用PySCF完成计算。
+
+这属于明确偏好与替代选择，账户障碍仅为预期，不能写成实际许可拒绝。也说明放弃ORCA后不一定退回低阶方法，可能改用其他电子结构引擎。
+
+### 本轮确认的误报与过度归因风险
+
+1. **Gaussian横幅不保证Gaussian运行。** 12条Gaussian程序签名命中中，10条明确注明frequency output generated by the xtb code，另2条来自文档/教程；涉及11个Trial。例如[14c7a99b…的ATIF step32](../../run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_basic__prop__RAdmfZ8/agent/trajectory.json)读取的是xTB生成的g98.out，虽有Entering Gaussian System头，也不是Gaussian求解器。
+2. **ORCA正常结束文字可能来自别人算过的文件。** 全部8条ORCA输出签名命中、共6个Trial，逐条核对均为手册、检索结果、下载的公开输出或论坛引用。例：[2b3fa051… step56](../../run-artifacts/formal/codex-openai-repeat2/jobs/codex-vgb-gpt-6.1-sol-skills_off/property_calculation_advanced__p__aazhGpW/agent/trajectory.json)从GitHub下载orca.out；新增repeat3的[61e06d2… steps64/66](../../run-artifacts/formal/claude-code-openai-repeat3/jobs/claude-code-vgb-gpt-cross-provider-skills_off/property_calculation_advanced__p__4oD9Bmj/agent/trajectory.json)读取论坛中的ORCA TERMINATED NORMALLY。均不是本Trial运行ORCA。
+3. **.vasp/POSCAR及ASE接口不是VASP求解器。** 另有[4001a527…](../../run-artifacts/timeout-rerun/repeat2-12h-20261108/jobs/hermes-qwen-repeat2-12h-66e140155624/property_calculation_advanced__p__HYfzNz8/agent/trajectory.json)下载名为vasp-ml的仓库，但其推理目标是MACE仿真层，且下载失败；不计VASP下载。
+4. **“没找到”有时连有效探测都不是。** [27cbe76c…的ATIF step2](../../run-artifacts/timeout-rerun/repeat1-12h-20261027/jobs/claude-code-qwen-repeat1-12h-5f5716864646/property_calculation_advanced__p__j959cXZ/agent/trajectory.json)把VASP和ORCA拼成vasporca后执行which；后续“no VASP”判断缺少这条命令的支持。
+5. **软件名和方法精度分开。** G2是同一方法的实现交叉验证，O1原题已指定B3LYP。它们证明想用该软件，未必证明想提高理论层级。推理中的“更合适”“商业/需要注册”“算不起”也分别是适用性、获取门槛与成本判断，不直接等于真实计算失败。
+
+### 本次新增判断及验证范围
+
+对用户问题可以明确回答：**有，且ORCA已有真实下载/安装企图；Gaussian与VASP也有自己的任务路线和真实探测证据。** 但本次尚未确认这三种求解器完成了本地化学任务计算，不能把PySCF成功、兼容输出格式或第三方计算文件算到它们名下。
+
+保存的原始扫描、别名补查、具体事件与哈希位于git忽略目录run-artifacts/analysis/gaussian-vasp-orca-intent-20261112/，只作为本报告的底层证据，未新建另一份正式报告。验证记录见该目录verification.json。本次无软件安装、无量化求解、无重评；新增已结束Trial来自既有实验产物，并非本次启动。
+
+本节离线核对结果：7,929个输入文件SHA-256一致，6个主案例步骤定位、5项关键调用/返回内容及31个报告内本地链接检查通过；既有formal score analysis非provider回归测试19项通过。上述检查不构成新软件可用性、许可证或化学精度验收。
