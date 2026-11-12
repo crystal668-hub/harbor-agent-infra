@@ -28,8 +28,12 @@ _NO_STORE_HEADERS = {
 }
 
 
+def _explicit_run_name(request: Request) -> str | None:
+    return request.query_params.get("hai_run") or request.query_params.get("run")
+
+
 def _selected_run_name(request: Request) -> str:
-    explicit = request.query_params.get("hai_run") or request.query_params.get("run")
+    explicit = _explicit_run_name(request)
     if explicit:
         return explicit
     referer = request.headers.get("referer", "")
@@ -191,7 +195,7 @@ def create_multi_run_viewer(
     dispatcher = _RunDispatcher(artifacts_dir, static_dir)
 
     async def index(request: Request) -> HTMLResponse:
-        selected_name = request.query_params.get("run") or request.query_params.get("hai_run")
+        selected_name = _explicit_run_name(request)
         if selected_name is not None:
             run = dispatcher.find_run(selected_name)
             if run is None:
@@ -200,14 +204,7 @@ def create_multi_run_viewer(
                     status_code=404,
                     headers=_NO_STORE_HEADERS,
                 )
-            if static_dir is None or not (static_dir / "index.html").is_file():
-                response = HTMLResponse(
-                    _missing_viewer_page(), status_code=503, headers=_NO_STORE_HEADERS
-                )
-            else:
-                response = HTMLResponse(
-                    _viewer_page(static_dir, run.name), headers=_NO_STORE_HEADERS
-                )
+            response = _viewer_response(static_dir, run.name)
             response.set_cookie(
                 _RUN_COOKIE,
                 run.name,
@@ -231,14 +228,8 @@ def create_multi_run_viewer(
         if run is None:
             response = RedirectResponse("/", status_code=303, headers=_NO_STORE_HEADERS)
             response.delete_cookie(_RUN_COOKIE, path="/")
-        elif static_dir is None or not (static_dir / "index.html").is_file():
-            response = HTMLResponse(
-                _missing_viewer_page(), status_code=503, headers=_NO_STORE_HEADERS
-            )
         else:
-            response = HTMLResponse(
-                _viewer_page(static_dir, run.name), headers=_NO_STORE_HEADERS
-            )
+            response = _viewer_response(static_dir, run.name)
         await response(scope, receive, send)
 
     return Starlette(routes=[Route("/", index), Mount("/", app=page_or_delegate)])
@@ -417,6 +408,12 @@ def _not_found_page(name: str) -> str:
 
 def _missing_viewer_page() -> str:
     return _message_page("Viewer unavailable", "Harbor Viewer static files are not installed.")
+
+
+def _viewer_response(static_dir: Path | None, run_name: str) -> HTMLResponse:
+    if static_dir is None or not (static_dir / "index.html").is_file():
+        return HTMLResponse(_missing_viewer_page(), status_code=503, headers=_NO_STORE_HEADERS)
+    return HTMLResponse(_viewer_page(static_dir, run_name), headers=_NO_STORE_HEADERS)
 
 
 def _message_page(title: str, message: str) -> str:
