@@ -5,6 +5,10 @@
 状态：问题已诊断并修复；2026-11-05 已合入主工作区并完成本地部署，详见[部署验收](../acceptance/2026-11-05-acceptance-trajectory-deployment.md)。
 下文交接、实验衔接与 2026-11-04 的未部署描述保留为历史范围，后续状态以上述部署记录为准。
 
+2026-11-11新增边界：Qwen A007补跑在保全数据库后仍发生两次导出超时，
+且None stdout使清理异常覆盖主异常。原答已离线恢复并官方评分；
+这是已部署采集器的另一条未修复路径，见[本次恢复审计](../audit/2026-11-11-audit-hermes-qwen-a007-session-recovery.md)。
+
 2026-11-04 后续进展：用户确认使用独立 worktree 与独立测试环境，
 仅开发和离线验收，不改变当前 Claude→GPT 正式实验。
 实现范围、验收证据与未验收边界见[修复离线验收](../acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)。

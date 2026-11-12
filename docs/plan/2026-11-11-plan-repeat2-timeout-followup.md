@@ -2,7 +2,7 @@
 
 日期：2026-11-11（Asia/Shanghai）
 类型：plan（终态审核与后续补跑范围）
-状态：14:01更新：用户明确要求派发三项工程补跑；原campaign已签署并行及镜像条件修订，活动审核通过，控制器已派发Claude Code A018与Hermes A007，OpenClaw A006在全局并发2的队列中。A019仍hold且未正式合并；三项尚未验收完成。
+状态：21:38更新：Hermes A007原答已从保全数据库恢复、官方评分成功并挂回原Trial；Claude Code A018和OpenClaw A006运行中。现有40项completed，A019仍hold，未正式合并。导出缺陷已诊断但未部署代码修复。
 
 ## 范围与统计
 
@@ -138,3 +138,15 @@ Hermes的qwen3.8-max流也在14:02:37出现首个解析及有效进度事件；
 第三项A006等待令牌释放自动启动。执行日志为campaign/engineering-followup-execution.log，
 实时状态以campaign/state.json和jobs/原生Trial为准。此记录仅证明派发与早期调用，
 不证明Hermes或A006已获得有效终答，也不执行最终merge。
+
+## 2026-11-11 Hermes A007原答恢复
+
+21:08 Hermes在原冻结90次迭代结束后已有总结和实际终答，但两次会话导出超时，
+且None stdout触发二次AttributeError，未进入原生Verifier。用户随后批准恢复已有答复并评分。
+已在同锁定镜像断网导出399条原生消息，核对末条原答与数据库、CLI输出一致，
+恢复真实ATIF并完成一次官方评分；五份恢复/评分附加文件挂回ordinal=2，
+原result、异常和全部既有文件哈希不变，不再追加Agent采样。
+scan现为40 completed、两个活动检查点和A019 hold；其余两项保持全局并发2运行。
+导出问题的证据、恢复验证和未修复边界见[审计](../audit/2026-11-11-audit-hermes-qwen-a007-session-recovery.md)。
+历史0分Trial的恢复分数回填关系已通过`historical-score-backfill.json`登记；
+该侧车记录不覆盖原始错误代答或其0分。

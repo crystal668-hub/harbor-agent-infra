@@ -52,6 +52,7 @@
 - [OpenClaw × Qwen A019检查点恢复](audit/2026-11-11-audit-openclaw-a019-checkpoint-recovery.md)：原父会话终答已恢复并独立评分，保留答后压缩错误，旧进度零分隔离，未正式合并。
 - [Hermes超时会话导出修复交接](handoff/2026-11-04-handoff-hermes-timeout-session-export.md)：问题调用链、证据位置、取消路径修复与验证要求、正式实验衔接边界。
 - [Hermes超时会话导出离线验收](acceptance/2026-11-04-acceptance-hermes-timeout-session-export.md)：取消链路与证据保全验收；后续已于11月5日接入本地主工作区。
+- [Hermes × Qwen A007原答恢复与导出诊断](audit/2026-11-11-audit-hermes-qwen-a007-session-recovery.md)：同身份原生会话已恢复并官方评分；保留原异常，导出超时及None stdout缺陷尚未部署修复。
 - [OpenClaw失败轨迹修复详细设计](plan/2026-11-04-plan-openclaw-failure-trajectory.md)：四类harness的ATIF文件依赖、失败测试、函数改动与验收边界；方案已审批并在隔离分支实施。
 - [OpenClaw失败轨迹离线验收](acceptance/2026-11-04-acceptance-openclaw-failure-trajectory.md)：失败会话转换、身份门禁与评分隔离；207项离线回归通过，后续部署及历史回填另有记录。
 - [OpenClaw历史失败轨迹受控回放](audit/2026-11-04-audit-openclaw-sessionkey-replay.md)：用户授权在独立副本推导已脱敏的sessionKey，12/12生成有效部分ATIF；144项产物检查通过，生产检查与历史原件未改。
