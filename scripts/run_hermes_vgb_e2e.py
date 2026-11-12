@@ -116,8 +116,10 @@ async def run(*, lock_path: Path, output_dir: Path, model: str) -> dict[str, obj
     domain = artifact.get("domain_result")
     if artifact.get("vgb_status") != "scored" or not isinstance(domain, dict):
         raise RuntimeError("VGB verifier did not produce a scored artifact")
-    score = domain.get("scores", {}).get("score")
-    reward = trial.verifier_result.rewards.get("reward") if trial.verifier_result else None
+    scores = domain.get("scores")
+    score = scores.get("score") if isinstance(scores, dict) else None
+    verifier_result = trial.verifier_result
+    reward = (verifier_result.rewards or {}).get("reward") if verifier_result else None
     if score != reward:
         raise RuntimeError(f"Harbor reward {reward!r} does not match VGB score {score!r}")
     report = {

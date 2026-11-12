@@ -582,8 +582,8 @@ async def run_paired_jobs(
         else:
             status = "completed"
         attempt_records = []
-        for group_id in materialized.groups:
-            for path in sorted((output_root / "per-record" / group_id).glob("*.json")):
+        for current_group_id in materialized.groups:
+            for path in sorted((output_root / "per-record" / current_group_id).glob("*.json")):
                 record = json.loads(path.read_text(encoding="utf-8"))
                 trial_result_path = Path(record["trial_result_path"])
                 actual_path = trial_result_path.parent / "result.json"

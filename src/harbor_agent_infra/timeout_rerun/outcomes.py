@@ -154,12 +154,12 @@ def invalid_answer_review(path: Path, slot: dict, decision: dict, outcome: dict)
 
 def validate_trial(trial: dict, expected: dict, slot: dict):
     config = trial["config"]
-    expected = JobConfig.model_validate(expected)
+    expected_config = JobConfig.model_validate(expected)
     from harbor.models.trial.config import TrialConfig
 
     actual = TrialConfig.model_validate(config)
     if trial["task_name"] != slot["task_name"] or str(actual.task.path) != str(
-        expected.tasks[0].path
+        expected_config.tasks[0].path
     ):
         raise ValueError("Rerun Trial task differs from frozen slot")
     for field in (
@@ -175,9 +175,9 @@ def validate_trial(trial: dict, expected: dict, slot: dict):
         "extra_instruction_paths",
         "user_agent",
     ):
-        if getattr(actual, field) != getattr(expected, field):
+        if getattr(actual, field) != getattr(expected_config, field):
             raise ValueError(f"Rerun execution conditions changed: {field}")
-    if actual.agent != expected.agents[0]:
+    if actual.agent != expected_config.agents[0]:
         raise ValueError("Rerun agent differs from frozen condition")
 
 

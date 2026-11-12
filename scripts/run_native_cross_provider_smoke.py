@@ -102,6 +102,12 @@ async def run(config_path: Path, output: Path) -> dict[str, object]:
             if isinstance(model, str):
                 native_models.add(model)
     usage = trial.agent_result
+    if usage is None:
+        raise RuntimeError("Native smoke trial did not produce agent usage")
+    input_tokens = usage.n_input_tokens
+    output_tokens = usage.n_output_tokens
+    if input_tokens is None or output_tokens is None:
+        raise RuntimeError("Native smoke trial did not report token usage")
     report = {
         "schema_version": "native-cross-provider-smoke.v1",
         "agent": spec.adapter,
@@ -111,8 +117,8 @@ async def run(config_path: Path, output: Path) -> dict[str, object]:
         "group": "skills_off",
         "requested_reasoning_effort": spec.reasoning_effort,
         "native_models": sorted(native_models),
-        "input_tokens": usage.n_input_tokens if usage else None,
-        "output_tokens": usage.n_output_tokens if usage else None,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
         "tool_calls": tool_calls,
         "final_marker_present": final_reply,
         "session_present": bool(sessions),
@@ -127,9 +133,8 @@ async def run(config_path: Path, output: Path) -> dict[str, object]:
             and tool_calls > 0
             and final_reply
             and sessions
-            and usage
-            and usage.n_input_tokens > 0
-            and usage.n_output_tokens > 0
+            and input_tokens > 0
+            and output_tokens > 0
             and spec.model in native_models
             and report["reward"] == {"reward": 1.0}
         )

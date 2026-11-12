@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
+from typing import Literal, cast
 
 from harbor import Job, JobConfig
 
@@ -59,11 +60,12 @@ async def verify_image(name: str, lock_path: Path, output: Path, *, concurrent: 
         '[environment.healthcheck]\n'
         f'command = {json.dumps(healthcheck)}\nretries = 1\n'
     )
+    adapter = cast(Literal["openclaw", "hermes", "codex", "claude-code"], name)
     spec = AgentSpec(
-        adapter=name,
+        adapter=adapter,
         model="anthropic/claude-opus-5.5" if name in {"openclaw", "hermes"} else "openai/fixture",
         installation_mode="preinstalled",
-        **({"max_output_tokens": 64000} if name == "hermes" else {}),
+        max_output_tokens=64000 if name == "hermes" else None,
     )
     agent = harness_runner_for(name).build_agent_config(spec, lock)
     config = JobConfig.model_validate({

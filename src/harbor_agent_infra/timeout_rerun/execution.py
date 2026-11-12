@@ -140,7 +140,8 @@ async def preflight(plan: dict, configs: list[dict]):
         slot = next(
             s
             for s in plan["slots"]
-            if s["task_name"] == Path(job.tasks[0].path).name
+            if job.tasks[0].path is not None
+            and s["task_name"] == Path(job.tasks[0].path).name
             and str(job.tasks[0].path) == job_for_slot(plan, s["slot_id"])["tasks"][0]["path"]
         )
         harness = slot["harness"]

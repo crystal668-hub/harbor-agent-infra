@@ -10,12 +10,14 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 from harbor.models.trial.result import TrialResult
 
 from harbor_agent_infra.harbor.run import RunEventSink
 from harbor_agent_infra.harness_runner import harness_runner_for
 from harbor_agent_infra.recovery.native_plan import (
+    Candidate,
     NativeMergePlan,
     assessment,
     fingerprint_inputs,
@@ -24,12 +26,12 @@ from harbor_agent_infra.recovery.native_plan import (
 from harbor_agent_infra.timing import summarize_slot_timing
 
 
-def write_json(path: Path, payload: dict) -> None:
+def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def rebase(value, mappings):
+def rebase(value: Any, mappings: list[tuple[str, str]]) -> Any:
     if isinstance(value, str):
         for source, target in sorted(mappings, key=lambda pair: len(pair[0]), reverse=True):
             if value == source or value.startswith(source + "/"):
@@ -46,7 +48,9 @@ def rebase(value, mappings):
     return value
 
 
-def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict]:
+def project_attempt(
+    path: Path, template: dict[str, Any], run_id: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
     trial = TrialResult.model_validate(read_json(path))
     # Native file content remains untouched; the in-memory projection locates its copy.
     trial.trial_uri = path.parent.as_uri()
@@ -62,11 +66,16 @@ def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict
             agent = "openclaw"
         elif import_path.endswith(":HermesAgent"):
             agent = "hermes"
+    if agent is None:
+        raise ValueError(f"Cannot identify harness for native Trial: {path}")
     sink = RunEventSink(
         path.parents[3] / "events" / "trials.jsonl",
         run_id=run_id,
         harnesses={group: agent},
-        network_policies={group: {trial.task_name: template.get("network_policy")}},
+        network_policies=cast(
+            dict[str, dict[str, dict[str, object]]],
+            {group: {trial.task_name: template.get("network_policy")}},
+        ),
     )
     event = SimpleNamespace(
         result=trial,
@@ -76,7 +85,7 @@ def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict
         timestamp=trial.finished_at,
         event=SimpleNamespace(value="end"),
     )
-    _, record, event_payload = sink.project(event, group_id=group)
+    _, record, event_payload = sink.project(cast(Any, event), group_id=group)
     validity, domain = assessment(path, read_json(path))
     runner = harness_runner_for(agent)
     try:
@@ -111,7 +120,7 @@ def project_attempt(path: Path, template: dict, run_id: str) -> tuple[dict, dict
     return record, event_payload
 
 
-def score_summary(records: list[dict]) -> dict:
+def score_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     scores = [
         (r.get("vgb_domain_result") or {}).get("scores", {}).get("score")
         for r in records
@@ -180,14 +189,15 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
             old_path = str(slot.record.get("trial_result_path") or "")
             if "/jobs/" in old_path:
                 mappings.append((old_path.split("/jobs/", 1)[0], str(output)))
-        records = []
-        new_events = []
+        records: list[dict[str, Any]] = []
+        new_events: list[dict[str, Any]] = []
         for slot in plan.slots:
             base = rebase(copy.deepcopy(slot.record), mappings)
             base["source_run_id"] = plan.run_id
             attempts = base.get("attempts") or []
             seen = {str(a.get("trial_id")) for a in attempts}
             projections = {}
+            latest: Candidate | None = None
             for candidate in sorted(slot.candidates, key=lambda c: c.ordinal):
                 source_job = candidate.path.parent.parent
                 target_job = recovery_job_targets[(candidate.root, source_job.name)]
@@ -241,6 +251,7 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
                     a for a in attempts if a.get("trial_id") == slot.selected.trial["id"]
                 )
             elif slot.action == "unrecovered" and slot.candidates:
+                assert latest is not None
                 base["final_attempt"] = next(
                     a for a in attempts if a.get("trial_id") == latest.trial["id"]
                 )
@@ -349,7 +360,10 @@ def _execution_statistics(stage: Path) -> dict:
     costs = [
         TrialResult.model_validate(trial).compute_token_cost_totals()[3] for _, trial in trials
     ]
-    known = [cost for cost in costs if type(cost) in (int, float)]
+    known = [
+        cost for cost in costs
+        if isinstance(cost, (int, float)) and not isinstance(cost, bool)
+    ]
     return {
         "attempts": len(trials),
         "known_cost_usd": sum(known),

@@ -164,7 +164,7 @@ def load_runtime_lock(path: Path) -> InfraRuntimeLock:
     hermes_commit = hermes.get("source_commit")
     if not isinstance(hermes_version, str) or not _SEMVER.fullmatch(hermes_version):
         raise ValueError("Hermes package_version must be a complete semver")
-    if hermes_tag != f"v{hermes_version}":
+    if not isinstance(hermes_tag, str) or hermes_tag != f"v{hermes_version}":
         raise ValueError("Hermes source_tag must match package_version")
     if not isinstance(hermes_commit, str) or not _GIT_COMMIT.fullmatch(hermes_commit):
         raise ValueError("Hermes source_commit must be a full lowercase Git commit")

@@ -21,6 +21,8 @@ def validate_transition(old: dict, new: dict, change: dict) -> None:
     if (spec.adapter != "codex" or spec.provider not in {"qwen", "deepseek"}
             or spec.installation_mode != "preinstalled" or spec.codex_config is None):
         raise ValueError("Codex provider change requires a preinstalled custom Responses agent")
+    if spec.provider is None or spec.base_url_env is None:
+        raise ValueError("Codex provider change requires provider and endpoint settings")
     before = AgentConfig.model_validate(old).model_dump(mode="json")
     after = AgentConfig.model_validate(new).model_dump(mode="json")
     if (after["import_path"] != "adapters.preinstalled:CodexAgent"

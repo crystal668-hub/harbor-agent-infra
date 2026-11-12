@@ -9,6 +9,7 @@ from contextlib import chdir
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 from harbor import Job
 from harbor.agents.factory import AgentFactory
@@ -47,9 +48,9 @@ async def preflight(context, plan):
         if native_lock.is_file():
             current_lock = build_job_lock(
                 config=job, trial_configs=list(expected_trials(context, group).values()),
-                task_download_results={t.get_task_id(): SimpleNamespace(
+                task_download_results=cast(Any, {t.get_task_id(): SimpleNamespace(
                     path=context.absolute(t.path), content_hash=None, resolved_git_commit_id=None,
-                ) for t in job.tasks},
+                ) for t in job.tasks}),
             )
             if current_lock != JobLock.model_validate(read_object(native_lock)):
                 raise ValueError("Resolved Harbor inputs differ from the original Job lock")

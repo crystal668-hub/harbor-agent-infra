@@ -43,6 +43,8 @@ def load_experiment(path: Path) -> ExperimentConfig:
     if not isinstance(payload, dict):
         raise ValueError("experiment config must contain a YAML mapping")
     expanded = expand_required(payload)
+    if not isinstance(expanded, dict):
+        raise ValueError("expanded experiment config must contain a YAML mapping")
     schema_version = expanded.get("schema_version")
     if schema_version == "experiment.v2":
         return ExperimentSpecV2.model_validate(expanded)

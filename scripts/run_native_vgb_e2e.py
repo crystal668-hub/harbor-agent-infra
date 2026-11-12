@@ -103,6 +103,7 @@ async def run(
 
     skills_root = output / "skills" if paired else None
     if paired:
+        assert skills_root is not None
         skill_dir = skills_root / "native-pilot"
         skill_dir.mkdir(parents=True, exist_ok=True)
         (skill_dir / "SKILL.md").write_text(

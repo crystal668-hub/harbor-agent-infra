@@ -315,6 +315,8 @@ def plan_native_merge(
             if str(trial.get("id")) != trial_id:
                 raise ValueError("Original slot evidence UUID mismatch")
             path = archived_path
+        if path is None or trial is None:
+            raise ValueError(f"Original trial evidence is unavailable: {trial_id}")
         if trial.get("task_name") != record["task_name"]:
             raise ValueError("Original task identity mismatch")
         slot = SlotPlan(

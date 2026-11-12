@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 from harbor.models.trial.result import TrialResult
 
@@ -126,7 +127,7 @@ def project_replacement(
         timestamp=native.finished_at or native.started_at,
         event=SimpleNamespace(value="end"),
     )
-    _, record, emitted = sink.project(event, group_id="skills_off")
+    _, record, emitted = sink.project(cast(Any, event), group_id="skills_off")
     record["trial_result"] = read_object(copied)
     record.setdefault("raw", {})["harbor_trial_result"] = read_object(copied)
     domain = (
@@ -201,10 +202,13 @@ def project_replacement(
     condition_change = copy.deepcopy(slot["condition_change"])
     if condition_for_slot(plan, slot["slot_id"]):
         target = Path(plan["root"]) / "parallel-inputs" / slot["slot_id"]
+        amendment = parallel_amendment(plan)
+        if amendment is None:
+            raise ValueError("Parallel condition is missing its amendment record")
         condition_change.update(
             target_agent=read_object(target / "job.json")["agents"][0],
             target_task_sha256=digest(target / "task" / slot["task_name"] / "task.toml"),
-            parallel_amendment_sha256=parallel_amendment(plan)["sha256"],
+            parallel_amendment_sha256=amendment["sha256"],
         )
     record["timeout_rerun"] = {
         "plan_sha256": plan["plan_sha256"],

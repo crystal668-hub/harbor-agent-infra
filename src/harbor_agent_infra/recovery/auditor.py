@@ -33,7 +33,6 @@ def audit_run(
     """
     if not run_dir.exists():
         raise ValueError(f"Run directory does not exist: {run_dir}")
-
     jobs_dir = run_dir / "jobs"
     if not jobs_dir.exists():
         raise ValueError(f"No jobs/ directory found in {run_dir}")
@@ -43,7 +42,9 @@ def audit_run(
     previous_manifest = run_dir / "recovery-manifest.json"
     if results_path.is_file():
         envelope = json.loads(results_path.read_text())
-        run_name = envelope.get("source_run_id") or envelope.get("run_id") or run_name
+        candidate_name = envelope.get("source_run_id") or envelope.get("run_id")
+        if isinstance(candidate_name, str) and candidate_name:
+            run_name = candidate_name
     elif previous_manifest.is_file() and not any(jobs_dir.glob("*/harbor.json")):
         if not (run_dir / "recovery-result.json").is_file():
             raise ValueError("Cannot audit active or incomplete native recovery batch")

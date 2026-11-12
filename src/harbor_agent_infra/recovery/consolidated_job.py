@@ -136,7 +136,7 @@ def consolidate_jobs(stage: Path, output: Path, plan, records: list[dict]) -> di
                     "trial_id": str(parsed.id),
                     "trial_name": trial_name,
                     "task_name": parsed.task_name,
-                    "timestamp": parsed.finished_at.isoformat(),
+                    "timestamp": parsed.finished_at.isoformat() if parsed.finished_at else None,
                     "status": record["run_lifecycle_status"],
                     "exception": native.get("exception_info"),
                     "trial_result_path": record["trial_result_path"],

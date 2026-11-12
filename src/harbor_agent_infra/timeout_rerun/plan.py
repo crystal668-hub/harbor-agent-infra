@@ -108,6 +108,8 @@ def timeout_evidence(
     multiplier = config.get("agent_timeout_multiplier")
     multiplier = config.get("timeout_multiplier", 1) if multiplier is None else multiplier
     effective = effective * multiplier if effective is not None else None
+    if effective is None:
+        return None
     if effective is not None and agent.get("max_timeout_sec") is not None:
         effective = min(effective, agent["max_timeout_sec"])
     if effective != source_timeout_sec:

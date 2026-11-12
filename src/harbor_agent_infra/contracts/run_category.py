@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RunCategory(str, Enum):
+class RunCategory(StrEnum):
     """Category of experiment run artifacts."""
 
     FORMAL = "formal"

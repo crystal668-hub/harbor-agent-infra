@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 
 from harbor_agent_infra.preparation.image_manager import inspect_image
-from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from harbor_agent_infra.preparation.runtime_lock import HarnessImageLock, load_runtime_lock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -75,12 +75,18 @@ def main() -> int:
     )):
         raise ValueError("candidate artifacts already exist; choose a new output directory")
     base = lock.agent_base_image
+    reuse_image: HarnessImageLock | None = None
     if args.reuse_installed:
         if args.name != "hermes":
             raise ValueError("installation reuse is only supported for the Hermes refinement")
-        base = lock.execution_image(args.name, "preinstalled")
+        candidate_image = lock.execution_image(args.name, "preinstalled")
+        if not isinstance(candidate_image, HarnessImageLock):
+            raise TypeError("reused installation must come from a harness image lock")
+        reuse_image = candidate_image
     parent = inspect_image(
-        base.reference, digest=base.digest, platform=base.platform,
+        (reuse_image or base).reference,
+        digest=(reuse_image or base).digest,
+        platform=(reuse_image or base).platform,
     )
     # BuildKit may resolve a local RepoDigest remotely. A unique private build
     # handle refers to the verified image ID; it is never a runtime identity.
@@ -91,8 +97,9 @@ def main() -> int:
             directory = Path(temp)
             build = build_context(directory, args.name, args.lock, args.inputs)
             if args.reuse_installed:
+                assert reuse_image is not None
                 build["reuse_installed"] = {
-                    "manifest_sha256": base.manifest_sha256,
+                    "manifest_sha256": reuse_image.manifest_sha256,
                     "image": base.immutable_reference,
                 }
                 (directory / "build.json").write_text(json.dumps(build, sort_keys=True))

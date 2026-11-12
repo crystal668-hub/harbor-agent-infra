@@ -7,7 +7,7 @@ from harbor import JobConfig, RetryConfig
 from harbor.models.environment_type import EnvironmentType
 from harbor.models.task.config import TaskConfig as HarborTaskConfig
 from harbor.models.task.verifier_mode import resolve_task_verifier_mode
-from harbor.models.trial.config import EnvironmentConfig, TaskConfig, VerifierConfig
+from harbor.models.trial.config import EnvironmentConfig, ResourceMode, TaskConfig, VerifierConfig
 from harbor.trial.network_policy import resolve_trial_network_plan
 
 from harbor_agent_infra.contracts.experiment import (
@@ -115,8 +115,8 @@ def materialize_job_config(
         retry=RetryConfig(max_retries=spec.retry.max_retries),
         environment=EnvironmentConfig(
             type=EnvironmentType.DOCKER,
-            cpu_enforcement_policy=profile.cpu_enforcement_policy,
-            memory_enforcement_policy=profile.memory_enforcement_policy,
+            cpu_enforcement_policy=ResourceMode(profile.cpu_enforcement_policy),
+            memory_enforcement_policy=ResourceMode(profile.memory_enforcement_policy),
             override_cpus=int(profile.cpus),
             override_memory_mb=profile.memory_mb,
         ),
@@ -239,8 +239,8 @@ def materialize_group_job_config(
         environment=EnvironmentConfig(
             type=EnvironmentType.DOCKER,
             delete=delete_containers,
-            cpu_enforcement_policy=profile.cpu_enforcement_policy,
-            memory_enforcement_policy=profile.memory_enforcement_policy,
+            cpu_enforcement_policy=ResourceMode(profile.cpu_enforcement_policy),
+            memory_enforcement_policy=ResourceMode(profile.memory_enforcement_policy),
             override_cpus=int(profile.cpus),
             override_memory_mb=profile.memory_mb,
         ),
@@ -256,6 +256,8 @@ def materialize_group_job_config(
     )
     network_policies = []
     for task in tasks:
+        if task.path is None:
+            raise ValueError("VGB task must have a materialized path")
         task_path = Path(task.path)
         task_config = HarborTaskConfig.model_validate_toml(
             (task_path / "task.toml").read_text(encoding="utf-8")
@@ -309,7 +311,11 @@ def materialize_group_job_config(
         skill_allowlist_sha256=allowlist_digest,
         skill_allowlist_path=allowlist_path,
         skill_allowlist_file_sha256=allowlist_file_digest,
-        skills_root=str(skills_root.resolve()) if group.skills_enabled else None,
+        skills_root=(
+            str(skills_root.resolve())
+            if group.skills_enabled and skills_root is not None
+            else None
+        ),
         injected_skills=injected_skills,
         network_policies=tuple(network_policies),
         agent_python={

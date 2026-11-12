@@ -72,8 +72,12 @@ class AgentSpec(BaseModel):
         if self.reasoning_effort != "high":
             raise ValueError("codex_config requires high reasoning effort")
 
-        provider_id = self.codex_config.get("model_provider")
-        providers = self.codex_config.get("model_providers")
+        codex_config = self.codex_config
+        if codex_config is None:
+            raise ValueError("codex_config is required for the Codex bridge")
+
+        provider_id = codex_config.get("model_provider")
+        providers = codex_config.get("model_providers")
         expected_provider_id = f"{self.provider}-responses"
         if provider_id != expected_provider_id:
             raise ValueError(
@@ -107,17 +111,17 @@ class AgentSpec(BaseModel):
             raise ValueError("the selected custom provider must disable unsupported WebSockets")
         if "base_url" in selected:
             raise ValueError("omit custom provider base_url; Harbor binds the CODEX_* bridge URL")
-        if "openai_base_url" in self.codex_config:
+        if "openai_base_url" in codex_config:
             raise ValueError("openai_base_url is supplied by Harbor from the CODEX_* bridge URL")
         allowed_fields = {"model_provider", "model_providers"}
-        if "compact_prompt" in self.codex_config:
+        if "compact_prompt" in codex_config:
             if self.provider != "deepseek":
                 raise ValueError("compact_prompt is only supported by the DeepSeek provider")
-            prompt = self.codex_config["compact_prompt"]
+            prompt = codex_config["compact_prompt"]
             if not isinstance(prompt, str) or not prompt.strip():
                 raise ValueError("compact_prompt must be a non-empty string")
             allowed_fields.add("compact_prompt")
-        if set(self.codex_config) != allowed_fields:
+        if set(codex_config) != allowed_fields:
             raise ValueError(
                 "codex_config supports custom Responses providers and DeepSeek compact_prompt only"
             )

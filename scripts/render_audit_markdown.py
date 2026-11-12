@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Render a repository audit Markdown document as a standalone HTML report."""
 
+# The embedded CSS template intentionally keeps related rules on one line.
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import argparse
 import html
 import re
 from pathlib import Path
+from typing import Any, cast
 
 from markdown_it import MarkdownIt
-
 
 TEMPLATE = """<!doctype html>
 <html lang="zh-CN">
@@ -114,8 +117,9 @@ def render(source: Path, output: Path, dek: str) -> None:
         token.attrSet("id", anchor)
         headings.append((level, text, anchor))
 
-    default_table_open = md.renderer.rules.get("table_open")
-    default_table_close = md.renderer.rules.get("table_close")
+    renderer = cast(Any, md.renderer)
+    default_table_open = renderer.rules.get("table_open")
+    default_table_close = renderer.rules.get("table_close")
 
     def table_open(tokens, idx, options, env):
         rendered = default_table_open(tokens, idx, options, env) if default_table_open else "<table>\n"
@@ -125,8 +129,8 @@ def render(source: Path, output: Path, dek: str) -> None:
         rendered = default_table_close(tokens, idx, options, env) if default_table_close else "</table>\n"
         return rendered + "</div>"
 
-    md.renderer.rules["table_open"] = table_open
-    md.renderer.rules["table_close"] = table_close
+    renderer.rules["table_open"] = table_open
+    renderer.rules["table_close"] = table_close
     body = md.renderer.render(tokens, md.options, {})
     body = body.replace("<td>高分</td>", '<td><span class="case-tag high">高分</span></td>')
     body = body.replace("<td>低分</td>", '<td><span class="case-tag low">低分</span></td>')

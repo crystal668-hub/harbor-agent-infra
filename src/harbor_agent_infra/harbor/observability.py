@@ -73,8 +73,9 @@ def artifact_observability(
     if agent_name == "codex":
         agent_steps = [s for s in steps if isinstance(s, dict) and s.get("source") == "agent"]
         ids = [_object(s.get("extra")).get("api_call_id") for s in agent_steps]
-        if ids and all(isinstance(v, str) and v for v in ids):
-            responses.update(ids)
+        valid_ids = [value for value in ids if isinstance(value, str) and value]
+        if valid_ids and len(valid_ids) == len(ids):
+            responses.update(valid_ids)
             response_source = str(trajectory_path)
         for path in sorted((agent_dir / "sessions").rglob("rollout-*.jsonl")):
             for event in _events(path):

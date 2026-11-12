@@ -26,7 +26,8 @@ def saved_score(directory: Path, task_name: str) -> dict | None:
     domain = artifact.get("domain_result") or {}
     score = (domain.get("scores") or {}).get("score")
     track, task_id = task_name.split("__", 1)
-    if (domain.get("status") != "scored" or type(score) not in (int, float)
+    if (domain.get("status") != "scored" or not isinstance(score, (int, float))
+            or isinstance(score, bool)
             or not math.isfinite(score) or domain.get("track", track) != track
             or domain.get("task_id", task_id) != task_id):
         raise ValueError(f"Invalid existing scoring evidence: {path}")
@@ -58,8 +59,11 @@ async def score_interrupted(item: ResumeTrial, runtime: VgbRuntime | None) -> No
         if item.answer is None or runtime is None:
             raise ValueError("Scoring needs a verified final answer and VGB runtime")
         track, task_id = item.task_name.split("__", 1)
+        task_path = result.config.task.path
+        if task_path is None:
+            raise ValueError("Scoring requires a task path")
         task = TaskConfig.model_validate_toml(
-            (result.config.task.path / "task.toml").read_text())
+            (task_path / "task.toml").read_text())
         multiplier = result.config.verifier_timeout_multiplier
         multiplier = result.config.timeout_multiplier if multiplier is None else multiplier
         timeout = (result.config.verifier.override_timeout_sec or task.verifier.timeout_sec)
@@ -80,8 +84,11 @@ async def score_interrupted(item: ResumeTrial, runtime: VgbRuntime | None) -> No
             "schema_version": "vgb-verifier-artifact.v1",
             "vgb_status": "scored", "domain_result": domain,
         })
+    if not isinstance(domain, dict):
+        raise ValueError("Scoring artifact must contain a mapping domain result")
     score = float(domain["scores"]["score"])
-    if result.verifier_result and result.verifier_result.rewards.get("vgb_score") != score:
+    rewards = result.verifier_result.rewards if result.verifier_result else None
+    if rewards is not None and rewards.get("vgb_score") != score:
         raise ValueError("Existing reward differs from scoring artifact")
     result.verifier_result = VerifierResult(rewards={"vgb_score": score, "reward": score})
     if result.exception_info and result.exception_info.exception_type == "CancelledError":

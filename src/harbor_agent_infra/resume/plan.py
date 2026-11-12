@@ -36,6 +36,8 @@ def expected_trials(context: ResumeContext, group: str) -> dict[str, TrialConfig
     })
     result = {}
     for task in job.tasks:
+        if task.path is None:
+            raise ValueError("Planned task must have a path")
         name = context.absolute(task.path).name
         if name in result:
             raise ValueError("Duplicate planned task")
@@ -77,6 +79,8 @@ def inventory(context: ResumeContext, *, all_groups=False) -> list[ResumeTrial]:
             if not directory.is_dir():
                 continue
             config = TrialConfig.model_validate(read_object(directory / "config.json"))
+            if config.task.path is None:
+                raise ValueError("Trial task must have a path")
             name = context.absolute(config.task.path).name
             if name not in expected or config != expected[name] or name in seen:
                 raise ValueError(f"Unexpected or duplicate Trial configuration: {directory}")

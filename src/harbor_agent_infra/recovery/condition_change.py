@@ -86,17 +86,28 @@ def preinstalled_condition_job(original, run_config, manifest, slot) -> JobConfi
         agent.pop("import_path")
     if old_agent != new_agent or target.agents[0].model_name != spec.agent.model:
         raise ValueError("Condition change alters frozen agent settings")
-    names = [Path(task.path).name for task in target.tasks]
+    if any(task.path is None for task in target.tasks):
+        raise ValueError("Condition change target tasks require paths")
+    names = [Path(task.path).name for task in target.tasks if task.path is not None]
     if len(names) != len(approved) or set(names) != approved:
         raise ValueError("Condition change snapshot task scope mismatch")
-    old_task = [t for t in original.tasks if Path(t.path).name == slot.task_id]
-    new_task = [t for t in target.tasks if Path(t.path).name == slot.task_id]
+    if any(task.path is None for task in original.tasks):
+        raise ValueError("Condition change original tasks require paths")
+    old_task = [
+        t for t in original.tasks if t.path is not None and Path(t.path).name == slot.task_id
+    ]
+    new_task = [
+        t for t in target.tasks if t.path is not None and Path(t.path).name == slot.task_id
+    ]
     if len(old_task) != 1 or len(new_task) != 1:
         raise ValueError("Condition change needs one matching original and target task")
-    for old, new in zip(old_task, new_task, strict=True):
+    old_task_config, new_task_config = old_task[0], new_task[0]
+    if old_task_config.path is None or new_task_config.path is None:
+        raise ValueError("Condition change tasks require paths")
+    for old, new in ((old_task_config, new_task_config),):
         if old.model_dump(exclude={"path"}) != new.model_dump(exclude={"path"}):
             raise ValueError("Condition change alters task options")
-        before, after = Path(old.path), Path(new.path)
+        before, after = Path(old_task_config.path), Path(new_task_config.path)
         old_files = {str(p.relative_to(before)) for p in before.rglob("*") if p.is_file()}
         new_files = {str(p.relative_to(after)) for p in after.rglob("*") if p.is_file()}
         if old_files != new_files or "task.toml" not in old_files:

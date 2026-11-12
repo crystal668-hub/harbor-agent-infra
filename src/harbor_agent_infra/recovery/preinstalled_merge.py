@@ -7,11 +7,12 @@ import json
 import re
 import tomllib
 from pathlib import Path
+from typing import cast
 
 from dirhash import dirhash
 
 from harbor_agent_infra.harbor.job_config import JobConfig
-from harbor_agent_infra.preparation.runtime_lock import load_runtime_lock
+from harbor_agent_infra.preparation.runtime_lock import HarnessImageLock, load_runtime_lock
 from harbor_agent_infra.recovery.condition_change import _comparable, _read_bound_file
 
 SCHEMA = "preinstalled-condition-change.v1"
@@ -39,12 +40,19 @@ def validate_transition(original_path: Path, candidate_path: Path, change: dict,
     if name != original["task_name"] or name not in approved:
         raise ValueError("Preinstalled transition task identity mismatch")
 
+    runtime_lock = change.get("runtime_lock")
+    if not isinstance(runtime_lock, str) or not Path(runtime_lock).is_absolute():
+        raise ValueError("Condition change requires an absolute runtime lock path")
     _read_bound_file(change, "runtime_lock")
-    lock = load_runtime_lock(Path(change["runtime_lock"]))
+    lock = load_runtime_lock(Path(runtime_lock))
     image = lock.execution_image("openclaw", "preinstalled")
+    if not isinstance(image, HarnessImageLock):
+        raise TypeError("preinstalled execution image must include harness metadata")
     target_data = json.loads(_read_bound_file(change, "materialized_snapshot"))
     target = JobConfig.model_validate(target_data["groups"]["skills_off"]["job_config"])
-    tasks = {Path(t.path).name: t for t in target.tasks}
+    if any(t.path is None for t in target.tasks):
+        raise ValueError("Preinstalled snapshot tasks require paths")
+    tasks = {Path(cast(Path, t.path)).name: t for t in target.tasks}
     if len(tasks) != len(target.tasks) or set(tasks) != approved or len(target.agents) != 1:
         raise ValueError("Preinstalled snapshot task/agent scope mismatch")
 
@@ -114,12 +122,18 @@ def validate_transition(original_path: Path, candidate_path: Path, change: dict,
         or actual.tasks[0].model_dump(mode="json") != candidate["config"]["task"]
     ):
         raise ValueError("Executed recovery task differs from the bound snapshot")
-    old_tasks = [t for t in old_job.tasks if Path(t.path).name == name]
+    old_tasks = [t for t in old_job.tasks if t.path is not None and Path(t.path).name == name]
     if len(old_tasks) != 1 or old_tasks[0].model_dump(mode="json") != original["config"]["task"]:
         raise ValueError("Original task differs from the frozen Job")
+    old_task = old_tasks[0]
+    if old_task.path is None:
+        raise ValueError("Original task must have a path")
 
-    old_dir = Path(old_tasks[0].path).resolve()
-    new_dir = Path(tasks[name].path).resolve()
+    new_task = tasks[name]
+    if new_task.path is None:
+        raise ValueError("Candidate task must have a path")
+    old_dir = Path(old_task.path).resolve()
+    new_dir = Path(new_task.path).resolve()
     for directory, trial in ((old_dir, original), (new_dir, candidate)):
         if not directory.is_dir():
             raise ValueError("Missing frozen task directory")

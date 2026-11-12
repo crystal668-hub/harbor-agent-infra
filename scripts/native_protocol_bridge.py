@@ -11,6 +11,7 @@ import hmac
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any, cast
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -102,7 +103,8 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
         payload.update(api_key=key, api_base=base, timeout=240)
         try:
             if messages:
-                result = await litellm.anthropic.messages.acreate(**payload)
+                anthropic_api = getattr(litellm, "anthropic")
+                result = await anthropic_api.messages.acreate(**payload)
             else:
                 # LiteLLM preserves a Responses reasoning dict when it has a
                 # summary field. This gateway's Chat Completions endpoint
@@ -121,14 +123,15 @@ def create_app(*, gpt_model: str = "gpt-6.1-sol", claude_model: str = "claude-op
             # SDK exception text can contain request URLs or credentials.
             raise HTTPException(502, f"Upstream conversion failed: {type(exc).__name__}") from None
         if not payload.get("stream"):
+            result_value: Any = result
             response = (
-                result.model_dump(mode="json", exclude_none=True)
-                if hasattr(result, "model_dump") else result
+                result_value.model_dump(mode="json", exclude_none=True)
+                if hasattr(result_value, "model_dump") else result_value
             )
             return JSONResponse(response)
 
         async def events() -> AsyncIterator[bytes]:
-            async for event in result:
+            async for event in cast(AsyncIterator[Any], result):
                 if isinstance(event, bytes):
                     yield event
                 else:

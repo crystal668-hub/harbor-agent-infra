@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class FailureCategory(str, Enum):
+class FailureCategory(StrEnum):
     """Categories of failures for recovery decision-making.
 
     CAPABILITY: Agent failed due to its own limitations (timeout, bad answer, low score).
