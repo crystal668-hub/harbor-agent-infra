@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-12（Asia/Shanghai）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵已按Claude Code × DeepSeek、GPT、Claude、Qwen的顺序启动队列；首组运行中，后三组排队，尚无repeat3成绩。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵中Claude Code × DeepSeek、GPT、Claude三组已完成并验收，Qwen组进行中；Codex四组顺序队列已登记，等待Claude Code队列正常结束后派发。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -1020,9 +1020,14 @@ DeepSeek 70/70计分（Advanced 36.67、Basic 68.78），GPT 70/70计分（70.60
 Claude 70/70计分（73.38、87.06）；各组平均用时、token均值见下表。授权及应用清单位于本机
 `run-artifacts/audit/repeat3-timeout-zero-20261113/`。
 
-Qwen组仍运行中。Job当前报告39项completed、9项`AgentTimeoutError`、2项running、29项pending；
+Qwen组仍运行中。Job当前报告50项completed、10项`AgentTimeoutError`、2项running、18项pending；
 错误计数可能与completed重叠，不据此相加计算进度。该组尚无最终计分汇总；结束后对确认的时限错误
 使用同一协议零分规则，再形成最终结果。
+
+2026-11-13 23:43（上海）已登记Codex后续队列，tmux session
+`harbor-repeat3-codex-follow-on-20261113`等待Claude Code队列正常退出（exit=0），随后依次派发
+Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持“未启动”。队列日志见
+`logs/formal-experiments/repeat3-codex-sequence-20261113.queue.log`。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
