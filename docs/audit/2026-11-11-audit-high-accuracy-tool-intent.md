@@ -4,7 +4,7 @@
 
 类型：audit（离线、探索性轨迹分析）
 
-状态：11月11日全量扫描与案例复核已完成；11月12日补充Gaussian/VASP/ORCA及现行环境专项复核，详见文末。旧统计保持冻结；未启动实验、未重评、未改变正式代表选择。
+状态：11月11日全量扫描与案例复核已完成；11月12日补充Gaussian/VASP/ORCA及现行环境复核，11月13日补充使用形态与联网检索复核，详见文末。旧统计保持冻结；未启动实验、未重评、未改变正式代表选择。
 
 ## 结论
 
@@ -344,3 +344,75 @@ preinstalled模式约束的是harness自身版本和安装清单，不是禁止�
 完整检查结果及验收边界记录在同目录verification.json；本次仅将结论补入本报告，所有安装探针都发生在已删除的一次性容器中。
 
 本节验证：32份现行配置、5个镜像身份/父层关系、4套隔离容器探针、2个活跃正式容器只读cgroup、51个配置/源码哈希及41个报告本地链接核对通过；相关非provider回归测试87项通过。首次直接pip下载的4次TLS故障作为已观察问题保留，未标记为全部网络链路稳定通过。
+
+## 2026-11-13使用形态与联网检索能力复核
+
+日期：2026-11-13（Asia/Shanghai）。本节核对当前adapter/Harbor启动源码、16份性质计算配置、锁定镜像内工具实现，以及前次冻结2,686个Trial中的已保存工具链。镜像digest与11月12日环境核对一致；历史轨迹范围没有静默扩成所有后续新完成实验。
+
+**四套都是容器内、无GUI的程序化运行。Codex、Claude Code、Hermes直接以CLI执行任务；当前OpenClaw是CLI启动本地Gateway服务，再由SDK/WebSocket RPC提交并维持任务。四者均可通过终端访问网络，但不能把它们描述为“内置联网搜索都已完整、稳定启用”。**
+
+### 实际启动形态
+
+| Harness | 当前实际调用 | 形态判断 |
+| --- | --- | --- |
+| Codex | codex exec --model … --json --enable unified_exec，附bypass approvals/sandbox参数 | 原生CLI、非交互JSON输出；不是Codex桌面应用 |
+| Claude Code | claude --verbose --output-format=stream-json --print，题目经stdin送入 | 原生CLI的print/headless模式；不是Claude桌面UI |
+| Hermes | hermes --yolo chat -q … -Q，选定模型/provider | 原生CLI、非交互运行 |
+| OpenClaw | driver启动openclaw gateway run --bind loopback，再通过本地WebSocket GatewayClient发送agent/agent.wait等RPC | 命令行启动的Gateway服务＋程序化会话驱动；不是四者同构的一次CLI请求，也不是浏览器UI |
+
+OpenClaw当前实际路径为[adapter.run](../../adapters/openclaw/adapter.py) → [run_gateway](../../adapters/openclaw/gateway.py) → [gateway_driver.mjs](../../adapters/openclaw/gateway_driver.mjs)。driver的clientName/mode为cli，并设置OPENCLAW_SKIP_CHANNELS=1；没有使用聊天平台或图形客户端。Harbor上游stock adapter中的openclaw agent --local不能代表本仓库已覆盖的实际执行路径。模型供应商由配置选择，harness名称不代表固定模型。
+
+### 联网能力应分三层看
+
+1. **公网访问权限**：四者都有，沿用11月12日配置及容器探针结论。
+2. **给定URL抓取或自行请求搜索页面**：可由shell/curl/Python实现；部分harness另有WebFetch、web_fetch、web_extract。拥有网络访问不保证绕过验证码、403、TLS失败或JavaScript页面限制。
+3. **内置关键词搜索工具及其后端**：依赖具体harness、provider/协议路由、搜索后端与凭据/匿名服务。这一层没有在四套环境中形成等效的统一搜索服务。
+
+| Harness | 原生搜索/抓取接口 | 本次确认的实际可用性 |
+| --- | --- | --- |
+| Codex | CLI暴露web_search=disabled/cached/live配置；轨迹有web_search_call及部分exec内web__run调用 | 当前正式模板未显式设live；部分组合有unsupported/404。Qwen/DeepSeek的ATIF调用常无返回内容，不能据此判断搜索成功或失败。终端联网路径保留 |
+| Claude Code | WebSearch、WebFetch | 工具存在且WebFetch有真实HTTP抓取记录；搜索依赖上游模型/路由，存在API400、searchCount=0且只返回模型文字的案例，不能将所有“Web search results”当真实检索 |
+| Hermes | hermes-cli工具集包含web_search、web_extract | 历史有带来源的成功搜索和正文提取，也有匿名后端TLS故障；本次在锁定镜像中直接搜索成功，具备实际可用路径 |
+| OpenClaw | web_search、web_fetch；另有browser接口 | 当前正式配置未配置专用search provider；检查的历史web_search全部返回无可用provider。web_fetch有真实HTTP200及网页正文，可直接抓URL/搜索结果页；browser接口出现不代表浏览器已安装 |
+
+当前16份正式配置未额外统一搜索后端、搜索API凭据、live/cached模式或专门的检索工具集。adapter传入模型连接信息不等于配置了独立搜索服务。搜索相关状态不能只从“public网络”或工具名称出现推断。
+
+### 逐harness证据
+
+**Codex**
+
+- 现行Harbor CodexOptions有web_search选项，但默认None；对应正式模板未设置该字段。因此未确认每个组合都运行在显式live搜索模式。
+- Codex × Claude的[Trial 032d9d74…，ATIF step4](../../run-artifacts/formal/codex-anthropic-repeat1-recovery-batch1/jobs/codex-vgb-claude-cross-provider-skills_off-recovery-dd879c2c-3791-42a8-a19a-08458d23a416/property_calculation_advanced__p__zGD6XMm/agent/trajectory.json)调用web_search，实际返回unsupported call: web_search。
+- Codex × GPT的[Trial 03657167…，ATIF step6](../../run-artifacts/formal/codex-openai-repeat2/jobs/codex-vgb-gpt-6.1-sol-skills_off/property_calculation_advanced__p__sgsUgJU/agent/trajectory.json)在exec中调用tools.web__run，返回HTTP404。专项检索找到196个类似嵌套候选，其中194个保存了404，另2个没有可判定的搜索返回；不是196次成功联网搜索。
+- Qwen/DeepSeek的web_search_call在本次ATIF中缺观察正文，这是证据可见性不足；不据此作“均不可搜索”结论。也不能把终答中的链接反推为服务真正完成检索。
+
+**Claude Code**
+
+- 例如[Trial 00c3b4c8…，WebFetch step13](../../run-artifacts/formal/claude-code-deepseek-repeat1/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_advanced__p__qjc2twa/agent/trajectory.json)有code=200、bytes=147735及网页提取结果，证明网页抓取链路曾真实工作；内容仍可能没有目标答案。
+- [Claude Code × Claude Trial 4b45bac2…，WebSearch step2](../../run-artifacts/formal/claude-code-anthropic-repeat2/jobs/claude-code-vgb-high-skills_off/property_calculation_advanced__p__xRykodB/agent/trajectory.json)返回HTTP400，tool_choice的tool/any不受当前模型支持。这是工具/模型路由兼容问题，不能解释为容器无公网。
+- [Claude Code × DeepSeek Trial 000d4dea…](../../run-artifacts/formal/claude-code-deepseek-repeat2/jobs/claude-code-vgb-deepseek-cross-provider-skills_off/property_calculation_advanced__p__FoN3Fkw/agent/trajectory.json)step2的WebSearch只返回“I'll search …”和searchCount=0，step11进一步明确表示无法执行实时搜索。工具层生成的“Web search results”标题不构成真实搜索的证据。
+
+**Hermes**
+
+- 锁定镜像的toolsets.py中hermes-cli包含web_search/web_extract；web_tools.py支持多个后端以及keyless fallback。adapter选择完整hermes-cli工具集，而不是仅终端工具。
+- [Hermes × Qwen Trial 0185cccc…](../../run-artifacts/formal/hermes-qwen-repeat1/jobs/hermes-vgb-qwen3.8-max-skills_off/property_calculation_basic__prop__vFDW9wb/agent/trajectory.json)step2返回success=true、真实来源URL/标题/摘要；step39 web_extract返回论文正文。这里有可追溯的成功工具结果，而非只凭名称判断。
+- [Hermes × DeepSeek Trial 00fc2f66…，step2](../../run-artifacts/formal/hermes-deepseek-repeat2/jobs/hermes-vgb-deepseek-v4-pro-skills_off/property_calculation_basic__prop__g2sGsh2/agent/trajectory.json)的Keyless Parallel search明确因TLS EOF失败，网页提取也有Keyless Keenable错误；因此搜索能力存在，不保证服务稳定。
+- **本次直接验证**：在同一锁定Hermes镜像、HERMES_HOME=/tmp/hermes、联网的一次性容器中，不注入模型/API凭据，调用web_search_tool查询Python official documentation，返回success=true及docs.python.org链接。没有调用provider模型或运行正式实验，容器已删除，证据为[hermes-live-search-probe.json](../../run-artifacts/analysis/harness-form-web-check-20261113/hermes-live-search-probe.json)。该单查询通过不代表所有目标、后端或时段均通过。
+- 初步离线导入时backend availability检查为false，但正式环境变量下的在线工具直调成功；离线availability flag不是联网服务可用性的充分判据，本节不以该初步结果判为“无搜索能力”。
+
+**OpenClaw**
+
+- 现行工具配置仅deny message，没有禁止exec或web_fetch；未看到正式配置为web_search指定搜索provider/相应凭据。
+- 本次冻结轨迹中336次明确的web_search调用全部返回“web_search is disabled or no provider is available.”，例如[Trial 00127e35…，step2](../../run-artifacts/formal/openclaw-openai-repeat2/jobs/openclaw-vgb-gpt-6.1-sol-skills_off/property_calculation_advanced__p__Q2vMTav/agent/trajectory.json)。不能因为模型能调用这个名称就认为搜索服务已就绪。
+- [Trial 07e3184e…，web_fetch step3](../../run-artifacts/formal/openclaw-deepseek-repeat2/jobs/openclaw-vgb-deepseek-v4-pro-skills_off/property_calculation_basic__prop__FtazXbF/agent/trajectory.json)成功读取NIST页面，HTTP200并返回正文；其他轨迹还通过web_fetch直接读取Bing结果页面。因此它有联网获取/自行检索路径，内置关键词搜索后端却未就绪。
+- 历史browser工具返回No supported browser found或running=false、detectedBrowser=null；CLI/headless形态本身不排斥浏览器工具，但本实验不能据browser接口存在就宣称浏览器能力已验收。
+
+### 对实验解释的影响与本次边界
+
+“都是CLI/无GUI”“都有public网络”“都有等效联网检索”是三个不同命题。前两项总体成立，第三项不成立：OpenClaw的专用搜索provider缺失，Codex/Claude Code存在协议路由或返回真实性问题，Hermes虽具成功路径也有外部服务故障。这些差异是当前harness系统表现的一部分；若要测量固定检索工具条件下的模型能力，需要另行定义和验收共同搜索后端，本次没有修改任何配置或启动对照实验。
+
+轨迹检索使用前次冻结Trial清单，不声称覆盖11月12日16:37:58以后新增的所有执行。自动扫描的“包含error”等标签只作候选筛选，科学网页正文也可能含error；本文不把该词匹配数当失败率。历史成功不能保证今日所有provider端到端可用；本次仅对Hermes的匿名搜索工具做了无模型直调，其他当前provider组合没有重跑。
+
+底层扫描、嵌套调用、选中案例和源码快照保存在git忽略目录run-artifacts/analysis/harness-form-web-check-20261113/。结论直接追加本报告，未新建另一份正式报告；未读取或披露凭据，未修改运行中实验。
+
+本节验证：1,222个输入源码/轨迹文件哈希、16份正式配置、11个案例定位及54个报告本地链接检查通过；harness runner、Codex配置、Hermes adapter相关非provider回归测试90项通过。检索能力结论保留上述路由、后端、历史证据和单查询探针的边界。
