@@ -710,8 +710,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-12（同步得分与资源使用格式）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收32/48个子实验：repeat1和repeat2各16个组合；repeat2的16份代表快照1120/1120计分。repeat3正式2h轮中Claude Code × DeepSeek进行中，另三组未启动、顺序队列待派发。
+**最后核对日期**：2026-11-13（同步Repeat3超时计分结果）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收35/48个子实验：repeat1和repeat2各16个组合；repeat3中Claude Code × DeepSeek、GPT、Claude三组已完成并70/70计分，Qwen组进行中。Repeat2的16份代表快照1120/1120计分。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -1010,15 +1010,25 @@ Claude → Qwen，仅`skills_off`。顺序控制器为tmux session
 `harbor-repeat3-claude-code-20261112`，队列日志位于
 `logs/formal-experiments/repeat3-claude-code-sequence-20261112.queue.log`，各组独立日志使用正式run名。
 00:30首组Job `d36c3b1a-c880-4830-abf5-c19dbc73ea4b`已创建，两个Trial容器正在运行；
-当时尚无可用分数结果。当前核对时，首组70个Trial中4个已完成、2个运行中、64个等待、0个错误，
-尚无组级最终成绩；后三组尚未派发，待前一组命令退出0后再启动。
+当时尚无可用分数结果。
+
+2026-11-13 17:10（上海）按用户指示，将正式时限内的`AgentTimeoutError`作为可评分协议零分，
+不冒充官方VGB评分。Claude Code × DeepSeek的3项、Claude的1项以哈希绑定的
+`baseline_score_dispositions`计0分；原始Trial结果与执行错误保留。重新运行`hai summary`后，
+DeepSeek 70/70计分（Advanced 36.67、Basic 68.78），GPT 70/70计分（70.60、90.32），
+Claude 70/70计分（73.38、87.06）；各组平均用时、token均值见下表。授权及应用清单位于本机
+`run-artifacts/audit/repeat3-timeout-zero-20261113/`。
+
+Qwen组仍运行中。Job当前报告39项completed、9项`AgentTimeoutError`、2项running、29项pending；
+错误计数可能与completed重叠，不据此相加计算进度。该组尚无最终计分汇总；结束后对确认的时限错误
+使用同一协议零分规则，再形成最终结果。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
-| Claude Code | DeepSeek | 进行中 | — | — | — | — |
-| Claude Code | Qwen | 未启动 | — | — | — | — |
-| Claude Code | GPT | 未启动 | — | — | — | — |
-| Claude Code | Claude | 未启动 | — | — | — | — |
+| Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
+| Claude Code | Qwen | 进行中 | — | — | — | — |
+| Claude Code | GPT | 已验收 | 19 / 19；70.60 | 51 / 51；90.32 | 5.64 | 646,783（70/70） |
+| Claude Code | Claude | 已验收 | 19 / 19；73.38 | 51 / 51；87.06 | 6.98 | 271,702（70/70） |
 | Codex | DeepSeek | 未启动 | — | — | — | — |
 | Codex | Qwen | 未启动 | — | — | — | — |
 | Codex | GPT | 未启动 | — | — | — | — |
