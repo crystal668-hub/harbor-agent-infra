@@ -9,7 +9,8 @@
 > 2026-10-26 更新：原预装锁已原样迁移为唯一的 runtime-lock.json；下文旧锁名称为历史记录，当前执行请使用新名称。
 
 日期：2026-10-21。实施范围按 [已审核计划](../plan/2026-10-20-plan-openclaw-gpt-followup-fixes.md)。
-开发工作树：`/Users/xutao/.codex/worktrees/openclaw-gpt-two-fixes/harbor-agent-infra`。
+原开发工作树（2026-11-13已清理）：`/Users/xutao/.codex/worktrees/openclaw-gpt-two-fixes/harbor-agent-infra`。
+本机证据现归档于 `run-artifacts/temporary/openclaw-gpt-two-fixes/`。
 代码提交：`f52a124`（no-op edit）、`4fc19f6`（GPT 解密错误识别）；原生验收测试：`6edd6a7`。
 
 ## 实际改动
@@ -86,14 +87,16 @@ HTTP 400 夹具使用本轮服务的 text/event-stream Content-Type，确认真�
 
 ## 证据与生效边界
 
-工作树忽略目录中保留以下材料，包括调试失败记录：
+本机忽略归档根目录：`run-artifacts/temporary/openclaw-gpt-two-fixes/`，其中保留以下材料，包括调试失败记录：
 
-- `outputs/gpt-two-fixes-candidate/`：公开构建上下文、构建元数据、manifest、新旧身份比较与七场景摘要。
-- `outputs/gpt-two-fixes-gate-3/`：最终七场景的原始 Trial、请求、会话、setup/final 和评分记录。
-- `outputs/gpt-two-fixes-image-gates-2/`、`outputs/gpt-two-fixes-offline/`：镜像负例和离线 setup。
-- `outputs/gpt-two-fixes-prior-regression/`：原有 11 个容器场景回归。
-- `outputs/gpt-two-fixes-promoted-gate/`：正式不可变引用的额外 GPT 恢复验证。
-- `outputs/gpt-two-fixes-activation/`：切换前运行锁、四组配置、原标签身份及旧镜像拒绝报告。
+- `gpt-two-fixes-candidate/`：公开构建上下文、构建元数据、manifest、新旧身份比较与七场景摘要。
+- `gpt-two-fixes-gate-3/`：最终七场景的原始 Trial、请求、会话、setup/final 和评分记录。
+- `gpt-two-fixes-image-gates-2/`、`gpt-two-fixes-offline/`：镜像负例和离线 setup。
+- `gpt-two-fixes-prior-regression/`：原有 11 个容器场景回归。
+- `gpt-two-fixes-promoted-gate/`：正式不可变引用的额外 GPT 恢复验证。
+- `gpt-two-fixes-activation/`：切换前运行锁、四组配置、原标签身份及旧镜像拒绝报告。
+
+2026-11-13 归档路径整理：原工作树输出包已迁至上述目录，723个普通文件逐文件校验一致；17个 current 符号链接改为相对目标。
 
 本次只在本机 Docker 构建和验收，没有发布 Registry 或执行付费 provider/VGB 补跑。
 历史 batch1 结果和批准清单保留，未重评、覆盖或合并。原镜像及切换前默认标签指向的镜像均保留。

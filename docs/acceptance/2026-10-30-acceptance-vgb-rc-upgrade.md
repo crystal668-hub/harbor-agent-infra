@@ -56,11 +56,12 @@ CREST单样例接近时限，不代表20道xTB题或重复运行的稳定性/时
 
 ## 证据与回退
 
-本机证据目录：`run-artifacts/vgb-rc-upgrade-20261030/`。
+本机证据目录：`run-artifacts/temporary/vgb-rc-upgrade-20261030/`。
 主要文件：`source-verification.json`、`resource-equivalence.json`、`runtime-dependencies.txt`、
 `installed-runtime-packages.json`、`configuration-validation.json`、`migration-audit.json`、
 `docker-chemistry-summary.json`、`open-generation-scoring-smoke.json`、`activation.json`。
 两套发布目录分别有`migration-receipt.json`绑定输入/输出哈希。
+2026-11-13 归档路径整理：证据包从`run-artifacts/vgb-rc-upgrade-20261030/`移入`temporary/`；文件内容未改。
 
 回退步骤见[配置手册](../CONFIGURATION.md#2026-10-30-vgb-rc-运行绑定)。
 协议与当前结果见[正式方案](../experiments/formal-experiment-plan.md)。

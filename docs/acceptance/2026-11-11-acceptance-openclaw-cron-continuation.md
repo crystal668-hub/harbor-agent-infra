@@ -51,11 +51,12 @@ SHA-256 和唯一锚点；幂等重入与未知版本／文件漂移拒绝均有
 - 发布文件前／后哈希：`28ab6f0affb9235b4a6da83301ac1761e9288ff1ba27560ca2ecdf2f45703631` →
   `7f7f1a55336ad68d20f20ac51fe368b6fadc3858eef4d680ed6c21d8e0c97e3b`。
 
-本机忽略目录 `outputs/openclaw-continuation-20261111/` 保存构建、候选 manifest/lock、
+本机忽略目录 `run-artifacts/temporary/openclaw-cron-continuation-20261111/` 保存构建、候选 manifest/lock、
 独立 Docker Trial 和测试日志。候选从已验证的本地不可变安装镜像断网封装：先核对完整
 baseline inventory，再计算新补丁前后哈希并恢复 baseline，最后扩展补丁 manifest；
 运行时仍由 strict probe 检查并应用。未重新下载依赖，未调用要求全局 Docker 空闲的通用
 构建／矩阵脚本；使用独立名称、有限 CPU/内存的验收容器，保留活动实验容器。
+2026-11-13 归档路径整理：证据从 `outputs/openclaw-continuation-20261111/` 移入上述专题；997个普通文件未改，7个 current 符号链接改为相对目标。
 
 发布文件中的原生分派函数使用合成 runner 做独立契约检查：未补丁时失败，补丁后通过，
 并验证取消信号、执行 options、
@@ -94,7 +95,7 @@ baseline inventory，再计算新补丁前后哈希并恢复 baseline，最后�
 uv run --locked --python 3.12 pytest -q -m 'not integration'
 uv run --locked --python 3.12 node --test tests/openclaw_session.test.mjs
 RUN_OPENCLAW_RESUME=1 \
-PREINSTALLED_RUNTIME_LOCK=outputs/openclaw-continuation-20261111/candidate-v4-runtime-lock.json \
+PREINSTALLED_RUNTIME_LOCK=run-artifacts/temporary/openclaw-cron-continuation-20261111/candidate-v4-runtime-lock.json \
 uv run --locked --python 3.12 pytest -q tests/test_openclaw_resume_integration.py
 ```
 

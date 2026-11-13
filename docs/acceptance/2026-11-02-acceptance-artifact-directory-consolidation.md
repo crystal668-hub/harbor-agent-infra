@@ -98,6 +98,8 @@ plist；`launchctl print` 现返回 service not found。其他 LaunchAgent 未�
 `outputs/openclaw-network-*`、`outputs/openclaw-resume-*` 指向其他工作树或本机不存在的
 历史位置，不属于本次 60 项迁移；保留原引用，不创建虚构证据目录。
 这些引用位于 2026-10-15/20 的 implementation 记录，以及 2026-10-16/20/21 的 acceptance 记录。
+2026-11-13 后续归档：来自 OpenClaw GPT two-fixes 工作树的实际输出已单独备份至
+`run-artifacts/temporary/openclaw-gpt-two-fixes/`，并更新其验收记录中的证据路径；本段描述保留 2026-11-02 当时的迁移范围。
 `run-artifacts/audit/` 和其他既有目录也未并入本次迁移；新离线分析统一使用 `analysis/`。
 
 回退时按 `journal.json` 逐项核对目标和兼容链接，先备份迁移后新增内容，再将实际目录

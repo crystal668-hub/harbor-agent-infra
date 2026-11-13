@@ -104,7 +104,8 @@ CREST评分留出余量；适用于RDKit及xTB两条track、全部16组合及rep
 配置生成逻辑及本机16份配置同步更新；性质计算仍为120秒，历史冻结配置、评分和样例耗时不回写。
 本次验收限于配置、任务物化与矩阵dry-run，不包含180秒条件下的真实评分或全任务时限稳定性验证。
 验收结果：31项相关测试通过，16份配置物化的480份任务定义均为Verifier 180秒、Agent 7200秒，
-矩阵dry-run生成48个独立目标；本机证据位于 `run-artifacts/open-generation-timeout-20261101/`。
+矩阵dry-run生成48个独立目标；本机证据位于 `run-artifacts/temporary/open-generation-timeout-20261101/`。
+2026-11-13 归档路径整理：证据目录从 `run-artifacts/open-generation-timeout-20261101/` 移入 `temporary/`；目录内容及本节验收范围未改。
 
 ---
 
