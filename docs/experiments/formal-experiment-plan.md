@@ -711,8 +711,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-13（同步Repeat3超时计分结果）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收35/48个子实验：repeat1和repeat2各16个组合；repeat3中Claude Code × DeepSeek、GPT、Claude三组已完成并70/70计分，Qwen组进行中。Repeat2的16份代表快照1120/1120计分。
+**最后核对日期**：2026-11-14（同步Repeat3超时计分与Codex队列进度）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收36/48个子实验：repeat1和repeat2各16个组合；repeat3的Claude Code四组均已验收。Codex × DeepSeek有非超时未评分项待处置，Codex × GPT进行中，其余Codex组尚未启动。Repeat2的16份代表快照1120/1120计分。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -1020,24 +1020,30 @@ DeepSeek 70/70计分（Advanced 36.67、Basic 68.78），GPT 70/70计分（70.60
 Claude 70/70计分（73.38、87.06）；各组平均用时、token均值见下表。授权及应用清单位于本机
 `run-artifacts/audit/repeat3-timeout-zero-20261113/`。
 
-Qwen组仍运行中。Job当前报告50项completed、10项`AgentTimeoutError`、2项running、18项pending；
-错误计数可能与completed重叠，不据此相加计算进度。该组尚无最终计分汇总；结束后对确认的时限错误
-使用同一协议零分规则，再形成最终结果。
+2026-11-14 06:29（上海）Claude Code × Qwen结束；12项7200秒`AgentTimeoutError`按同一授权
+绑定为协议零分，原生错误保留。最终`hai summary`为70/70计分，Advanced 37.17、Basic 75.51；
+平均用时与token见下表。应用记录追加在
+`run-artifacts/audit/repeat3-timeout-zero-20261113/application.json`。
 
 2026-11-13 23:43（上海）已登记Codex后续队列，tmux session
 `harbor-repeat3-codex-follow-on-20261113`等待Claude Code队列正常退出（exit=0），随后依次派发
 Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持“未启动”。队列日志见
 `logs/formal-experiments/repeat3-codex-sequence-20261113.queue.log`。
 
+2026-11-14 14:59（上海）Codex × DeepSeek结束，70个slot均终态、62项计分；另有8项非超时错误
+未评分（5项`ApiRateLimitError`、3项`VgbVerifierError`）。这些错误不适用超时零分规则，暂留待审；
+分轨均分为Advanced 47.14、Basic 70.78。Codex × GPT已启动，15:40状态为23项完成、2项运行、
+45项等待、0项错误；Codex × Claude和Qwen仍未派发。
+
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
-| Claude Code | Qwen | 进行中 | — | — | — | — |
+| Claude Code | Qwen | 已验收 | 19 / 19；37.17 | 51 / 51；75.51 | 57.46 | 4,122,202（70/70） |
 | Claude Code | GPT | 已验收 | 19 / 19；70.60 | 51 / 51；90.32 | 5.64 | 646,783（70/70） |
 | Claude Code | Claude | 已验收 | 19 / 19；73.38 | 51 / 51；87.06 | 6.98 | 271,702（70/70） |
-| Codex | DeepSeek | 未启动 | — | — | — | — |
+| Codex | DeepSeek | 进行中 | 16 / 19；47.14 | 46 / 51；70.78 | 14.49 | 946,268（70/70） |
 | Codex | Qwen | 未启动 | — | — | — | — |
-| Codex | GPT | 未启动 | — | — | — | — |
+| Codex | GPT | 进行中 | — | — | — | — |
 | Codex | Claude | 未启动 | — | — | — | — |
 | Hermes | DeepSeek | 未启动 | — | — | — | — |
 | Hermes | Qwen | 未启动 | — | — | — | — |
