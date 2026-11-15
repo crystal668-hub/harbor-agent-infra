@@ -1032,8 +1032,8 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 2026-11-14 14:59（上海）Codex × DeepSeek结束，70个slot均终态、62项计分；另有8项非超时错误
 未评分（5项`ApiRateLimitError`、3项`VgbVerifierError`）。这些错误不适用超时零分规则，暂留待审；
-分轨均分为Advanced 47.14、Basic 70.78。Codex × GPT已启动，15:40状态为23项完成、2项运行、
-45项等待、0项错误；Codex × Claude和Qwen仍未派发。
+分轨均分为Advanced 47.14、Basic 70.78。随后四个Codex批次均已结束；OpenAI、Anthropic、Qwen
+已分别完成验收，DeepSeek的5项HTTP 429工程错误已按批准清单启动batch1恢复，尚未发布合并快照。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
@@ -1041,10 +1041,10 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 | Claude Code | Qwen | 已验收 | 19 / 19；37.17 | 51 / 51；75.51 | 57.46 | 4,122,202（70/70） |
 | Claude Code | GPT | 已验收 | 19 / 19；70.60 | 51 / 51；90.32 | 5.64 | 646,783（70/70） |
 | Claude Code | Claude | 已验收 | 19 / 19；73.38 | 51 / 51；87.06 | 6.98 | 271,702（70/70） |
-| Codex | DeepSeek | 进行中 | 16 / 19；47.14 | 46 / 51；70.78 | 14.49 | 946,268（70/70） |
-| Codex | Qwen | 未启动 | — | — | — | — |
-| Codex | GPT | 进行中 | — | — | — | — |
-| Codex | Claude | 未启动 | — | — | — | — |
+| Codex | DeepSeek | 恢复执行中 | 16 / 19；47.14 | 46 / 51；70.78 | 14.49 | 946,268（70/70） |
+| Codex | Qwen | 已验收 | 19 / 19；37.78 | 51 / 51；83.37 | 45.70 | 2,227,308（60/70） |
+| Codex | GPT | 已验收 | 19 / 19；60.22 | 51 / 51；89.56 | 3.39 | 783,588（70/70） |
+| Codex | Claude | 已验收 | 19 / 19；73.40 | 51 / 51；88.50 | 4.79 | 280,240（70/70） |
 | Hermes | DeepSeek | 未启动 | — | — | — | — |
 | Hermes | Qwen | 未启动 | — | — | — | — |
 | Hermes | GPT | 未启动 | — | — | — | — |
