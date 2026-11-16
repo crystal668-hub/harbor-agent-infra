@@ -64,6 +64,76 @@ def scoring_evidence_sha256(trial: dict) -> str:
     return hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest()
 
 
+def _exhausted_rate_limit_capability_zero(path: Path, trial: dict, decision: dict) -> bool:
+    """Accept an explicit capability zero for a final exhausted HTTP 429 recovery only."""
+    exception = trial.get("exception_info") or {}
+    message = exception.get("exception_message") or ""
+    if (
+        exception.get("exception_type") != "ApiRateLimitError"
+        or "429 Too Many Requests" not in message
+        or "exceeded retry limit" not in message
+    ):
+        return False
+
+    final = decision.get("exhausted_recovery")
+    job_dir = path.parent.parent
+    recovery_root = path.parents[3]
+    metadata_path = job_dir / "recovery-metadata.json"
+    manifest_path = recovery_root / "recovery-manifest.json"
+    if not isinstance(final, dict):
+        return False
+    trial_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+    identity_valid = all((
+        isinstance(final.get("original_run"), str) and bool(final["original_run"]),
+        isinstance(final.get("original_trial_id"), str) and bool(final["original_trial_id"]),
+        isinstance(final.get("recovery_run"), str) and bool(final["recovery_run"]),
+        isinstance(final.get("slot_id"), str) and final["slot_id"].endswith("::" + trial.get("task_name", "")),
+        final.get("substitution_attempt") == 2,
+        final.get("substitution_count") == 2,
+        final.get("max_substitutions") == 2,
+        final.get("further_reruns_allowed") is False,
+        final.get("trial_result_sha256") == trial_sha256,
+        decision.get("trial_result_sha256") == trial_sha256,
+    ))
+    if not identity_valid:
+        return False
+
+    metadata_exists, manifest_exists = metadata_path.is_file(), manifest_path.is_file()
+    if metadata_exists != manifest_exists:
+        return False
+    if not metadata_exists:
+        return False
+
+    try:
+        metadata = read_json(metadata_path)
+        manifest = RecoveryManifest.load(manifest_path)
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+    matching_slots = [
+        slot for slot in manifest.slots
+        if slot.slot_id == metadata.get("slot_id")
+        and slot.task_id == trial.get("task_name")
+    ]
+    if len(matching_slots) != 1:
+        return False
+    slot = matching_slots[0]
+    return all((
+        metadata.get("is_recovery") is True,
+        metadata.get("original_run") == manifest.run_name == final.get("original_run"),
+        metadata.get("original_trial_id") == slot.original_trial_id == final.get("original_trial_id"),
+        metadata.get("recovery_run") == recovery_root.name == final.get("recovery_run"),
+        metadata.get("slot_id") == final.get("slot_id") == slot.slot_id,
+        metadata.get("substitution_attempt") == 2,
+        metadata.get("substitution_count") == 1,
+        slot.approved is True,
+        slot.substitution_count == 1,
+        slot.max_substitutions == 2,
+        final.get("recovery_metadata_sha256") == hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
+        final.get("recovery_manifest_sha256") == hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+    ))
+
+
 def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
     """Validity and scoring are independent of Harbor lifecycle success."""
     exception = trial.get("exception_info") or {}
@@ -74,6 +144,7 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
     decision_path = path.parent / "operator-scoring-disposition.json"
     if decision_path.is_file():
         decision = read_json(decision_path)
+        exhausted_rate_limit_zero = _exhausted_rate_limit_capability_zero(path, trial, decision)
         if (
             decision.get("schema_version") != "capability-zero-disposition.v1"
             or decision.get("approved_by_user") is not True
@@ -85,7 +156,10 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
             or decision.get("trial_id") != trial.get("id")
             or decision.get("task_name") != trial.get("task_name")
             or decision.get("evidence_sha256") != scoring_evidence_sha256(trial)
-            or kind not in {"VgbVerifierError", "OpenClawAgentIncompleteError"}
+            or (
+                kind not in {"VgbVerifierError", "OpenClawAgentIncompleteError"}
+                and not exhausted_rate_limit_zero
+            )
             or trial.get("verifier_result") is not None
             or (artifact_path.is_file() and read_json(artifact_path).get("vgb_status") == "scored")
         ):
@@ -94,7 +168,10 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
         return "valid", {
             "status": "scored", "track": track, "task_id": task_id,
             "scores": {"score": 0.0},
-            "scoring_source": "operator_capability_zero",
+            "scoring_source": (
+                "operator_capability_zero_exhausted_recovery"
+                if exhausted_rate_limit_zero else "operator_capability_zero"
+            ),
             "operator_disposition": decision,
         }
     artifact = read_json(artifact_path) if artifact_path.is_file() else {}

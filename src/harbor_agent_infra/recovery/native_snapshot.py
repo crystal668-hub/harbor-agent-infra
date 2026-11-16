@@ -49,7 +49,10 @@ def rebase(value: Any, mappings: list[tuple[str, str]]) -> Any:
 
 
 def project_attempt(
-    path: Path, template: dict[str, Any], run_id: str
+    path: Path,
+    template: dict[str, Any],
+    run_id: str,
+    assessment_result: tuple[str, dict[str, Any] | None] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     trial = TrialResult.model_validate(read_json(path))
     # Native file content remains untouched; the in-memory projection locates its copy.
@@ -86,7 +89,7 @@ def project_attempt(
         event=SimpleNamespace(value="end"),
     )
     _, record, event_payload = sink.project(cast(Any, event), group_id=group)
-    validity, domain = assessment(path, read_json(path))
+    validity, domain = assessment_result or assessment(path, read_json(path))
     runner = harness_runner_for(agent)
     try:
         answer = runner.response_from_artifacts(path.parent / "agent")
@@ -202,7 +205,9 @@ def publish_native_snapshot(plan: NativeMergePlan, output: Path) -> dict:
                 source_job = candidate.path.parent.parent
                 target_job = recovery_job_targets[(candidate.root, source_job.name)]
                 path = target_job / candidate.path.relative_to(source_job)
-                record, event = project_attempt(path, base, plan.run_id)
+                record, event = project_attempt(
+                    path, base, plan.run_id, (candidate.validity, candidate.domain)
+                )
                 record = rebase(record, mappings)
                 event = rebase(event, mappings)
                 tid = candidate.trial["id"]

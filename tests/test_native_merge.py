@@ -824,6 +824,116 @@ def test_capability_zero_survives_merge_without_rewriting_trial(native_runs, tmp
     assert json.loads(path.read_text()) == trial
 
 
+def test_exhausted_rate_limit_capability_zero_is_terminal(native_runs, tmp_path):
+    import hashlib
+
+    from harbor_agent_infra.recovery.merger import ResultMerger
+    from harbor_agent_infra.recovery.native_plan import (
+        assessment,
+        plan_native_merge,
+        scoring_evidence_sha256,
+    )
+
+    original, recovery = native_runs
+    path = next(recovery.glob("jobs/*/*/result.json"))
+    trial = json.loads(path.read_text())
+    trial.update(
+        exception_info={
+            "exception_type": "ApiRateLimitError",
+            "exception_message": "exceeded retry limit, last status: 429 Too Many Requests",
+            "exception_traceback": "fixture",
+            "occurred_at": "2026-10-15T00:01:00Z",
+        },
+        verifier_result=None,
+    )
+    write(path, trial)
+    artifact_path = path.parent / "verifier/vgb-evaluation.json"
+    write(artifact_path, {"vgb_status": "error"})
+
+    original_results_path = original / "results.json"
+    original_results = json.loads(original_results_path.read_text())
+    original_row = next(row for row in original_results["results"] if row["task_name"] == trial["task_name"])
+    original_trial_id = original_row["trial_result"]["id"]
+    original_row["substitution_count"] = 1
+    original_row["attempts"].append({"trial_id": "first-failed-substitution", "ordinal": 1})
+    write(original_results_path, original_results)
+
+    recovery_manifest_path = recovery / "recovery-manifest.json"
+    recovery_manifest = json.loads(recovery_manifest_path.read_text())
+    recovery_manifest["slots"][0]["substitution_count"] = 1
+    write(recovery_manifest_path, recovery_manifest)
+
+    job_dir = path.parent.parent
+    metadata_path = job_dir / "recovery-metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    metadata.update({
+        "is_recovery": True,
+        "original_run": original.name,
+        "original_job": Path(original_row["trial_result_path"]).parent.parent.name,
+        "original_trial_id": original_trial_id,
+        "recovery_run": recovery.name,
+        "substitution_count": 1,
+        "substitution_attempt": 2,
+    })
+    write(metadata_path, metadata)
+
+    trial_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+    metadata_sha256 = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
+    manifest_sha256 = hashlib.sha256(recovery_manifest_path.read_bytes()).hexdigest()
+    authorization = "Explicit final capability-zero approval after both substitutions were exhausted."
+    decision = {
+        "schema_version": "capability-zero-disposition.v1",
+        "approved_by_user": True,
+        "authorization": authorization,
+        "category": "capability",
+        "score": 0.0,
+        "trial_id": trial["id"],
+        "task_name": trial["task_name"],
+        "evidence_sha256": scoring_evidence_sha256(trial),
+        "trial_result_sha256": trial_sha256,
+        "exhausted_recovery": {
+            "slot_id": metadata["slot_id"],
+            "original_run": original.name,
+            "original_trial_id": original_trial_id,
+            "recovery_run": recovery.name,
+            "substitution_attempt": 2,
+            "substitution_count": 2,
+            "max_substitutions": 2,
+            "further_reruns_allowed": False,
+            "trial_result_sha256": trial_sha256,
+            "recovery_metadata_sha256": metadata_sha256,
+            "recovery_manifest_sha256": manifest_sha256,
+        },
+    }
+    decision_path = path.parent / "operator-scoring-disposition.json"
+    write(decision_path, decision)
+
+    validity, domain = assessment(path, trial)
+    assert validity == "valid"
+    assert domain["scores"]["score"] == 0.0
+    assert domain["scoring_source"] == "operator_capability_zero_exhausted_recovery"
+
+    plan = plan_native_merge(original, [recovery])
+    assert not plan.conflicts
+    slot = next(item for item in plan.slots if item.record["task_name"] == trial["task_name"])
+    assert slot.action == "valid"
+    assert slot.selected.trial["id"] == trial["id"]
+    assert slot.selected.domain["scores"]["score"] == 0.0
+
+    merged = tmp_path / "merged-final-zero"
+    ResultMerger(original, [recovery], merged).merge()
+    record = next(
+        item for item in json.loads((merged / "results.json").read_text())["results"]
+        if item["task_name"] == trial["task_name"]
+    )
+    assert record["scored"] and record["vgb_domain_result"]["scores"]["score"] == 0.0
+    assert record["vgb_domain_result"]["scoring_source"] == "operator_capability_zero_exhausted_recovery"
+    assert record["vgb_domain_result"]["operator_disposition"]["exhausted_recovery"][
+        "further_reruns_allowed"
+    ] is False
+    assert json.loads(path.read_text()) == trial
+
+
 @pytest.fixture
 def preinstalled_runs(tmp_path):
     import hashlib
