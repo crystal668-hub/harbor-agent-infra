@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-12（Asia/Shanghai）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵中Claude Code四组已验收；Codex × OpenAI、Anthropic、Qwen已验收，其中Qwen的10项7200秒超时按用户裁定计协议零分；Codex × DeepSeek仍有5项HTTP 429工程错误待恢复，暂不验收。Hermes与OpenClaw的repeat3尚未启动。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵中Claude Code四组与Codex四组均已验收；Codex × DeepSeek按用户裁决完成两批恢复合并并以70/70计分结案，保留4项原生执行错误及4项能力零分。Hermes × GPT已完成会话恢复、summary与最终验收，保留1项原生Verifier错误；Hermes其余三组继续按GPT → Claude → Qwen → DeepSeek顺序推进。OpenClaw Repeat3尚未启动。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -711,8 +711,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-16（完成Codex Repeat3三批验收）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收39/48个子实验：repeat1和repeat2各16个组合；repeat3的Claude Code四组与Codex × OpenAI、Anthropic、Qwen三组已验收。Codex × DeepSeek保留5项待恢复工程错误，Hermes与OpenClaw的repeat3尚未启动。Repeat2的16份代表快照1120/1120计分。
+**最后核对日期**：2026-11-16（完成Codex Repeat3四组验收）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收40/48个子实验：repeat1和repeat2各16个组合；repeat3的Claude Code与Codex各四组已验收。Codex × DeepSeek保留4项原生执行错误，相关能力零分已按用户裁定纳入70/70正式计分；Hermes与OpenClaw的repeat3尚未启动。Repeat2的16份代表快照1120/1120计分。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -1035,20 +1035,24 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 分轨均分为Advanced 47.14、Basic 70.78。随后四个Codex批次均已结束；OpenAI、Anthropic、Qwen
 已分别完成验收，DeepSeek的5项HTTP 429工程错误已按批准清单启动batch1恢复，尚未发布合并快照。
 
+2026-11-16：Codex × DeepSeek 的batch1、batch2均已结束。用户将Basic 005、013、027按能力失败各计0；Advanced 018在两次批准恢复均以HTTP 429失败、替代额度耗尽后按能力失败计0且不再恢复。正式合并快照`codex-deepseek-repeat3-merged`保留65项原始代表、选入5项恢复代表，70/70计分；Advanced均分50.23、Basic均分67.30、整体均分62.67。原生执行错误4项保留，恢复尝试和授权证据未改写。发布后audit仍将三项未输出答案按底层`VgbVerifierError`列为scoring/pending-review建议；它们均有哈希绑定的能力零分裁决，不构成未评分缺口或新增恢复批准。验收证据见[Codex × DeepSeek Repeat3验收记录](../acceptance/2026-11-16-acceptance-repeat3-codex-deepseek.md)。
+
+2026-11-16 12:35（上海）：按用户指定顺序将Hermes Repeat3队列改为GPT → Claude → Qwen → DeepSeek，并通过tmux session`harbor-repeat3-hermes-20261116`启动。GPT正式run`hermes-openai-repeat3`于15:17以exit 0结束；Basic 051原始Verifier导出解析失败，后按保存的Hermes session恢复并由官方VGB评分为0.924。16:30完成该组summary与最终验收，70项计分、保留1项原生`VgbVerifierError`。Claude正式run`hermes-anthropic-repeat3`随后启动，当前运行中；Qwen与DeepSeek保持排队。会话恢复证据见[Basic 051恢复审计](../audit/2026-11-16-audit-hermes-openai-basic051-session-recovery.md)，最终验收见[Hermes × GPT Repeat3验收记录](../acceptance/2026-11-16-acceptance-repeat3-hermes-openai.md)。队列及启动清单位于本机`logs/formal-experiments/hermes-repeat3-sequence-20261116.{sh,launch.json}`，队列日志记录每组派发与结果。
+
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
 | Claude Code | Qwen | 已验收 | 19 / 19；37.17 | 51 / 51；75.51 | 57.46 | 4,122,202（70/70） |
 | Claude Code | GPT | 已验收 | 19 / 19；70.60 | 51 / 51；90.32 | 5.64 | 646,783（70/70） |
 | Claude Code | Claude | 已验收 | 19 / 19；73.38 | 51 / 51；87.06 | 6.98 | 271,702（70/70） |
-| Codex | DeepSeek | 恢复执行中 | 16 / 19；47.14 | 46 / 51；70.78 | 14.49 | 946,268（70/70） |
+| Codex | DeepSeek | 已验收 | 19 / 19；50.23 | 51 / 51；67.30 | 14.60 | 954,905（70/70） |
 | Codex | Qwen | 已验收 | 19 / 19；37.78 | 51 / 51；83.37 | 45.70 | 2,227,308（60/70） |
 | Codex | GPT | 已验收 | 19 / 19；60.22 | 51 / 51；89.56 | 3.39 | 783,588（70/70） |
 | Codex | Claude | 已验收 | 19 / 19；73.40 | 51 / 51；88.50 | 4.79 | 280,240（70/70） |
 | Hermes | DeepSeek | 未启动 | — | — | — | — |
 | Hermes | Qwen | 未启动 | — | — | — | — |
-| Hermes | GPT | 未启动 | — | — | — | — |
-| Hermes | Claude | 未启动 | — | — | — | — |
+| Hermes | GPT | 已验收 | 19 / 19；59.11 | 51 / 51；90.44 | 4.54 | 387,439（70/70） |
+| Hermes | Claude | 进行中 | — | — | — | — |
 | OpenClaw | DeepSeek | 未启动 | — | — | — | — |
 | OpenClaw | Qwen | 未启动 | — | — | — | — |
 | OpenClaw | GPT | 未启动 | — | — | — | — |

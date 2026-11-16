@@ -2,7 +2,7 @@
 
 日期：2026-11-16（Asia/Shanghai）  
 类型：acceptance（正式轮审核与计分结案）  
-状态：Codex × OpenAI、Codex × Anthropic、Codex × Qwen 已验收；Codex × DeepSeek 不在本次验收范围，仍待工程错误恢复。
+状态：本记录覆盖的 Codex × OpenAI、Codex × Anthropic、Codex × Qwen 已验收；Codex × DeepSeek 随后单独完成恢复合并验收，见[DeepSeek验收记录](2026-11-16-acceptance-repeat3-codex-deepseek.md)。截至2026-11-16，Codex Repeat3四组均已验收。
 
 ## 范围与结果
 
@@ -19,7 +19,7 @@
 - OpenAI 与 Anthropic 的验收后 `hai audit` 均为 0 个失败 slot、0 个待审 slot；`hai summary` 均为 70/70 计分。
 - Qwen 的 10 项 `AgentTimeoutError` 均在冻结的 7200 秒预算结束，原生 VGB reward 为 0。按用户裁定通过 `baseline_score_dispositions` 各计协议零分，未启动加时补跑；原始超时错误保留在验收后 audit 中，不伪装成原生 VGB 成功评分。
 - Qwen 验收后 `hai summary` 为 70/70，Advanced 19/19、Basic 51/51；计分投影不修改原生 Trial、Verifier 或任务证据。
-- Codex × DeepSeek 的 5 项 HTTP 429 工程错误已获批准但尚未恢复，另 3 项 capability 项按既有裁决不作工程补跑；因此不纳入本次验收。
+- 本记录形成时，Codex × DeepSeek 的 5 项 HTTP 429 工程错误尚待恢复，另 3 项 capability 项按既有裁决不作工程补跑，因此未纳入当时验收范围。后续恢复与最终计分见[DeepSeek验收记录](2026-11-16-acceptance-repeat3-codex-deepseek.md)。
 
 ## 证据入口
 

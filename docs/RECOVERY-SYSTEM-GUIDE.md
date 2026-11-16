@@ -114,6 +114,11 @@ summary 统计选定代表，analyze 用于恢复诊断。每个原始 run 只�
 不改写原生异常或冒充VGB reward。合并只物化授权投影，既有baseline零分也先验证原记录/授权哈希，
 随后在新快照记入applied_source_score_dispositions，避免路径迁移后重复应用旧记录哈希。
 
+2026-11-16：同一disposition仅可将`ApiRateLimitError`计为最终capability zero，当且仅当
+恢复Trial原生异常明确含retry-exhausted HTTP 429、recovery metadata与批准清单绑定同一原slot、
+当前attempt为第2/2次、Trial与metadata/manifest哈希匹配、用户显式批准`further_reruns_allowed=false`。
+该路径不改变HTTP 429的原生异常分类，不提供第三次重跑，也不适用于首次429或预算未耗尽情形。
+
 ## 常见阻塞
 
 | 现象 | 检查顺序 |
