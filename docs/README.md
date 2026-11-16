@@ -26,6 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
+- [Hermes × Claude Repeat3审核与验收](acceptance/2026-11-16-acceptance-repeat3-hermes-claude.md)：70项原生评分与Trial、Verifier证据逐项一致，audit零失败，正式轮已验收。
 - [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置与历史启动顺序、Codex × DeepSeek恢复合并及两组DeepSeek验收。
 - [Repeat2 前两组结案审核](acceptance/2026-11-01-acceptance-repeat2-first-two.md)：DeepSeek/Qwen各70/70计分，hai audit仅检出3/13项正常超时。
 - [Repeat2 Claude/GPT 验收](acceptance/2026-11-02-acceptance-repeat2-claude-gpt.md)：GPT 70项原评分；Claude安全拒答按能力错误计0，70/70验收。
