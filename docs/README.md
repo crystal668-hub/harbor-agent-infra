@@ -26,6 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
+- [Hermes × Qwen Repeat3审核与最终验收](acceptance/2026-11-17-acceptance-repeat3-hermes-qwen.md)：7项7200秒超时协议零分、2项非零退出保留原生评分；70/70计分，保留9项原生执行异常。
 - [Hermes × Claude Repeat3审核与验收](acceptance/2026-11-16-acceptance-repeat3-hermes-claude.md)：70项原生评分与Trial、Verifier证据逐项一致，audit零失败，正式轮已验收。
 - [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置与历史启动顺序、Codex × DeepSeek恢复合并及两组DeepSeek验收。
 - [Repeat2 前两组结案审核](acceptance/2026-11-01-acceptance-repeat2-first-two.md)：DeepSeek/Qwen各70/70计分，hai audit仅检出3/13项正常超时。

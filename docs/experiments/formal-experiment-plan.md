@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-12（Asia/Shanghai）
-**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵中Claude Code、Codex各四组及Hermes × GPT、Claude已验收，累计10/16组；Codex × DeepSeek的恢复合并保留4项原生执行错误及4项能力零分，Hermes × GPT保留1项原生Verifier错误。Hermes × Qwen运行中，DeepSeek排队；OpenClaw四组尚未启动。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
+**状态**：repeat1的2h正式轮与12h超时补跑合并轮均已发布为独立评价口径；repeat2的2h正式轮和12h超时补跑合并轮均完成16/16组、1120/1120计分。repeat3的2h正式矩阵中Claude Code、Codex各四组及Hermes × GPT、Claude、Qwen已验收，累计11/16组。Codex × DeepSeek保留4项原生执行错误及4项能力零分；Hermes × GPT保留1项原生Verifier错误；Hermes × Qwen保留9项原生执行错误，其中7项按协议计零、2项沿用现有VGB评分。Hermes × DeepSeek运行中；OpenClaw四组尚未启动。repeat3的12h补跑待正式轮结束后按超时清单另行冻结。证据见第14节及本机`run-artifacts/formal/`。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -711,8 +711,8 @@ uv run --locked --python 3.12 hai summary \
 
 ## 14. 实验进度与分 track 得分台账
 
-**最后核对日期**：2026-11-16（完成Hermes × Claude Repeat3验收）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收42/48个子实验：repeat1和repeat2各16个组合；repeat3的Claude Code、Codex各四组及Hermes × GPT、Claude已验收，共10/16组。Hermes × Qwen运行中、DeepSeek排队，OpenClaw四组尚未启动。Codex × DeepSeek保留4项原生执行错误，相关能力零分已按用户裁定纳入70/70正式计分；Hermes × GPT保留1项原生Verifier错误但70/70已计分。Repeat2的16份代表快照1120/1120计分。
+**最后核对日期**：2026-11-17（完成Hermes × Qwen Repeat3验收）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
+当前已验收43/48个子实验：repeat1和repeat2各16个组合；repeat3的Claude Code、Codex各四组及Hermes × GPT、Claude、Qwen已验收，共11/16组。Hermes × DeepSeek运行中，OpenClaw四组尚未启动。Codex × DeepSeek保留4项原生执行错误并按用户裁定计分；Hermes × GPT保留1项原生Verifier错误；Hermes × Qwen保留9项原生执行错误，其中7项7200秒超时按协议计零，2项非零退出凭原生VGB评分纳入70/70。Repeat2的16份代表快照1120/1120计分。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -1041,6 +1041,8 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 2026-11-16 22:32（上海）：Hermes × Claude于19:19以exit 0结束，70个唯一slot均为原生官方VGB评分；`hai audit`检出0个失败和待审项，Trial reward、VGB产物与根结果70/70逐项一致。`hai summary`为Advanced 19/19（均分75.52）、Basic 51/51（均分88.92）、整体均分85.28；正式轮已验收，见[Hermes × Claude Repeat3审核与验收](../acceptance/2026-11-16-acceptance-repeat3-hermes-claude.md)。Qwen于19:19启动，截至本次核对仍在运行；DeepSeek未启动、保持排队。本次没有Agent重跑或重新评分。
 
+2026-11-17 19:53（上海）：Hermes × Qwen Repeat3于18:46结束，70个Trial终态、9项原生执行错误。人工核验确认7项为正常7200秒`AgentTimeoutError`，按正式轮协议计0；另2项`NonZeroAgentExitCodeError`均在Hermes输出完整最终答案后达到`max_iterations_reached(90/90)`，Harbor记录命令exit 1，Verifier已生成原生评分：Advanced 019为0.0、Advanced 017为1.0。按用户裁定纳入评分，正式`hai summary`为70/70，Advanced均分59.03、Basic均分78.35、整体均分73.11；平均用时40.17分钟/slot，token覆盖70/70。9项生命周期错误仍保留；事后`hai audit`列9项待审、无批准恢复，不覆盖评分裁定。正式轮已验收，见[Hermes × Qwen Repeat3最终验收](../acceptance/2026-11-17-acceptance-repeat3-hermes-qwen.md)。Hermes × DeepSeek已于18:46启动，截至本次核对仍在运行；本次未重跑Agent或Verifier。
+
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
@@ -1051,8 +1053,8 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 | Codex | Qwen | 已验收 | 19 / 19；37.78 | 51 / 51；83.37 | 45.70 | 2,227,308（60/70） |
 | Codex | GPT | 已验收 | 19 / 19；60.22 | 51 / 51；89.56 | 3.39 | 783,588（70/70） |
 | Codex | Claude | 已验收 | 19 / 19；73.40 | 51 / 51；88.50 | 4.79 | 280,240（70/70） |
-| Hermes | DeepSeek | 未启动 | — | — | — | — |
-| Hermes | Qwen | 进行中 | — | — | — | — |
+| Hermes | DeepSeek | 进行中 | — | — | — | — |
+| Hermes | Qwen | 已验收 | 19 / 19；59.03 | 51 / 51；78.35 | 40.17 | 1,702,970（70/70） |
 | Hermes | GPT | 已验收 | 19 / 19；59.11 | 51 / 51；90.44 | 4.54 | 387,439（70/70） |
 | Hermes | Claude | 已验收 | 19 / 19；75.52 | 51 / 51；88.92 | 6.87 | 465,892（70/70） |
 | OpenClaw | DeepSeek | 未启动 | — | — | — | — |
