@@ -26,6 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
+- [OpenClaw Repeat3 DeepSeek/GPT失败审计](audit/2026-11-18-audit-openclaw-repeat3-deepseek-gpt.md)：DeepSeek额度429、父会话未完成，以及GPT上下文溢出和session并发修改的原生根因证据。
 - [Hermes × Qwen Repeat3审核与最终验收](acceptance/2026-11-17-acceptance-repeat3-hermes-qwen.md)：9项均获人工评分审批；7项7200秒超时协议零分、2项非零退出保留原生评分，均无需恢复执行。
 - [Hermes × Claude Repeat3审核与验收](acceptance/2026-11-16-acceptance-repeat3-hermes-claude.md)：70项原生评分与Trial、Verifier证据逐项一致，audit零失败，正式轮已验收。
 - [性质计算 repeat2 计划](experiments/2026-10-31-plan-property-calculation-repeat2.md)：配置与历史启动顺序、Codex × DeepSeek恢复合并及两组DeepSeek验收。
