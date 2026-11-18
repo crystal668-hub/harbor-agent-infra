@@ -2,7 +2,7 @@
 
 日期：2026-11-18（Asia/Shanghai）
 类型：audit（正式轮失败分类与根因核查）
-状态：已完成原生 Trial、Gateway/session 与评分产物核对；计分处置和恢复均未批准。
+状态：已完成原生 Trial、Gateway/session 与评分产物核对；用户已批准 5 项首次恢复，当前正式队列结束后须按用户后续指示逐项启动。
 
 ## 范围与汇总
 
@@ -31,7 +31,13 @@
 
 - DeepSeek `hai audit`：3 个失败，2 个自动标为 engineering 可替代候选，均未获批；1 个低置信度 capability 待审。
 - GPT `hai audit`：2 个低置信度 capability 待审，没有可替代候选。
-- 五项均为 `scored=false` 且没有 `vgb-evaluation.json`；本报告不授予计分、恢复、重评或补跑权限。
-- “配额耗尽”属于 DeepSeek provider HTTP 429，不是磁盘故障。DeepSeek 两项 quota 候选若申请恢复，应分别人工批准；其他三项需先独立审查证据和处置。
+- 五项均为 `scored=false` 且没有 `vgb-evaluation.json`；人工批准的是恢复执行，不是计分、重评或零分处置。
+- “配额耗尽”属于 DeepSeek provider HTTP 429，不是磁盘故障。
+
+## 后续人工恢复批准（2026-11-18）
+
+用户明确批准这五个未评分 slot 各执行一次恢复重跑。批准清单逐项绑定原始 Trial ID 与结果哈希，保留本报告中的自动分类和根因证据；两份 `hai recover --dry-run` 均已通过，DeepSeek 3 项、GPT 2 项，并发上限各为 2。审核版 manifest 为满足当前 executor 的工程替代门禁，将批准项设为可执行替代；此调度覆盖不表示 GPT 两项或 DeepSeek Advanced 006 的技术根因已被确认为工程故障。
+
+恢复尚未开始。当前 OpenClaw Repeat3 四组正式队列结束后，必须等待用户逐项启动指示；不设置自动接续。原审计 manifest 保持 `approved=false`，逐项人工授权及执行边界见[恢复审批清单](../../run-artifacts/audit/openclaw-repeat3-20261118/operator-recovery-approval-20261118.json)、[DeepSeek审核版manifest](../../run-artifacts/audit/openclaw-repeat3-20261118/deepseek-approved-manifest.json)和[GPT审核版manifest](../../run-artifacts/audit/openclaw-repeat3-20261118/gpt-approved-manifest.json)。
 
 证据：[DeepSeek audit manifest](../../run-artifacts/audit/openclaw-repeat3-20261118/deepseek-audit.json)、[GPT audit manifest](../../run-artifacts/audit/openclaw-repeat3-20261118/gpt-audit.json)、[DeepSeek formal results](../../run-artifacts/formal/openclaw-deepseek-repeat3/results.json)、[GPT formal results](../../run-artifacts/formal/openclaw-openai-repeat3/results.json)。详细原生异常、session 和 Gateway 证据保存在各失败 Trial 目录内。
