@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：11项首次恢复全部结束；人工裁定9项恢复成功，DeepSeek Advanced 006、Claude Advanced 018已于20:18（上海）并行启动第二轮恢复；尚未合并验收。
+状态：首次及第二轮恢复均已结束；四组merged快照已完成最终验收，正式矩阵48/48组结案。
 
 ## 恢复清单
 
@@ -100,3 +100,12 @@ Qwen Advanced 006虽然保留压缩超时执行异常，但官方评分0分已�
 首次核查确认两个执行进程存活、两个Trial容器运行，尚无评分结果；此次为各slot第2/2次恢复，
 无自动追加重试。[并行启动授权与记录](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/batch2-parallel-launch.json)
 保存PID、清单哈希、输出目录和日志。
+
+
+## 最终结案（2026-11-19）
+
+DeepSeek Advanced 006第二轮官方得分0.5；Claude Advanced 018第二轮再次120秒模型空闲超时，
+用户最终裁定为能力失败、可评分0分且不再恢复。两组合并验收完成，均70/70计分；
+此前GPT、Qwen两组合并验收已完成。所有原始异常及恢复尝试保留，不新增repeat。
+最终结果以[DeepSeek/Claude验收报告](../acceptance/2026-11-19-acceptance-repeat3-openclaw-deepseek-claude.md)
+及[GPT/Qwen验收报告](../acceptance/2026-11-19-acceptance-repeat3-openclaw-gpt-qwen.md)为准。

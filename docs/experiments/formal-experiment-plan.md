@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-12（Asia/Shanghai）
-**状态**：repeat1、repeat2各16/16组已验收；repeat3的Claude Code、Codex、Hermes各四组及OpenClaw × GPT、Qwen已验收，累计14/16组、总计46/48组。OpenClaw × DeepSeek Advanced 006、Claude Advanced 018正并行执行第二轮恢复，尚未合并验收。GPT与Qwen采用各自Repeat3 merged代表快照；Qwen保留4项原生执行异常、67项官方评分和3项超时协议零分，70/70计分。repeat3的12h补跑尚未启动。证据见第14节。
+**状态**：repeat1、repeat2、repeat3正式矩阵均已完成16/16组验收，总计48/48组。OpenClaw四组Repeat3均采用merged代表快照；DeepSeek、GPT原生官方70/70评分，Qwen与Claude各67项官方评分加3项人工零分，均70/70计分；原生异常与历史恢复尝试完整保留。Repeat3的12h补跑尚未启动，不属于本次正式轮验收范围。证据见第14节。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -712,7 +712,7 @@ uv run --locked --python 3.12 hai summary \
 ## 14. 实验进度与分 track 得分台账
 
 **最后核对日期**：2026-11-18（完成Hermes × DeepSeek Repeat3验收）。第一阶段共 48 个正式2h子实验（harness × model × repeat），仅统计 `skills_off`。
-当前已验收46/48个子实验：repeat1和repeat2各16个组合，repeat3共14/16组。OpenClaw × GPT、Qwen已完成恢复合并与最终验收；DeepSeek A006、Claude A018第二轮恢复运行中，尚未验收。Repeat2的16份代表快照1120/1120计分。
+当前已验收48/48个正式子实验：repeat1、repeat2、repeat3各16个组合。OpenClaw四组Repeat3均已合并验收，DeepSeek A006第二轮官方得分0.5；Claude A018两次恢复后按用户能力失败裁定计0分，不再恢复。各轮代表快照每组70/70计分；历史冻结视图及加时口径独立保留。
 Repeat1并列展示两套VGB RC迁移视图，按70题目标清单投影为Advanced 19题与Basic 51题。
 历史执行及人工评分来源保留在第14.5节，当前分数由第14.7节的迁移产物核对。
 
@@ -1051,6 +1051,8 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 2026-11-19：OpenClaw × GPT与Qwen已执行`hai merge`并完成最终验收，各70/70计分，分别选入2项和5项恢复代表。GPT为70项官方评分、无代表执行错误；Qwen为67项官方评分及A012/A016/A019三项正常7200秒超时协议零分，保留4项代表执行错误。Qwen A006官方0分已按人工裁定确认恢复成功，事后audit的1项历史异常不再恢复。两组分轨均分、代表耗时与token覆盖已登记下表；正式统计仅使用merged快照。详见[GPT与Qwen合并验收](../acceptance/2026-11-19-acceptance-repeat3-openclaw-gpt-qwen.md)。
 
+2026-11-19最终结案：DeepSeek A006第二轮恢复官方评分0.5；Claude A018第二轮再次120秒模型空闲超时、无完整终答，用户最终裁定能力失败、可评分0分且不再恢复。两组均实际完成`hai merge`和逐项验收，70/70计分；DeepSeek选入3项恢复代表、无代表执行错误，Claude选入1项恢复代表，67项官方评分与A006/A011协议零分、A018能力零分合计70项计分，保留3项代表执行错误。台账表格如下；正式矩阵总进度48/48组。详见[DeepSeek与Claude合并验收](../acceptance/2026-11-19-acceptance-repeat3-openclaw-deepseek-claude.md)。
+
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
@@ -1065,10 +1067,10 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 | Hermes | Qwen | 已验收 | 19 / 19；59.03 | 51 / 51；78.35 | 40.17 | 1,702,970（70/70） |
 | Hermes | GPT | 已验收 | 19 / 19；59.11 | 51 / 51；90.44 | 4.54 | 387,439（70/70） |
 | Hermes | Claude | 已验收 | 19 / 19；75.52 | 51 / 51；88.92 | 6.87 | 465,892（70/70） |
-| OpenClaw | DeepSeek | 首次恢复2/3成功；A006第二轮运行中，未合并验收 | — | — | — | — |
+| OpenClaw | DeepSeek | 已合并验收 | 19 / 19；35.47 | 51 / 51；63.70 | 11.15 | 1,522,139（70/70） |
 | OpenClaw | Qwen | 已合并验收 | 19 / 19；39.22 | 51 / 51；83.06 | 28.90 | 3,522,426（67/70） |
 | OpenClaw | GPT | 已合并验收 | 19 / 19；62.56 | 51 / 51；88.86 | 4.13 | 655,674（70/70） |
-| OpenClaw | Claude | 首次恢复0/1成功；A018第二轮运行中，未合并验收 | — | — | — | — |
+| OpenClaw | Claude | 已合并验收 | 19 / 19；60.62 | 51 / 51；90.80 | 9.13 | 451,233（67/70） |
 
 #### 14.4.2 合并12h超时补跑轮
 
