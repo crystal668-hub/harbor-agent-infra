@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：11项首次恢复全部结束；人工裁定9项恢复成功，DeepSeek Advanced 006、Claude Advanced 018进入第二轮恢复计划，清单已预检、未启动；尚未合并验收。
+状态：11项首次恢复全部结束；人工裁定9项恢复成功，DeepSeek Advanced 006、Claude Advanced 018已于20:18（上海）并行启动第二轮恢复；尚未合并验收。
 
 ## 恢复清单
 
@@ -95,4 +95,8 @@ Qwen Advanced 006虽然保留压缩超时执行异常，但官方评分0分已�
 [DeepSeek Advanced 006](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/deepseek-batch2-approved-manifest.json)
 和[Claude Advanced 018](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/anthropic-batch2-approved-manifest.json)，
 各自冻结Job带配置dry-run通过、已使用次数1/2；不得改用首次恢复串行清单重新提交。
-本次请求为核验，未启动第二轮，等待明确执行指示。
+该次核验未启动第二轮。随后用户明确要求并行启动两项第二轮恢复；2026-11-19 20:18（上海）
+两批次以独立后台进程同时启动，分别仅含DeepSeek Advanced 006、Claude Advanced 018一项。
+首次核查确认两个执行进程存活、两个Trial容器运行，尚无评分结果；此次为各slot第2/2次恢复，
+无自动追加重试。[并行启动授权与记录](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/batch2-parallel-launch.json)
+保存PID、清单哈希、输出目录和日志。
