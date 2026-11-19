@@ -1047,6 +1047,8 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 2026-11-19：OpenClaw × Qwen Repeat3于13:41（上海）结束，70项终态。用户裁定Advanced 012为正常7200秒超时，按哈希绑定的`baseline_score_dispositions`计0分、无需恢复；Advanced 001、006、016、018、019各批准首次恢复，加入下一轮计划，等待用户明确启动，不设置等待器。当前65/70计分（64项VGB评分、1项协议零分），5项未评分，尚未验收；表中均分仅覆盖当前计分项。审核manifest已补齐原始audit缺失的Trial身份，`hai recover --dry-run`核准5项，未执行恢复；人工执行门禁覆盖不改变技术根因判断。证据：[评分授权](../../run-artifacts/formal/openclaw-qwen-repeat3/operator-scoring-authorization-20261119.json)、[恢复批准](../../run-artifacts/formal/openclaw-qwen-repeat3/operator-recovery-approval-20261119.json)、[审核版manifest](../../run-artifacts/audit/openclaw-qwen-repeat3-20261119/operator-approved-recovery-manifest.json)。
 
+2026-11-19首次恢复已全部结束：按用户裁定，7项官方评分（含0分）及Qwen A016/A019两项7200秒超时协议零分合计9项成功；仅DeepSeek A006、Claude A018两项未评分。第二轮审核清单各1项，冻结配置dry-run通过，预算已用1/2；尚未启动，四组均未发布正式合并验收。详见[首次恢复最终裁定表](../plan/2026-11-19-plan-openclaw-repeat3-recovery-sequence.md#首次恢复最终裁定2026-11-19)。
+
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
@@ -1061,10 +1063,10 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 | Hermes | Qwen | 已验收 | 19 / 19；59.03 | 51 / 51；78.35 | 40.17 | 1,702,970（70/70） |
 | Hermes | GPT | 已验收 | 19 / 19；59.11 | 51 / 51；90.44 | 4.54 | 387,439（70/70） |
 | Hermes | Claude | 已验收 | 19 / 19；75.52 | 51 / 51；88.92 | 6.87 | 465,892（70/70） |
-| OpenClaw | DeepSeek | 进行中 | — | — | — | — |
-| OpenClaw | Qwen | 正式轮结束；5项恢复已批准、待指示启动，未验收 | 14 / 19；53.23（当前计分项） | 51 / 51；83.06 | 27.55 | — |
-| OpenClaw | GPT | 进行中 | — | — | — | — |
-| OpenClaw | Claude | 进行中 | — | — | — | — |
+| OpenClaw | DeepSeek | 首次恢复2/3成功；A006待第二轮，未合并验收 | — | — | — | — |
+| OpenClaw | Qwen | 首次恢复5/5人工确认成功，待合并验收 | 14 / 19；53.23（原轮计分项，合并前） | 51 / 51；83.06（原轮，合并前） | 27.55（原轮） | — |
+| OpenClaw | GPT | 首次恢复2/2成功，待合并验收 | — | — | — | — |
+| OpenClaw | Claude | 首次恢复0/1成功；A018待第二轮，未合并验收 | — | — | — | — |
 
 #### 14.4.2 合并12h超时补跑轮
 

@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：11项已人工批准；2026-11-19 13:56（上海）经用户明确指示启动串行恢复。启动核查时DeepSeek两项运行、一项排队，其余三组待串行派发。
+状态：11项首次恢复全部结束；人工裁定9项恢复成功，DeepSeek Advanced 006、Claude Advanced 018进入第二轮恢复计划，清单已预检、未启动；尚未合并验收。
 
 ## 恢复清单
 
@@ -70,3 +70,29 @@ Basic 016排队；GPT、Claude、Qwen尚未启动。
 - [预检日志](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/preflight.log)已保存。
 - 7项合成测试通过：组间顺序、默认只预检、失败批次继续、中断停止、已有目录、审批变更和范围变更拒绝。
 - 启动核查确认DeepSeek恢复进程及两个Trial容器运行；恢复结果、评分与合并尚未验收。
+
+## 首次恢复最终裁定（2026-11-19）
+
+串行队列于19:43（上海）结束，四组均执行完毕。用户明确裁定所有正常7200秒超时计0分，
+所有已有官方评分（含0分）均为重跑成功。按此口径，7项官方评分、2项协议零分共9项成功，
+仅两项未评分进入第二轮恢复。原生Trial异常及历史控制器执行成败统计保留，
+不将协议零分冒充官方Verifier产物。
+
+| 组合 | 首次恢复数 | 人工裁定成功数 | 已确认评分 | 第二轮待恢复 |
+| --- | ---: | ---: | --- | --- |
+| DeepSeek | 3 | 2 | Basic 015：0.885；Basic 016：0.999230888 | Advanced 006，模型服务推理引擎中止 |
+| GPT | 2 | 2 | Advanced 015：0；Advanced 017：1 | 无 |
+| Claude | 1 | 0 | 无 | Advanced 018，父会话aborted |
+| Qwen | 5 | 5 | Advanced 001、006、018官方0分；016、019正常7200秒超时协议0分 | 无 |
+
+Qwen Advanced 006虽然保留压缩超时执行异常，但官方评分0分已完成，按人工裁定恢复成功，
+不再恢复。两项正常超时零分已分别登记Trial旁的`operator-protocol-timeout-zero-20261119.json`；
+四组人工结果登记在各批次的`operator-recovery-outcomes-20261119.json`。
+当前仅登记人工裁定，未发布正式合并快照。
+
+[逐项人工裁定与证据哈希](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/operator-final-adjudication-20261119.json)
+绑定11项原生恢复结果。第二轮仅包含
+[DeepSeek Advanced 006](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/deepseek-batch2-approved-manifest.json)
+和[Claude Advanced 018](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/anthropic-batch2-approved-manifest.json)，
+各自冻结Job带配置dry-run通过、已使用次数1/2；不得改用首次恢复串行清单重新提交。
+本次请求为核验，未启动第二轮，等待明确执行指示。
