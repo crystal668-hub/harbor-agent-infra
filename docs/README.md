@@ -66,7 +66,7 @@
 - [Repeat2 的2h超时项清单与加时审核](audit/2026-11-08-audit-repeat2-timeout-inventory.md)：原12h目录保留9项有效结果、失败尝试证据归档；34项于11月9日在原目录受控重派并运行，尚未合并验收。
 - [Repeat2 超时补跑后续处置计划](plan/2026-11-11-plan-repeat2-timeout-followup.md)：A019已独立恢复评分；另三项工程补跑规划采用全局并发2并允许不同harness重叠，仍待并行执行器和OpenClaw镜像条件转换验收。
 - [失败分类与重跑判定规则调整计划](plan/2026-11-16-plan-failure-classification-recovery-rules.md)：三值失败分类、统一判定内核、审批/预算账本与评分耗尽零分规则；用户已审核，独立工作树开发中，尚未合并或部署。
-- [OpenClaw Repeat3四组恢复串行计划](plan/2026-11-19-plan-openclaw-repeat3-recovery-sequence.md)：11项人工批准恢复清单、DeepSeek → GPT → Claude → Qwen串行脚本及预检，尚未启动。
+- [OpenClaw Repeat3四组恢复串行计划](plan/2026-11-19-plan-openclaw-repeat3-recovery-sequence.md)：11项人工批准恢复清单与串行控制脚本，11月19日13:56已启动DeepSeek → GPT → Claude → Qwen队列。
 - [模型矩阵](experiments/model-matrix.md)：实验模型、输出参数及验证范围。
 - [化学工具配置](experiments/chemistry.md)：实验环境与化学工具一致性要求。
 - 加时补跑的协议及当前实现状态见[正式实验方案](experiments/formal-experiment-plan.md#146-repeat1-加时补跑修订2026-10-27)和[加时补跑手册](TIMEOUT-RERUN-GUIDE.md)。

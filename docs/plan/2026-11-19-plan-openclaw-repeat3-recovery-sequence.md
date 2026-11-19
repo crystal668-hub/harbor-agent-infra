@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：11项已人工批准；清单、串行脚本及冻结Job dry-run已准备，未启动。
+状态：11项已人工批准；2026-11-19 13:56（上海）经用户明确指示启动串行恢复。启动核查时DeepSeek两项运行、一项排队，其余三组待串行派发。
 
 ## 恢复清单
 
@@ -58,11 +58,15 @@ uv run --locked --python 3.12 python scripts/run_recovery_sequence.py \
 
 执行日志及事件写入`logs/formal-experiments/openclaw-repeat3-recovery-sequence-20261119/`，
 每组独立日志，`sequence.jsonl`记录开始、完成或停止。
-此次仅准备脚本；此前“等待用户逐项通知、不得自动恢复”的约束继续有效。
+2026-11-19 13:56（上海），用户明确指示“请启动恢复”，本清单已获本次串行执行授权。
+控制器以独立后台进程启动，首次核查时DeepSeek Advanced 006、Basic 015的两个容器运行中，
+Basic 016排队；GPT、Claude、Qwen尚未启动。
+[启动记录](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/controller-launch.json)
+保存授权、启动PID及控制器日志路径。此次授权仅覆盖清单中的11项首次恢复。
 
 ## 验证范围
 
 - 四组带`--config`的`hai recover --dry-run`通过，11个原冻结Job均匹配，每组并发上限2、替代次数0/2。
 - [预检日志](../../run-artifacts/audit/openclaw-repeat3-recovery-sequence-20261119/preflight.log)已保存。
 - 7项合成测试通过：组间顺序、默认只预检、失败批次继续、中断停止、已有目录、审批变更和范围变更拒绝。
-- 本轮未运行真实恢复、模型调用或恢复后的评分与合并；预检不表示正式恢复已验收。
+- 启动核查确认DeepSeek恢复进程及两个Trial容器运行；恢复结果、评分与合并尚未验收。
