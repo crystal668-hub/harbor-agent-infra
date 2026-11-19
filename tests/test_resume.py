@@ -282,13 +282,24 @@ def test_resume_noop_preserves_complete_trial_and_metadata(original, local_only)
     assert before == snapshot(root)
 
 
-def test_resume_score_only_never_creates_job(original, local_only, monkeypatch):
+@pytest.mark.parametrize("completed_agent", [False, True])
+def test_resume_score_only_never_creates_job(original, local_only, monkeypatch, completed_agent):
     import asyncio
 
     from harbor_agent_infra.resume import scoring
 
     root, config = original
     directory, result = add_trial(original, kind="CancelledError")
+    if completed_agent:
+        from datetime import timedelta
+
+        from harbor.models.trial.result import TimingInfo
+
+        result.agent_execution = TimingInfo(
+            started_at=result.started_at,
+            finished_at=result.started_at + timedelta(seconds=60),
+        )
+        save(directory / "result.json", result.model_dump(mode="json"))
     codex_answer(directory)
 
     async def forbidden(*args, **kwargs):
@@ -304,7 +315,7 @@ def test_resume_score_only_never_creates_job(original, local_only, monkeypatch):
     data = json.loads((root / "results.json").read_text())
     assert data["records"] == 1 and data["results"][0]["scored"]
     assert data["results"][0]["trial_result"]["id"] == str(result.id)
-    assert data["summary"]["timing"]["total_seconds"] is None
+    assert data["summary"]["timing"]["total_seconds"] == (60 if completed_agent else None)
     assert json.loads((config.jobs_dir / config.job_name / "result.json").read_text())["stats"][
         "n_errored_trials"] == 0
     assert not (root / "resume").exists()

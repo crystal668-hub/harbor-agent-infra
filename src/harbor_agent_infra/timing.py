@@ -22,7 +22,21 @@ def slot_timing(record: Mapping[str, Any]) -> SlotTiming:
         native_id = (record.get("trial_result") or {}).get("id")
         if resumed.get("trial_id") != native_id:
             return SlotTiming(None, "invalid")
-        # Scoring after an offline interruption cannot reconstruct total active Trial time.
+        execution = (record.get("trial_result") or {}).get("agent_execution") or {}
+        start = (record.get("trial_result") or {}).get("started_at")
+        end = execution.get("finished_at")
+        if (resumed.get("source") == "harbor.trial_result.agent_execution.finished_at"
+                and start and end and resumed.get("started_at") == start
+                and resumed.get("agent_finished_at") == end):
+            try:
+                duration = datetime.fromisoformat(end) - datetime.fromisoformat(start)
+                seconds = duration.total_seconds()
+            except (TypeError, ValueError, OverflowError):
+                return SlotTiming(None, "invalid")
+            if seconds < 0 or resumed.get("seconds") != seconds:
+                return SlotTiming(None, "invalid")
+            return SlotTiming(seconds, "timed")
+        # Without native completion evidence, offline waiting cannot be excluded.
         return SlotTiming(None, "missing")
     native = record.get("trial_result")
     if native is None:

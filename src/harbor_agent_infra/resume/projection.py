@@ -105,6 +105,17 @@ def _record(sink, context, item):
         record["resume_scoring"] = read_object(provenance)
         record["elapsed_seconds"] = None  # Trial wall clock includes the offline interruption.
         record["resume_timing"] = {"trial_id": str(result.id), "seconds": None}
+        execution = result.agent_execution
+        if (result.started_at and execution and execution.started_at
+                and execution.finished_at
+                and result.started_at <= execution.started_at <= execution.finished_at):
+            # Native Agent completion excludes offline waiting and deferred verification.
+            record["resume_timing"].update(
+                started_at=record["trial_result"]["started_at"],
+                agent_finished_at=record["trial_result"]["agent_execution"]["finished_at"],
+                seconds=(execution.finished_at - result.started_at).total_seconds(),
+                source="harbor.trial_result.agent_execution.finished_at",
+            )
     write_object(path, record)
     emitted["source"] = "reconstructed_from_native_terminal_result"
     return record, emitted

@@ -16,6 +16,21 @@ def native(**overrides):
     }
 
 
+@pytest.mark.parametrize("tamper", [False, True])
+def test_resume_timing_uses_bound_agent_completion_instead_of_late_scoring(tamper):
+    record = {"trial_result": native(
+        finished_at="2026-10-24T00:00:00Z",
+        agent_execution={"finished_at": "2026-10-23T00:01:00Z"},
+    ), "resume_timing": {
+        "trial_id": "selected", "started_at": "2026-10-23T00:00:00Z",
+        "agent_finished_at": "2026-10-23T00:01:00Z",
+        "seconds": 61 if tamper else 60,
+        "source": "harbor.trial_result.agent_execution.finished_at",
+    }}
+    assert slot_timing(record) == (SlotTiming(None, "invalid") if tamper
+                                   else SlotTiming(60, "timed"))
+
+
 @pytest.mark.parametrize("embedded", [True, False])
 def test_native_timing_precedes_cached_elapsed_and_ignores_attempts(embedded):
     record = {

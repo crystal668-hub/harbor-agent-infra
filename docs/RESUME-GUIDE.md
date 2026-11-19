@@ -48,6 +48,9 @@ Harbor Job.create 会清理缺少 result.json 的目录，因此 resume 先盘�
 - resume-state.json 与 events/resume.jsonl 记录处理进度；再次调用先对账，不把中断投影算作新正式结果。
 - Trial 的 resume-checkpoint.json 保留硬中断身份；仅评分事实写入 resume-scoring.json。
 - 不伪造 Agent 结束时间；证据不足时显示时长缺失，不把停机等待算为执行时间。
+- 2026-11-19：仅评分项若保留完整的 `agent_execution` 起止时间，平均耗时采用原 Trial
+  开始至 Agent 实际结束的时长，排除停机等待与事后评分；原先此类项目一律显示时长缺失。
+  缺少 Agent 完成时间证据时仍显示缺失，不推测结束时间。
 
 返回 complete 表示没有续跑待办，不代表全部任务成功。已结束工程失败仍可使运行保持 partial。
 
