@@ -1074,7 +1074,11 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 #### 14.4.2 合并12h超时补跑轮
 
-尚未启动；成绩留空。
+尚未启动；成绩留空。2026-11-19已从16组1120个最终代表统计38项正常7200秒超时（Advanced 24、Basic 14），
+涉及7个组合；按7200→43200秒、并发2、仅skills_off冻结独立Repeat3 campaign并通过dry-run，38项均pending、无尝试。
+OpenClaw Qwen A016/A019按恢复后的最终代表纳入，Claude A018人工能力零分等非7200秒超时不纳入。
+初始累计预算上限456 Trial小时，不代表预计完成时间；未启动任何Job或模型调用。
+分组清单、输入哈希及启动命令见[Repeat3超时补跑准备](2026-11-19-plan-repeat3-timeout12h.md)。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
