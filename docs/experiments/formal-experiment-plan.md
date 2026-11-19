@@ -1045,6 +1045,8 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 2026-11-18 11:20（上海）：用户批准OpenClaw × DeepSeek/GPT五项未评分slot各作首次恢复：DeepSeek A006/B015/B016、GPT A015/A017。按冻结Job、模型和镜像生成两份审核版manifest，`hai recover --dry-run`分别核准3项和2项。OpenClaw四组正式队列仍在运行；恢复不会自动接续，须待当前队列结束后按用户后续逐项指示启动。自动audit manifest与正式结果未改写，恢复输出目录尚不存在。批准及调度边界见[OpenClaw Repeat3失败审计](../audit/2026-11-18-audit-openclaw-repeat3-deepseek-gpt.md)。
 
+2026-11-19：OpenClaw × Qwen Repeat3于13:41（上海）结束，70项终态。用户裁定Advanced 012为正常7200秒超时，按哈希绑定的`baseline_score_dispositions`计0分、无需恢复；Advanced 001、006、016、018、019各批准首次恢复，加入下一轮计划，等待用户明确启动，不设置等待器。当前65/70计分（64项VGB评分、1项协议零分），5项未评分，尚未验收；表中均分仅覆盖当前计分项。审核manifest已补齐原始audit缺失的Trial身份，`hai recover --dry-run`核准5项，未执行恢复；人工执行门禁覆盖不改变技术根因判断。证据：[评分授权](../../run-artifacts/formal/openclaw-qwen-repeat3/operator-scoring-authorization-20261119.json)、[恢复批准](../../run-artifacts/formal/openclaw-qwen-repeat3/operator-recovery-approval-20261119.json)、[审核版manifest](../../run-artifacts/audit/openclaw-qwen-repeat3-20261119/operator-approved-recovery-manifest.json)。
+
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Claude Code | DeepSeek | 已验收 | 19 / 19；36.67 | 51 / 51；68.78 | 21.81 | 1,081,250（70/70） |
@@ -1060,7 +1062,7 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 | Hermes | GPT | 已验收 | 19 / 19；59.11 | 51 / 51；90.44 | 4.54 | 387,439（70/70） |
 | Hermes | Claude | 已验收 | 19 / 19；75.52 | 51 / 51；88.92 | 6.87 | 465,892（70/70） |
 | OpenClaw | DeepSeek | 进行中 | — | — | — | — |
-| OpenClaw | Qwen | 未启动 | — | — | — | — |
+| OpenClaw | Qwen | 正式轮结束；5项恢复已批准、待指示启动，未验收 | 14 / 19；53.23（当前计分项） | 51 / 51；83.06 | 27.55 | — |
 | OpenClaw | GPT | 进行中 | — | — | — | — |
 | OpenClaw | Claude | 进行中 | — | — | — | — |
 
