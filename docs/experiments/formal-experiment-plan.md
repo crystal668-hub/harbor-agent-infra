@@ -2,7 +2,7 @@
 **制定日期**：2026-10-14
 **文档类型**：实验方案与协议（持续维护）
 **配置核对日期**：2026-11-12（Asia/Shanghai）
-**状态**：repeat1、repeat2、repeat3正式矩阵均已完成16/16组验收，总计48/48组。OpenClaw四组Repeat3均采用merged代表快照；DeepSeek、GPT原生官方70/70评分，Qwen与Claude各67项官方评分加3项人工零分，均70/70计分；原生异常与历史恢复尝试完整保留。Repeat3的12h补跑尚未启动，不属于本次正式轮验收范围。证据见第14节。
+**状态**：repeat1、repeat2、repeat3正式矩阵均已完成16/16组验收，总计48/48组。OpenClaw四组Repeat3均采用merged代表快照；DeepSeek、GPT原生官方70/70评分，Qwen与Claude各67项官方评分加3项人工零分，均70/70计分；原生异常与历史恢复尝试完整保留。Repeat3的38项12h补跑已于11月19日21:43启动，不属于2h正式轮验收范围。证据见第14节。
 **初稿 Git 基线**：74e2b2e；后续条件变更在对应章节注明，不将初稿基线视为当前部署。
 
 维护规则：参数变化须在原章节记录日期、旧值/新值、证据及适用范围；历史运行仍使用其冻结条件。
@@ -1074,10 +1074,10 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 #### 14.4.2 合并12h超时补跑轮
 
-尚未启动；成绩留空。2026-11-19已从16组1120个最终代表统计38项正常7200秒超时（Advanced 24、Basic 14），
+运行中；成绩留空。2026-11-19已从16组1120个最终代表统计38项正常7200秒超时（Advanced 24、Basic 14），
 涉及7个组合；按7200→43200秒、并发2、仅skills_off冻结独立Repeat3 campaign并通过dry-run，38项均pending、无尝试。
 OpenClaw Qwen A016/A019按恢复后的最终代表纳入，Claude A018人工能力零分等非7200秒超时不纳入。
-初始累计预算上限456 Trial小时，不代表预计完成时间；未启动任何Job或模型调用。
+初始累计预算上限456 Trial小时，不代表预计完成时间。用户审核后明确授权启动；21:43（上海）独立后台执行器已运行，首组Claude Code × Claude A006容器启动，其他组按冻结清单依次派发。
 分组清单、输入哈希及启动命令见[Repeat3超时补跑准备](2026-11-19-plan-repeat3-timeout12h.md)。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
@@ -1085,7 +1085,7 @@ OpenClaw Qwen A016/A019按恢复后的最终代表纳入，Claude A018人工能�
 | Claude Code | DeepSeek | 未启动 | — | — | — | — |
 | Claude Code | Qwen | 未启动 | — | — | — | — |
 | Claude Code | GPT | 未启动 | — | — | — | — |
-| Claude Code | Claude | 未启动 | — | — | — | — |
+| Claude Code | Claude | 进行中 | — | — | — | — |
 | Codex | DeepSeek | 未启动 | — | — | — | — |
 | Codex | Qwen | 未启动 | — | — | — | — |
 | Codex | GPT | 未启动 | — | — | — | — |

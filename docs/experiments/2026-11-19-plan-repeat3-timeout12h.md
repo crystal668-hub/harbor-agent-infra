@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：16组最终代表已统计、38项清单已冻结且dry-run通过；未启动。
+状态：清单已审核；2026-11-19 21:43（上海）用户明确授权后启动，首组Claude Code × Claude运行中。
 
 ## 范围与统计
 
@@ -82,3 +82,14 @@ uv run --locked --python 3.12 hai timeout-rerun run \
 [逐项TSV](../../run-artifacts/timeout-rerun/repeat3-12h-20261119/slots.tsv)、
 [来源与候选覆盖检查](../../run-artifacts/timeout-rerun/repeat3-12h-20261119/inventory-checks.json)、
 [dry-run结果](../../run-artifacts/timeout-rerun/repeat3-12h-20261119/preflight-dry-run.json)。
+
+
+## 启动记录（2026-11-19）
+
+用户明确“审核完毕，请启动”后，于21:43（上海）以独立后台进程启动冻结campaign，
+Agent预算43200秒、并发上限2，未启用跨组并行。启动前再次dry-run确认38项均pending且无旧尝试。
+首次核查执行器PID 96193存活、state为running；首个Job为Claude Code × Claude单项A006，
+对应Trial容器运行。首组只有1项，因此当时1个活动容器，其余组合按现有执行器依次派发。
+[授权及启动记录](../../run-artifacts/audit/repeat3-timeout12h-launch-20261119/launch.json)
+和[运行日志](../../run-artifacts/audit/repeat3-timeout12h-launch-20261119/execution.log)已保存。
+本记录仅确认成功启动，不表示加时实验已完成或验收。
