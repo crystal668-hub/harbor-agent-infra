@@ -26,6 +26,7 @@
 ## 实验文档与历史记录
 
 - [正式实验方案](experiments/formal-experiment-plan.md)：任务范围、实验协议和统计口径。
+- [最终验收slot元数据复核](audit/2026-11-19-audit-final-slot-metadata-restoration.md)：按Repeat3→2→1恢复22个不同Trial的token，更新13行台账，保留冻结源及无法恢复项的证据边界。
 - [Repeat3 12h超时补跑准备](experiments/2026-11-19-plan-repeat3-timeout12h.md)：16组最终代表统计，38项加时补跑于11月19日21:43启动。
 - [Hermes × DeepSeek Repeat3最终验收](acceptance/2026-11-18-acceptance-repeat3-hermes-deepseek.md)：70项原生评分与Trial、Verifier证据逐项一致，audit零失败，正式轮已验收。
 - [OpenClaw Repeat3 DeepSeek/GPT失败审计](audit/2026-11-18-audit-openclaw-repeat3-deepseek-gpt.md)：记录 DeepSeek 额度429、父会话未完成及 GPT session 错误；5项未评分恢复已获批，待当前队列结束并按用户指示逐项启动。
