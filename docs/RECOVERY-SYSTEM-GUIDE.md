@@ -10,6 +10,10 @@
 - 本机具备对应 YAML、provider/bridge 环境、VGB runtime 和原冻结镜像。
 - 恢复使用冻结 JobConfig；当前 YAML 用于校验和本机环境解析，不能直接替换历史条件。
 - 正式路径为 run-artifacts/formal/<harness>-<provider>-repeat<N>/。本文 NEW_* 均为待替换的新路径。
+- 2026-11-19：合并读取Trial旁的`operator-recovery-outcome-*.json`人工裁定。
+  裁定须绑定Trial身份、任务及可迁移的评分证据哈希；已有官方评分（含0分）可按明确批准
+  纳入有效代表，正常7200秒超时可按批准纳入协议零分。原始执行异常保留，
+  协议零分不生成伪造的官方Verifier产物；此前这些裁定仅登记、未被合并器读取。
 
 ## 1. 审计并审查证据
 

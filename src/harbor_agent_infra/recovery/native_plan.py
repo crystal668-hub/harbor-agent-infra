@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from harbor_agent_infra.recovery.classifier import classify_failure
@@ -193,6 +194,42 @@ def assessment(path: Path, trial: dict) -> tuple[str, dict | None]:
             raise ValueError(f"VGB score/reward mismatch: {path}")
     else:
         domain = None
+    # Sidecar naming is deliberately stable across recording dates and snapshot relocation.
+    outcome_paths = list(path.parent.glob("operator-recovery-outcome-*.json"))
+    if len(outcome_paths) > 1:
+        raise ValueError("Ambiguous operator recovery outcome")
+    if outcome_paths:
+        outcome_path = outcome_paths[0]
+        decision = read_json(outcome_path)
+        if (
+            decision.get("schema_version") != "operator-recovery-outcome.v1"
+            or decision.get("approved_by_user") is not True
+            or not isinstance(decision.get("authorization"), str)
+            or not decision["authorization"].strip()
+            or decision.get("trial_id") != trial.get("id")
+            or decision.get("task_name") != trial.get("task_name")
+            or decision.get("evidence_sha256") != scoring_evidence_sha256(trial)
+        ):
+            raise ValueError("Invalid operator recovery outcome")
+        disposition = decision.get("disposition")
+        if disposition == "recovery_succeeded_officially_scored":
+            if domain is None or decision.get("score") != domain["scores"]["score"]:
+                raise ValueError("Operator success lacks matching official score")
+            return "valid", domain
+        if disposition == "recovery_succeeded_protocol_timeout_zero":
+            start, end = execution.get("started_at"), execution.get("finished_at")
+            if (kind != "AgentTimeoutError" or decision.get("score") != 0
+                    or "7200.0 seconds" not in exception.get("exception_message", "")
+                    or not start or not end
+                    or (datetime.fromisoformat(end) - datetime.fromisoformat(start)).total_seconds()
+                    < 7200 or domain is not None):
+                raise ValueError("Invalid operator protocol timeout zero")
+            track, task_id = trial["task_name"].split("__", 1)
+            return "valid", {
+                "status": "scored", "track": track, "task_id": task_id,
+                "scores": {"score": 0.0}, "scoring_source": "operator_protocol_timeout_zero",
+                "operator_disposition": decision,
+            }
     if not kind:
         return ("valid" if domain else "scoring_pending"), domain
     if kind == "AgentTimeoutError":
