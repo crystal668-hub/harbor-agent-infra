@@ -491,7 +491,7 @@ def load_plan(path: Path) -> dict:
         if digest(root / "baseline-evidence" / d["evidence_sha256"]) != d["evidence_sha256"]:
             raise ValueError("Frozen baseline authorization changed")
     if (
-        path.resolve() != root / "manifest.json"
+        path.resolve() != root.resolve() / "manifest.json"
         or digest(root / "runtime-lock.json") != plan["runtime_lock_sha256"]
     ):
         raise ValueError("Campaign moved or frozen runtime lock changed")
