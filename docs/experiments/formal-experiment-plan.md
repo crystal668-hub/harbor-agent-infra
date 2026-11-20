@@ -1076,11 +1076,12 @@ Codex × DeepSeek、GPT、Claude、Qwen。Codex四组在实际启动前均保持
 
 #### 14.4.2 合并12h超时补跑轮
 
-运行中；成绩留空。2026-11-19已从16组1120个最终代表统计38项正常7200秒超时（Advanced 24、Basic 14），
+执行已中断，续跑受Docker预检阻塞；成绩留空。2026-11-19已从16组1120个最终代表统计38项正常7200秒超时（Advanced 24、Basic 14），
 涉及7个组合；按7200→43200秒、并发2、仅skills_off冻结独立Repeat3 campaign并通过dry-run，38项均pending、无尝试。
 OpenClaw Qwen A016/A019按恢复后的最终代表纳入，Claude A018人工能力零分等非7200秒超时不纳入。
 初始累计预算上限456 Trial小时，不代表预计完成时间。用户审核后明确授权启动；21:43（上海）独立后台执行器已运行，首组Claude Code × Claude A006容器启动，其他组按冻结清单依次派发。
 分组清单、输入哈希及启动命令见[Repeat3超时补跑准备](2026-11-19-plan-repeat3-timeout12h.md)。
+2026-11-20核验并保留9项官方评分（包括Claude Code Qwen A011的0.995）；A018、B002两项无终答旧尝试完整归档、获准重派，连同27项未启动合计29项pending。两个孤儿容器已清理。独立后台重启进入化学预检后，Docker自动删除故障导致90秒超时，未派发新Trial；当前state为interrupted。详见准备文档的中断与授权续跑记录。
 
 | Harness | Model | 进度 | Advanced：计分样本 / 19；均分 | Basic：计分样本 / 51；均分 | 平均用时（分钟/slot） | 平均token（input+output/slot；覆盖/70） |
 | --- | --- | --- | --- | --- | ---: | ---: |

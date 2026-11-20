@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：清单已审核；2026-11-19 21:43（上海）用户明确授权后启动，首组Claude Code × Claude运行中。
+状态：原执行中断；2026-11-20已清理孤儿容器并对账为9项完成、29项待执行；重启被Docker容器自动删除故障阻止，尚无新Trial派发。
 
 ## 范围与统计
 
@@ -93,3 +93,34 @@ Agent预算43200秒、并发上限2，未启用跨组并行。启动前再次dry
 [授权及启动记录](../../run-artifacts/audit/repeat3-timeout12h-launch-20261119/launch.json)
 和[运行日志](../../run-artifacts/audit/repeat3-timeout12h-launch-20261119/execution.log)已保存。
 本记录仅确认成功启动，不表示加时实验已完成或验收。
+
+
+## 2026-11-20 中断对账与授权续跑
+
+用户确认Advanced 018、Basic 002无完整终答，要求清理孤儿容器并重新执行这两项，
+已完成结果不重复执行。Advanced 011最终回答、ATIF及官方评分0.995一致，
+原stdout第4975行损坏导致此前对账误列review；原stdout完整备份，工作副本移除该损坏行，
+重新核验官方评分对应同一终答后恢复完成状态，没有模型调用或重评。
+
+两项失败Trial目录完整归档到campaign外审计目录，采用已有`timeout-attempt-reset.v1`
+受控原目录重置机制；归档前后结果SHA256一致，保留9项官方评分结果的原生文件哈希。
+续跑预览核准9项completed、29项pending（27项首次执行加2项明确重派），不重复已完成项。
+工作区迁至外置磁盘后旧路径作为符号链接保留；修复reset与manifest路径比较的规范化，
+实现变化由重置授权绑定旧/新哈希，原manifest、原始任务和预算不改写。
+13项reset测试及18项reset/plan相关测试通过。
+
+两个已无运行进程的孤儿容器删除卡在Docker removing；在没有其他活动容器的情况下
+重启Docker Desktop后，两项容器均已删除。没有清理镜像、缓存或其他实验产物。
+[重派授权与证据](../../run-artifacts/timeout-rerun/repeat3-12h-20261119/attempt-reset.json)、
+[续跑预览](../../run-artifacts/audit/repeat3-timeout12h-restart-20261120/restart-preview.json)、
+[启动记录](../../run-artifacts/audit/repeat3-timeout12h-restart-20261120/launch.json)及独立运行日志已保存。
+
+续跑启动尝试于2026-11-20 16:03（上海）进入化学预检，但预检容器正常退出0后，
+Docker的自动删除卡在removing，使`docker run --rm`等待直至90秒超时。
+仅输出固定文本的最小容器也复现此问题，完整停止并重启Docker Desktop后仍复现；
+不是模型或化学包检查不通过。故本次未派发任何新实验Trial，不能记为续跑成功。
+原孤儿容器及本次预检/最小测试残留均已通过Docker删除；未清理其他历史容器。
+`state.json`已按实际扫描更新为interrupted，9项completed、29项pending，
+`attempt-reset.json`及冻结输入校验有效。
+[启动受阻记录](../../run-artifacts/audit/repeat3-timeout12h-restart-20261120/restart-blocker.json)
+保留预检故障及重派范围；修复Docker自动删除后可继续同一campaign，不重复9项已评分结果。
