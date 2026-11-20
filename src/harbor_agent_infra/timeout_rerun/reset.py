@@ -11,7 +11,7 @@ SCHEMA = "timeout-attempt-reset.v1"
 
 
 def validated_reset(plan: dict, implementation_files: dict | None = None) -> dict | None:
-    root = Path(plan["root"])
+    root = Path(plan["root"]).resolve()
     path = root / "attempt-reset.json"
     if not path.is_file():
         return None

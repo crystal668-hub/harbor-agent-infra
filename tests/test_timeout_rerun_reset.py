@@ -100,6 +100,15 @@ def reset_fixture(tmp_path):
     return plan, root / "manifest.json", reset, saved, good
 
 
+def test_reset_accepts_campaign_symlink(tmp_path):
+    from harbor_agent_infra.timeout_rerun.reset import validated_reset
+
+    plan, manifest, reset, _, _ = reset_fixture(tmp_path)
+    alias = tmp_path / "campaign-alias"
+    alias.symlink_to(manifest.parent, target_is_directory=True)
+    assert validated_reset({**plan, "root": str(alias)})["sha256"] == reset["sha256"]
+
+
 def test_reset_keeps_success_and_reports_archived_consumption(tmp_path):
     plan, manifest, reset, saved, good = reset_fixture(tmp_path)
     good_hash = digest(good)
