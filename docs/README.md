@@ -18,6 +18,7 @@
 | 手册 | 使用场景 |
 | --- | --- |
 | [EXECUTION-QUICK-REF.md](EXECUTION-QUICK-REF.md) | 准备、启动、浏览和汇总运行 |
+| [RESULT-PIPELINE.md](RESULT-PIPELINE.md) | 核对已验收正式轮并生成跨 repeat 分轨得分、token、Agent 时间表 |
 | [PREINSTALLED-HARNESS.md](PREINSTALLED-HARNESS.md) | 构建、验证与切换预装执行镜像 |
 | [RESUME-GUIDE.md](RESUME-GUIDE.md) | 在原目录续跑意外中断的原始运行 |
 | [RECOVERY-SYSTEM-GUIDE.md](RECOVERY-SYSTEM-GUIDE.md) | 审计已结束的失败、执行获批恢复、发布合并快照 |
