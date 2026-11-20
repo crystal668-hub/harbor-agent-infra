@@ -102,10 +102,12 @@ setup 校验实际版本、入口和安装文件身份，不自动联网补装�
 2026-11-12 路径清理：旧顶层目录中的16份本地 YAML 已移除；新运行改用子集目录中的配置。
 性质计算和开放生成分别使用上列目录，历史冻结 Job 仍以其保存的配置快照和 runtime lock 为准。
 
-旧`.vgb-runtime`保留，旧锁按SHA-256归档到`run-artifacts/runtime-locks/`；
+2026-11-21：实验已全部更新到新版本，删除旧0.10.0环境`.vgb-runtime`，本地环境文件及模板统一
+指向`.vgb-runtime-1.0.0rc1/bin/python`。旧锁仍按SHA-256归档到`run-artifacts/runtime-locks/`；
 resume只接受与冻结哈希完全相等的锁及相同包版本，不自动使用当前RC。
 本次切换备份、依赖约束和验收证据位于`run-artifacts/temporary/vgb-rc-upgrade-20261030/`。
 2026-11-13 归档路径整理：证据包从`run-artifacts/vgb-rc-upgrade-20261030/`移入`temporary/`，内容未改。
-若需回退，恢复该目录的`runtime-lock-0.10.0.json`及`original-configs/`，恢复旧runtime绑定，
+若需回退，须先显式重建对应版本的隔离环境，再恢复该目录的`runtime-lock-0.10.0.json`及
+`original-configs/`与runtime绑定，
 将结果入口指回旧selection；不删除新旧运行结果。历史恢复须显式使用原配置与锁，
 不把新70题配置传给旧71题冻结Job。

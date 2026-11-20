@@ -44,7 +44,7 @@ def provision(prefix: Path, runtime_dir: Path, lock: Path, *, conda: str = "cond
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
-    parser.add_argument("--runtime-dir", type=Path, default=Path(".vgb-runtime"))
+    parser.add_argument("--runtime-dir", type=Path, default=Path(".vgb-runtime-1.0.0rc1"))
     parser.add_argument("--lock", type=Path, default=Path("runtime-lock.json"))
     parser.add_argument("--conda", default="conda")
     args = parser.parse_args()
