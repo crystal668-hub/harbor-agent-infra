@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：原执行中断；2026-11-20对账为9项完成、29项待执行。旧层GC导致的Docker删除等待已于16:22核验恢复、完整化学预检通过；尚未重新派发。
+状态：2026-11-20 16:29（上海）按用户指示重新派发；9项已完成结果保留，剩余29项进入续跑，首批两个Trial已运行。
 
 ## 范围与统计
 
@@ -137,3 +137,14 @@ Docker的自动删除卡在removing，使`docker run --rm`等待直至90秒超�
 本次诊断容器已全部清理，宿主机可用约62GiB。此前启动阻塞已解除，campaign仍为
 interrupted、9项完成和29项待执行，本次诊断未重新派发。
 [最终回收验证](../../run-artifacts/audit/docker-auto-remove-20261120/final-verification.json)。
+
+
+## 2026-11-20 16:29重新派发
+
+Docker GC清理和完整化学预检恢复后，用户明确要求重新派发剩余实验。再次dry-run
+核准9项completed、29项待执行，9份原生有效结果SHA256不变。独立后台执行器PID 13786
+已进入running，首个新Job为Claude Code × Qwen的7项余下任务、组内并发2，
+首次核查两个Trial容器正常运行；后续组合按原清单依次执行。
+原Advanced 018、Basic 002失败尝试继续保留在审计归档内，未重复9项已完成任务。
+[重新派发记录](../../run-artifacts/audit/repeat3-timeout12h-restart-20261120/redispatch-launch.json)
+及[运行日志](../../run-artifacts/audit/repeat3-timeout12h-restart-20261120/redispatch-execution.log)已保存。
