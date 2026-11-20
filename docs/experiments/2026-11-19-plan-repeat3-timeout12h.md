@@ -2,7 +2,7 @@
 
 日期：2026-11-19（Asia/Shanghai）
 类型：plan
-状态：原执行中断；2026-11-20已清理孤儿容器并对账为9项完成、29项待执行；重启被Docker容器自动删除故障阻止，尚无新Trial派发。
+状态：原执行中断；2026-11-20对账为9项完成、29项待执行。旧层GC导致的Docker删除等待已于16:22核验恢复、完整化学预检通过；尚未重新派发。
 
 ## 范围与统计
 
@@ -124,3 +124,16 @@ Docker的自动删除卡在removing，使`docker run --rm`等待直至90秒超�
 `attempt-reset.json`及冻结输入校验有效。
 [启动受阻记录](../../run-artifacts/audit/repeat3-timeout12h-restart-20261120/restart-blocker.json)
 保留预检故障及重派范围；修复Docker自动删除后可继续同一campaign，不重复9项已评分结果。
+
+
+2026-11-20后续诊断更正：自动/手动删除共享的阻塞点为containerd同步等待overlayfs垃圾回收。
+旧Basic 002计算脚本以100000/100001为目录索引，并连续创建全部中间slot目录，
+导致数百万目录留在已删除容器层中；GC仍在递归删除，153秒内观察到至少105万目录消失，
+并非已证实的永久死锁。应等待回收结束再复测，不再反复重启打断。
+存储已持续返还宿主机；本次只诊断，尚未重新启动实验。
+详见[存储与删除阻塞诊断](../audit/2026-11-20-audit-docker-container-removal.md)。
+
+16:22（上海）后台回收完成后，Docker自动删除、手动删除和完整化学预检均通过，
+本次诊断容器已全部清理，宿主机可用约62GiB。此前启动阻塞已解除，campaign仍为
+interrupted、9项完成和29项待执行，本次诊断未重新派发。
+[最终回收验证](../../run-artifacts/audit/docker-auto-remove-20261120/final-verification.json)。
